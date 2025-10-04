@@ -88,6 +88,10 @@ func (p *StowPipeline) Execute(ctx context.Context, input StowInput) dot.Result[
 			Metadata: dot.PlanMetadata{
 				PackageCount:   len(packages),
 				OperationCount: len(resolved.Operations),
+				LinkCount:      countOperationsByKind(resolved.Operations, dot.OpKindLinkCreate),
+				DirCount:       countOperationsByKind(resolved.Operations, dot.OpKindDirCreate),
+				Conflicts:      convertConflicts(resolved.Conflicts),
+				Warnings:       convertWarnings(resolved.Warnings),
 			},
 		})
 	}
@@ -103,7 +107,7 @@ func (p *StowPipeline) Execute(ctx context.Context, input StowInput) dot.Result[
 	}
 	sorted := sortResult.Unwrap()
 
-	// Build final plan with metadata
+	// Build final plan with metadata including any warnings
 	plan := dot.Plan{
 		Operations: sorted,
 		Metadata: dot.PlanMetadata{
@@ -111,6 +115,8 @@ func (p *StowPipeline) Execute(ctx context.Context, input StowInput) dot.Result[
 			OperationCount: len(sorted),
 			LinkCount:      countOperationsByKind(sorted, dot.OpKindLinkCreate),
 			DirCount:       countOperationsByKind(sorted, dot.OpKindDirCreate),
+			Conflicts:      nil, // No conflicts in success path
+			Warnings:       convertWarnings(resolved.Warnings),
 		},
 	}
 

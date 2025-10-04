@@ -224,3 +224,78 @@ func TestComputeOperationsFromDesiredState(t *testing.T) {
 	assert.Equal(t, sourcePath, linkOp.Source)
 	assert.Equal(t, targetPath, linkOp.Target)
 }
+
+func TestComputeOperationsFromDesiredStateWithDirs(t *testing.T) {
+	dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.config/bash").Unwrap()
+
+	desired := planner.DesiredState{
+		Links: map[string]planner.LinkSpec{
+			targetPath.String(): {
+				Source: sourcePath,
+				Target: targetPath,
+			},
+		},
+		Dirs: map[string]planner.DirSpec{
+			dirPath.String(): {Path: dirPath},
+		},
+	}
+
+	ops := planner.ComputeOperationsFromDesiredState(desired)
+
+	assert.Len(t, ops, 2) // One dir + one link
+
+	// Should have both operation types
+	hasDirCreate := false
+	hasLinkCreate := false
+	for _, op := range ops {
+		switch op.Kind() {
+		case dot.OpKindDirCreate:
+			hasDirCreate = true
+		case dot.OpKindLinkCreate:
+			hasLinkCreate = true
+		}
+	}
+	assert.True(t, hasDirCreate)
+	assert.True(t, hasLinkCreate)
+}
+
+func TestComputeDesiredStateWithMultipleFiles(t *testing.T) {
+	targetDir := dot.NewTargetPath("/home/user").Unwrap()
+
+	// Create package with multiple files
+	pkgPath := dot.NewPackagePath("/stow/bash").Unwrap()
+	pkgRoot := dot.NewFilePath("/stow/bash").Unwrap()
+	file1 := pkgPath.Join("dot-bashrc")
+	file2 := pkgPath.Join("dot-profile")
+
+	tree := &dot.Node{
+		Path: pkgRoot,
+		Type: dot.NodeDir,
+		Children: []dot.Node{
+			{
+				Path: file1,
+				Type: dot.NodeFile,
+			},
+			{
+				Path: file2,
+				Type: dot.NodeFile,
+			},
+		},
+	}
+
+	pkg := dot.Package{
+		Name: "bash",
+		Path: pkgPath,
+		Tree: tree,
+	}
+
+	result := planner.ComputeDesiredState([]dot.Package{pkg}, targetDir)
+
+	assert.True(t, result.IsOk())
+	state := result.Unwrap()
+
+	// Should have 2 links
+	assert.Len(t, state.Links, 2)
+}

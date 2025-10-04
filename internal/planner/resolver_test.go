@@ -480,3 +480,194 @@ func TestMixedOperations(t *testing.T) {
 	assert.Len(t, result.Operations, 1) // Only dir create
 	assert.Len(t, result.Warnings, 1)   // Warning for skipped link
 }
+
+// Additional coverage tests
+func TestWarningSeverityString(t *testing.T) {
+	tests := []struct {
+		name     string
+		severity WarningSeverity
+		want     string
+	}{
+		{"info", WarnInfo, "info"},
+		{"caution", WarnCaution, "caution"},
+		{"danger", WarnDanger, "danger"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.severity.String()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestResolveOperationWithAllTypes(t *testing.T) {
+	current := CurrentState{
+		Files: make(map[string]FileInfo),
+		Links: make(map[string]LinkTarget),
+		Dirs:  make(map[string]bool),
+	}
+	policies := DefaultPolicies()
+
+	t.Run("LinkDelete passes through", func(t *testing.T) {
+		linkPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+		op := dot.NewLinkDelete(linkPath)
+
+		outcome := resolveOperation(op, current, policies)
+
+		assert.Equal(t, ResolveOK, outcome.Status)
+		assert.Len(t, outcome.Operations, 1)
+	})
+
+	t.Run("DirDelete passes through", func(t *testing.T) {
+		dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+		op := dot.NewDirDelete(dirPath)
+
+		outcome := resolveOperation(op, current, policies)
+
+		assert.Equal(t, ResolveOK, outcome.Status)
+		assert.Len(t, outcome.Operations, 1)
+	})
+
+	t.Run("FileMove passes through", func(t *testing.T) {
+		source := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+		dest := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		op := dot.NewFileMove(source, dest)
+
+		outcome := resolveOperation(op, current, policies)
+
+		assert.Equal(t, ResolveOK, outcome.Status)
+		assert.Len(t, outcome.Operations, 1)
+	})
+
+	t.Run("FileBackup passes through", func(t *testing.T) {
+		source := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+		backup := dot.NewFilePath("/backup/.bashrc").Unwrap()
+		op := dot.NewFileBackup(source, backup)
+
+		outcome := resolveOperation(op, current, policies)
+
+		assert.Equal(t, ResolveOK, outcome.Status)
+		assert.Len(t, outcome.Operations, 1)
+	})
+}
+
+func TestApplyPolicyToDirCreate(t *testing.T) {
+	dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+	op := dot.NewDirCreate(dirPath)
+	conflict := NewConflict(ConflictFileExpected, dirPath, "File exists")
+
+	t.Run("fail policy", func(t *testing.T) {
+		outcome := applyPolicyToDirCreate(op, conflict, PolicyFail)
+		assert.Equal(t, ResolveConflict, outcome.Status)
+		assert.NotNil(t, outcome.Conflict)
+	})
+
+	t.Run("skip policy", func(t *testing.T) {
+		outcome := applyPolicyToDirCreate(op, conflict, PolicySkip)
+		assert.Equal(t, ResolveSkip, outcome.Status)
+		assert.NotNil(t, outcome.Warning)
+		assert.Contains(t, outcome.Warning.Message, "Skipping")
+	})
+
+	t.Run("unknown policy defaults to fail", func(t *testing.T) {
+		outcome := applyPolicyToDirCreate(op, conflict, ResolutionPolicy(999))
+		assert.Equal(t, ResolveConflict, outcome.Status)
+	})
+}
+
+func TestApplyPolicyToLinkCreateEdgeCases(t *testing.T) {
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	op := dot.NewLinkCreate(sourcePath, targetPath)
+	conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
+
+	t.Run("backup policy falls back to fail", func(t *testing.T) {
+		outcome := applyPolicyToLinkCreate(op, conflict, PolicyBackup)
+		// Falls back to fail since backup needs FileDelete operation
+		assert.Equal(t, ResolveConflict, outcome.Status)
+	})
+
+	t.Run("overwrite policy falls back to fail", func(t *testing.T) {
+		outcome := applyPolicyToLinkCreate(op, conflict, PolicyOverwrite)
+		// Falls back to fail since overwrite needs FileDelete operation
+		assert.Equal(t, ResolveConflict, outcome.Status)
+	})
+
+	t.Run("unknown policy defaults to fail", func(t *testing.T) {
+		outcome := applyPolicyToLinkCreate(op, conflict, ResolutionPolicy(999))
+		assert.Equal(t, ResolveConflict, outcome.Status)
+	})
+}
+
+func TestResolveLinkCreateWithDifferentConflicts(t *testing.T) {
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	op := dot.NewLinkCreate(sourcePath, targetPath)
+
+	policies := DefaultPolicies()
+	policies.OnWrongLink = PolicySkip
+	policies.OnPermissionErr = PolicySkip
+
+	t.Run("wrong link with skip policy", func(t *testing.T) {
+		wrongPath := dot.NewFilePath("/stow/other/file").Unwrap()
+		current := CurrentState{
+			Files: make(map[string]FileInfo),
+			Links: map[string]LinkTarget{
+				targetPath.String(): {Target: wrongPath.String()},
+			},
+			Dirs: make(map[string]bool),
+		}
+
+		outcome := resolveLinkCreate(op, current, policies)
+		assert.Equal(t, ResolveSkip, outcome.Status)
+	})
+}
+
+func TestResolveDirCreateEdgeCases(t *testing.T) {
+	dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+	op := dot.NewDirCreate(dirPath)
+
+	policies := DefaultPolicies()
+	policies.OnTypeMismatch = PolicySkip
+
+	t.Run("type mismatch with skip policy", func(t *testing.T) {
+		current := CurrentState{
+			Files: map[string]FileInfo{
+				dirPath.String(): {Size: 100},
+			},
+			Links: make(map[string]LinkTarget),
+			Dirs:  make(map[string]bool),
+		}
+
+		outcome := resolveDirCreate(op, current, policies)
+		assert.Equal(t, ResolveSkip, outcome.Status)
+		assert.NotNil(t, outcome.Warning)
+	})
+}
+
+func TestResolveWithWarnings(t *testing.T) {
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+
+	ops := []dot.Operation{
+		dot.NewLinkCreate(sourcePath, targetPath),
+	}
+
+	current := CurrentState{
+		Files: make(map[string]FileInfo),
+		Links: map[string]LinkTarget{
+			targetPath.String(): {Target: sourcePath.String()},
+		},
+		Dirs: make(map[string]bool),
+	}
+
+	policies := DefaultPolicies()
+
+	result := Resolve(ops, current, policies, "/backup")
+
+	// Link already correct, should skip
+	assert.False(t, result.HasConflicts())
+	assert.Empty(t, result.Operations)
+	assert.Empty(t, result.Warnings)
+}

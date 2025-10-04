@@ -36,8 +36,13 @@ func TestStowPipeline_Execute(t *testing.T) {
 			Policies:  planner.DefaultPolicies(),
 		})
 
-		stowPath := dot.NewPackagePath("/stow").Unwrap()
-		targetPath := dot.NewTargetPath("/target").Unwrap()
+		stowPathResult := dot.NewPackagePath("/stow")
+		require.True(t, stowPathResult.IsOk(), "failed to create stow path")
+		stowPath := stowPathResult.Unwrap()
+
+		targetPathResult := dot.NewTargetPath("/target")
+		require.True(t, targetPathResult.IsOk(), "failed to create target path")
+		targetPath := targetPathResult.Unwrap()
 
 		result := pipeline.Execute(context.Background(), StowInput{
 			StowDir:   stowPath,
@@ -60,8 +65,13 @@ func TestStowPipeline_Execute(t *testing.T) {
 			Policies:  planner.DefaultPolicies(),
 		})
 
-		stowPath := dot.NewPackagePath("/stow").Unwrap()
-		targetPath := dot.NewTargetPath("/target").Unwrap()
+		stowPathResult := dot.NewPackagePath("/stow")
+		require.True(t, stowPathResult.IsOk(), "failed to create stow path")
+		stowPath := stowPathResult.Unwrap()
+
+		targetPathResult := dot.NewTargetPath("/target")
+		require.True(t, targetPathResult.IsOk(), "failed to create target path")
+		targetPath := targetPathResult.Unwrap()
 
 		result := pipeline.Execute(context.Background(), StowInput{
 			StowDir:   stowPath,
@@ -103,8 +113,13 @@ func TestStowPipeline_MetadataConflictsAndWarnings(t *testing.T) {
 			Policies:  planner.DefaultPolicies(),
 		})
 
-		stowPath := dot.NewPackagePath("/stow").Unwrap()
-		targetPath := dot.NewTargetPath("/target").Unwrap()
+		stowPathResult := dot.NewPackagePath("/stow")
+		require.True(t, stowPathResult.IsOk(), "failed to create stow path")
+		stowPath := stowPathResult.Unwrap()
+
+		targetPathResult := dot.NewTargetPath("/target")
+		require.True(t, targetPathResult.IsOk(), "failed to create target path")
+		targetPath := targetPathResult.Unwrap()
 
 		result := pipeline.Execute(context.Background(), StowInput{
 			StowDir:   stowPath,

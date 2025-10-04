@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for YAML, JSON, TOML configuration formats
 - Environment variable overrides with DOT_ prefix
 - Comprehensive test suite with 83% coverage for config package
+- Phantom-typed paths (PackagePath, TargetPath, FilePath) for compile-time safety
+- Result monad for functional error handling with Map, FlatMap, Collect
+- Error taxonomy with domain and infrastructure error types
+- User-facing error messages without technical jargon
+- Operation type hierarchy (LinkCreate, LinkDelete, DirCreate, DirDelete, FileMove, FileBackup)
+- Domain value objects (Package, Node, Plan, PlanMetadata)
 - README.md with project overview and architecture
 - Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format

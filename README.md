@@ -51,7 +51,7 @@ dot unstow vim
 dot restow vim
 
 # Adopt existing files into a package
-dot adopt vim ~/.vimrc
+dot adopt ~/.vimrc --package vim
 
 # Check status of packages
 dot status

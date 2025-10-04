@@ -83,11 +83,11 @@ func (e ErrMultiple) Error() string {
 	if len(e.Errors) == 0 {
 		return "no errors"
 	}
-	
+
 	if len(e.Errors) == 1 {
 		return e.Errors[0].Error()
 	}
-	
+
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d errors occurred:\n", len(e.Errors))
 	for i, err := range e.Errors {
@@ -109,22 +109,22 @@ func UserFacingError(err error) string {
 	switch e := err.(type) {
 	case ErrPackageNotFound:
 		return fmt.Sprintf("Package %q not found. Check that the package exists in your package directory.", e.Package)
-	
+
 	case ErrInvalidPath:
 		return fmt.Sprintf("Invalid path %q: %s", e.Path, e.Reason)
-	
+
 	case ErrConflict:
 		return fmt.Sprintf("Cannot proceed: conflict at %q\n%s", e.Path, e.Reason)
-	
+
 	case ErrCyclicDependency:
 		return fmt.Sprintf("Circular dependency detected in operations: %s", strings.Join(e.Cycle, " → "))
-	
+
 	case ErrFilesystemOperation:
 		return fmt.Sprintf("Failed to %s: %v", e.Operation, e.Err)
-	
+
 	case ErrPermissionDenied:
 		return fmt.Sprintf("Permission denied: cannot %s %q\nCheck file permissions and try again.", e.Operation, e.Path)
-	
+
 	case ErrMultiple:
 		if len(e.Errors) == 1 {
 			return UserFacingError(e.Errors[0])
@@ -135,9 +135,8 @@ func UserFacingError(err error) string {
 			fmt.Fprintf(&b, "%d. %s\n", i+1, UserFacingError(subErr))
 		}
 		return b.String()
-	
+
 	default:
 		return err.Error()
 	}
 }
-

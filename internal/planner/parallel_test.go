@@ -38,7 +38,7 @@ func TestParallelizationPlan_IndependentOperations(t *testing.T) {
 
 	require.Len(t, batches, 1, "independent operations should be in single batch")
 	require.Len(t, batches[0], 3, "all three operations should be in same batch")
-	
+
 	// Verify all operations present
 	assert.Contains(t, batches[0], op1)
 	assert.Contains(t, batches[0], op2)
@@ -93,16 +93,16 @@ func TestParallelizationPlan_DiamondPattern(t *testing.T) {
 	batches := graph.ParallelizationPlan()
 
 	require.Len(t, batches, 3, "diamond should produce 3 levels")
-	
+
 	// Batch 0: A (no dependencies)
 	require.Len(t, batches[0], 1)
 	assert.True(t, opA.Equals(batches[0][0]))
-	
+
 	// Batch 1: B and C (both depend only on A, can run in parallel)
 	require.Len(t, batches[1], 2)
 	assert.Contains(t, batches[1], opB)
 	assert.Contains(t, batches[1], opC)
-	
+
 	// Batch 2: D (depends on both B and C)
 	require.Len(t, batches[2], 1)
 	assert.True(t, opD.Equals(batches[2][0]))
@@ -147,21 +147,21 @@ func TestParallelizationPlan_ComplexGraph(t *testing.T) {
 	batches := graph.ParallelizationPlan()
 
 	require.Len(t, batches, 4, "complex graph should produce 4 levels")
-	
+
 	// Level 0: A
 	assert.Len(t, batches[0], 1)
 	assert.True(t, opA.Equals(batches[0][0]))
-	
+
 	// Level 1: B and C
 	assert.Len(t, batches[1], 2)
 	assert.Contains(t, batches[1], opB)
 	assert.Contains(t, batches[1], opC)
-	
+
 	// Level 2: D and E
 	assert.Len(t, batches[2], 2)
 	assert.Contains(t, batches[2], opD)
 	assert.Contains(t, batches[2], opE)
-	
+
 	// Level 3: F
 	assert.Len(t, batches[3], 1)
 	assert.True(t, opF.Equals(batches[3][0]))
@@ -324,8 +324,7 @@ func formatPath(template string, args ...interface{}) string {
 		result = template + string(rune('0'+args[0].(int)))
 	}
 	if len(args) > 1 {
-		result = result + string(rune('0'+args[1].(int)))
+		result += string(rune('0' + args[1].(int)))
 	}
 	return result
 }
-

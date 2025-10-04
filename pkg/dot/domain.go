@@ -4,6 +4,7 @@ package dot
 type Package struct {
 	Name string
 	Path PackagePath
+	Tree *Node // Optional: file tree for the package
 }
 
 // NodeType identifies the type of filesystem node.

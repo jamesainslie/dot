@@ -139,3 +139,44 @@ func TestTranslatePath(t *testing.T) {
 		})
 	}
 }
+
+func TestUntranslatePath(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple dotfile",
+			input:    ".vimrc",
+			expected: "dot-vimrc",
+		},
+		{
+			name:     "nested path with dotfile",
+			input:    "vim/.vimrc",
+			expected: "vim/dot-vimrc",
+		},
+		{
+			name:     "multiple levels",
+			input:    "a/b/.config",
+			expected: "a/b/dot-config",
+		},
+		{
+			name:     "no translation needed",
+			input:    "vim/README.md",
+			expected: "vim/README.md",
+		},
+		{
+			name:     "root level dotfile",
+			input:    ".bashrc",
+			expected: "dot-bashrc",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := scanner.UntranslatePath(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

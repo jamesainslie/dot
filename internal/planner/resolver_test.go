@@ -32,7 +32,7 @@ func TestConflictTypeString(t *testing.T) {
 
 // Task 7.1.2: Test Conflict value object
 func TestConflictCreation(t *testing.T) {
-	targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 	conflict := NewConflict(
 		ConflictFileExists,
@@ -48,7 +48,7 @@ func TestConflictCreation(t *testing.T) {
 }
 
 func TestConflictWithContext(t *testing.T) {
-	targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 	conflict := NewConflict(
 		ConflictFileExists,
@@ -64,7 +64,7 @@ func TestConflictWithContext(t *testing.T) {
 }
 
 func TestConflictWithSuggestion(t *testing.T) {
-	targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 	conflict := NewConflict(
 		ConflictFileExists,
@@ -117,7 +117,7 @@ func TestResolutionOutcomeCreation(t *testing.T) {
 	})
 
 	t.Run("conflict status", func(t *testing.T) {
-		targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 		conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
 
 		outcome := ResolutionOutcome{
@@ -141,7 +141,7 @@ func TestResolveResultConstruction(t *testing.T) {
 	})
 
 	t.Run("with conflicts", func(t *testing.T) {
-		targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 		conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
 
 		result := NewResolveResult(nil)
@@ -170,7 +170,7 @@ func TestResolveResultQueries(t *testing.T) {
 		result := NewResolveResult(nil)
 		assert.False(t, result.HasConflicts())
 
-		targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 		conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
 		result = result.WithConflict(conflict)
 
@@ -181,11 +181,11 @@ func TestResolveResultQueries(t *testing.T) {
 		result := NewResolveResult(nil)
 		assert.Equal(t, 0, result.ConflictCount())
 
-		targetPath1 := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		targetPath1 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 		conflict1 := NewConflict(ConflictFileExists, targetPath1, "File exists")
 		result = result.WithConflict(conflict1)
 
-		targetPath2 := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
+		targetPath2 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 		conflict2 := NewConflict(ConflictWrongLink, targetPath2, "Wrong link")
 		result = result.WithConflict(conflict2)
 
@@ -203,3 +203,135 @@ func TestResolveResultQueries(t *testing.T) {
 	})
 }
 
+// Task 7.1.5-7: Test Conflict Detection
+func TestDetectFileExistsConflict(t *testing.T) {
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+
+	op := dot.NewLinkCreate(sourcePath, targetPath)
+
+	current := CurrentState{
+		Files: map[string]FileInfo{
+			targetPath.String(): {Size: 100},
+		},
+		Links: make(map[string]LinkTarget),
+	}
+
+	outcome := detectLinkCreateConflicts(op, current)
+
+	assert.Equal(t, ResolveConflict, outcome.Status)
+	assert.NotNil(t, outcome.Conflict)
+	assert.Equal(t, ConflictFileExists, outcome.Conflict.Type)
+	assert.Contains(t, outcome.Conflict.Details, "File exists")
+}
+
+func TestDetectWrongLinkConflict(t *testing.T) {
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	wrongPath := dot.NewFilePath("/stow/other/dot-bashrc").Unwrap()
+
+	op := dot.NewLinkCreate(sourcePath, targetPath)
+
+	current := CurrentState{
+		Files: make(map[string]FileInfo),
+		Links: map[string]LinkTarget{
+			targetPath.String(): {Target: wrongPath.String()},
+		},
+	}
+
+	outcome := detectLinkCreateConflicts(op, current)
+
+	assert.Equal(t, ResolveConflict, outcome.Status)
+	assert.NotNil(t, outcome.Conflict)
+	assert.Equal(t, ConflictWrongLink, outcome.Conflict.Type)
+}
+
+func TestDetectNoConflict(t *testing.T) {
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+
+	op := dot.NewLinkCreate(sourcePath, targetPath)
+
+	current := CurrentState{
+		Files: make(map[string]FileInfo),
+		Links: make(map[string]LinkTarget),
+	}
+
+	outcome := detectLinkCreateConflicts(op, current)
+
+	assert.Equal(t, ResolveOK, outcome.Status)
+	assert.Nil(t, outcome.Conflict)
+	assert.Len(t, outcome.Operations, 1)
+}
+
+func TestDetectLinkAlreadyCorrect(t *testing.T) {
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+
+	op := dot.NewLinkCreate(sourcePath, targetPath)
+
+	current := CurrentState{
+		Files: make(map[string]FileInfo),
+		Links: map[string]LinkTarget{
+			targetPath.String(): {Target: sourcePath.String()},
+		},
+	}
+
+	outcome := detectLinkCreateConflicts(op, current)
+
+	assert.Equal(t, ResolveSkip, outcome.Status)
+	assert.Nil(t, outcome.Conflict)
+}
+
+func TestDetectDirCreateConflicts(t *testing.T) {
+	t.Run("file exists where directory expected", func(t *testing.T) {
+		dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+
+		op := dot.NewDirCreate(dirPath)
+
+		current := CurrentState{
+			Files: map[string]FileInfo{
+				dirPath.String(): {Size: 100},
+			},
+			Links: make(map[string]LinkTarget),
+		}
+
+		outcome := detectDirCreateConflicts(op, current)
+
+		assert.Equal(t, ResolveConflict, outcome.Status)
+		assert.NotNil(t, outcome.Conflict)
+		assert.Equal(t, ConflictFileExpected, outcome.Conflict.Type)
+	})
+
+	t.Run("directory already exists", func(t *testing.T) {
+		dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+
+		op := dot.NewDirCreate(dirPath)
+
+		current := CurrentState{
+			Files: make(map[string]FileInfo),
+			Links: make(map[string]LinkTarget),
+			Dirs:  map[string]bool{dirPath.String(): true},
+		}
+
+		outcome := detectDirCreateConflicts(op, current)
+
+		assert.Equal(t, ResolveSkip, outcome.Status)
+	})
+
+	t.Run("no conflict", func(t *testing.T) {
+		dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+
+		op := dot.NewDirCreate(dirPath)
+
+		current := CurrentState{
+			Files: make(map[string]FileInfo),
+			Links: make(map[string]LinkTarget),
+			Dirs:  make(map[string]bool),
+		}
+
+		outcome := detectDirCreateConflicts(op, current)
+
+		assert.Equal(t, ResolveOK, outcome.Status)
+	})
+}

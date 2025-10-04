@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IgnoreSet for aggregating multiple ignore patterns
 - Default ignore patterns (.git, .DS_Store, etc.)
 - Package scanner with ignore pattern support
+- Planner foundation (DesiredState, LinkSpec, DirSpec, ComputeDesiredState)
 - README.md with project overview and architecture
 - Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format

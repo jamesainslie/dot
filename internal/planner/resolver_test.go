@@ -83,3 +83,50 @@ func TestConflictWithSuggestion(t *testing.T) {
 	assert.Equal(t, "Use --backup flag", conflict.Suggestions[0].Action)
 }
 
+// Task 7.1.3: Test Resolution Status Types
+func TestResolutionStatusString(t *testing.T) {
+	tests := []struct {
+		name   string
+		status ResolutionStatus
+		want   string
+	}{
+		{"ok", ResolveOK, "ok"},
+		{"conflict", ResolveConflict, "conflict"},
+		{"warning", ResolveWarning, "warning"},
+		{"skip", ResolveSkip, "skip"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.status.String()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestResolutionOutcomeCreation(t *testing.T) {
+	t.Run("ok status", func(t *testing.T) {
+		outcome := ResolutionOutcome{
+			Status:     ResolveOK,
+			Operations: []dot.Operation{},
+		}
+		assert.Equal(t, ResolveOK, outcome.Status)
+		assert.NotNil(t, outcome.Operations)
+		assert.Nil(t, outcome.Conflict)
+		assert.Nil(t, outcome.Warning)
+	})
+
+	t.Run("conflict status", func(t *testing.T) {
+		targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
+
+		outcome := ResolutionOutcome{
+			Status:   ResolveConflict,
+			Conflict: &conflict,
+		}
+		assert.Equal(t, ResolveConflict, outcome.Status)
+		assert.NotNil(t, outcome.Conflict)
+		assert.Equal(t, ConflictFileExists, outcome.Conflict.Type)
+	})
+}
+

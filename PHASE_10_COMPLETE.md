@@ -66,10 +66,13 @@ All six operation types updated:
 - `rollback_test.go`: Rollback scenarios (4 tests)
 - `parallel_test.go`: Parallel execution (4 tests)
 - `instrumented_test.go`: Metrics collection (4 tests)
+- `checkpoint_test.go`: Checkpoint store operations (6 tests)
+- `preconditions_test.go`: Precondition validation (9 tests)
+- `result_test.go`: ExecutionResult helpers (7 tests)
 
-**Total**: 18 executor tests, all passing with `-race` flag
+**Total**: 35 executor tests, all passing with `-race` flag
 
-**Coverage**: 76.2% of statements (approaching 80% target)
+**Coverage**: 87.3% of statements (exceeds 80% target)
 
 **Quality**: 
 - All tests pass
@@ -220,9 +223,9 @@ Phase 10 is complete. Ready to proceed to:
 
 **Branch**: `feature-phase-10-executor`
 
-**Test Results**: All pass (18 executor tests)
+**Test Results**: All pass (35 executor tests)
 
-**Coverage**: 76.2% (executor), 66.2% (overall)
+**Coverage**: 87.3% (executor), 65.6% (overall)
 
 **Quality**: Zero linter errors, zero race conditions
 

@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configuration management package with Viper and XDG compliance
 - Support for YAML, JSON, TOML configuration formats
 - Environment variable overrides with DOT_ prefix
-- Comprehensive test suite with 100% coverage for config package
+- Comprehensive test suite with 83% coverage for config package
 - README.md with project overview and architecture
+- Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format
 - MIT LICENSE file
 - .gitignore for Go project artifacts

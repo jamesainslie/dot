@@ -18,8 +18,11 @@ func TestScanPackage(t *testing.T) {
 	packagePath := dot.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
 	ignoreSet := ignore.NewIgnoreSet()
 
-	// Mock: package directory exists
+	// Mock: package directory exists and is empty
 	mockFS.On("Exists", ctx, "/home/user/.dotfiles/vim").Return(true)
+	mockFS.On("IsSymlink", ctx, "/home/user/.dotfiles/vim").Return(false, nil)
+	mockFS.On("IsDir", ctx, "/home/user/.dotfiles/vim").Return(true, nil)
+	mockFS.On("ReadDir", ctx, "/home/user/.dotfiles/vim").Return([]dot.DirEntry{}, nil)
 
 	result := scanner.ScanPackage(ctx, mockFS, packagePath, "vim", ignoreSet)
 	require.True(t, result.IsOk())
@@ -27,6 +30,8 @@ func TestScanPackage(t *testing.T) {
 	pkg := result.Unwrap()
 	assert.Equal(t, "vim", pkg.Name)
 	assert.Equal(t, packagePath, pkg.Path)
+	require.NotNil(t, pkg.Tree, "Tree should be populated")
+	assert.Equal(t, dot.NodeDir, pkg.Tree.Type)
 
 	mockFS.AssertExpectations(t)
 }
@@ -60,14 +65,22 @@ func TestScanPackage_WithIgnorePatterns(t *testing.T) {
 	ignoreSet := ignore.NewIgnoreSet()
 	ignoreSet.Add(".git")
 
-	// Mock: package exists
+	// Mock: package exists and is a directory
 	mockFS.On("Exists", ctx, "/home/user/.dotfiles/vim").Return(true)
+	mockFS.On("IsSymlink", ctx, "/home/user/.dotfiles/vim").Return(false, nil)
+	mockFS.On("IsDir", ctx, "/home/user/.dotfiles/vim").Return(true, nil)
+	mockFS.On("ReadDir", ctx, "/home/user/.dotfiles/vim").Return([]dot.DirEntry{}, nil)
 
 	result := scanner.ScanPackage(ctx, mockFS, packagePath, "vim", ignoreSet)
 	require.True(t, result.IsOk())
 
 	pkg := result.Unwrap()
 	assert.Equal(t, "vim", pkg.Name)
+	require.NotNil(t, pkg.Tree, "Tree should be scanned")
+
+	// Tree filtering is applied during scan
+	// With empty directory, tree has no children (nothing to filter)
+	assert.Empty(t, pkg.Tree.Children)
 
 	mockFS.AssertExpectations(t)
 }

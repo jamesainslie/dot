@@ -61,6 +61,7 @@ func (n Node) IsSymlink() bool {
 type Plan struct {
 	Operations []Operation
 	Metadata   PlanMetadata
+	Batches    [][]Operation // Parallel execution batches (if computed)
 }
 
 // Validate checks if the plan is valid.
@@ -72,6 +73,17 @@ func (p Plan) Validate() error {
 		}
 	}
 	return nil
+}
+
+// CanParallelize returns true if the plan has computed parallel batches.
+func (p Plan) CanParallelize() bool {
+	return len(p.Batches) > 0
+}
+
+// ParallelBatches returns the parallel execution batches.
+// Returns nil if parallelization has not been computed.
+func (p Plan) ParallelBatches() [][]Operation {
+	return p.Batches
 }
 
 // PlanMetadata contains statistics and diagnostic information about a plan.

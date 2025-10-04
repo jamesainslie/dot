@@ -23,12 +23,52 @@ func ScanPackage(ctx context.Context, fs dot.FS, path dot.PackagePath, name stri
 		})
 	}
 
-	// For now, create basic package
-	// Full tree scanning with ignore support will be added
-	// when we integrate with the tree scanner
+	// Scan the package directory tree
+	pkgFilePath := dot.NewFilePath(path.String()).Unwrap()
+	treeResult := ScanTree(ctx, fs, pkgFilePath)
+	if treeResult.IsErr() {
+		return dot.Err[dot.Package](treeResult.UnwrapErr())
+	}
+
+	tree := treeResult.Unwrap()
+
+	// Filter tree based on ignore patterns
+	filtered := filterTree(tree, ignoreSet)
 
 	return dot.Ok(dot.Package{
 		Name: name,
 		Path: path,
+		Tree: &filtered,
 	})
+}
+
+// filterTree removes ignored files from a tree.
+// Returns a new tree with ignored nodes filtered out.
+func filterTree(node dot.Node, ignoreSet *ignore.IgnoreSet) dot.Node {
+	// Check if this node should be ignored
+	if ignoreSet.ShouldIgnore(node.Path.String()) {
+		// Return empty node to be filtered by parent
+		return dot.Node{}
+	}
+
+	// If directory, filter children
+	if node.Type == dot.NodeDir {
+		var filteredChildren []dot.Node
+		for _, child := range node.Children {
+			filtered := filterTree(child, ignoreSet)
+			// Skip empty nodes (ignored)
+			if filtered.Path.String() != "" {
+				filteredChildren = append(filteredChildren, filtered)
+			}
+		}
+
+		return dot.Node{
+			Path:     node.Path,
+			Type:     node.Type,
+			Children: filteredChildren,
+		}
+	}
+
+	// File or symlink - return as-is
+	return node
 }

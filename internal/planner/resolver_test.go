@@ -3,6 +3,7 @@ package planner
 import (
 	"testing"
 
+	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,5 +28,58 @@ func TestConflictTypeString(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+// Task 7.1.2: Test Conflict value object
+func TestConflictCreation(t *testing.T) {
+	targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+
+	conflict := NewConflict(
+		ConflictFileExists,
+		targetPath,
+		"File exists at target location",
+	)
+
+	assert.Equal(t, ConflictFileExists, conflict.Type)
+	assert.Equal(t, targetPath, conflict.Path)
+	assert.Equal(t, "File exists at target location", conflict.Details)
+	assert.NotNil(t, conflict.Context)
+	assert.Empty(t, conflict.Suggestions)
+}
+
+func TestConflictWithContext(t *testing.T) {
+	targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+
+	conflict := NewConflict(
+		ConflictFileExists,
+		targetPath,
+		"File exists",
+	)
+
+	conflict = conflict.WithContext("size", "1024")
+	conflict = conflict.WithContext("mode", "0644")
+
+	assert.Equal(t, "1024", conflict.Context["size"])
+	assert.Equal(t, "0644", conflict.Context["mode"])
+}
+
+func TestConflictWithSuggestion(t *testing.T) {
+	targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+
+	conflict := NewConflict(
+		ConflictFileExists,
+		targetPath,
+		"File exists",
+	)
+
+	suggestion := Suggestion{
+		Action:      "Use --backup flag",
+		Explanation: "Preserves existing file",
+	}
+
+	conflict = conflict.WithSuggestion(suggestion)
+
+	assert.Len(t, conflict.Suggestions, 1)
+	assert.Equal(t, "Use --backup flag", conflict.Suggestions[0].Action)
 }
 

@@ -100,7 +100,7 @@ Phase 0 provides the foundation for development. The project is now ready for Ph
 Phase 1 will implement:
 - Phantom-typed paths for compile-time safety
 - Result monad for error handling
-- Operation type hierarchy
+- Operation type hierarchy (manage, unmanage, remanage operations)
 - Domain value objects
 - Error taxonomy
 

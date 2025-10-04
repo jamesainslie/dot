@@ -1,10 +1,10 @@
 # dot
 
-A type-safe dotfile and configuration management tool implementing GNU Stow functionality with modern Go practices.
+A type-safe dotfile and configuration management tool with modern Go practices.
 
 ## Overview
 
-dot manages symbolic links for configuration files and dotfiles, implementing functionality equivalent to GNU Stow. The tool uses phantom types for compile-time path safety and follows functional programming principles with a pure core and imperative shell architecture.
+dot manages symbolic links for configuration files and dotfiles through a clean, intuitive interface. The tool uses phantom types for compile-time path safety and follows functional programming principles with a pure core and imperative shell architecture.
 
 ## Status
 
@@ -15,9 +15,9 @@ This project is under active development. Phase 0 (Project Initialization) is in
 ## Features
 
 Planned features for v0.1.0:
-- Stow packages to target directory
-- Unstow packages from target directory
-- Restow packages with incremental updates
+- Manage packages by creating symbolic links to target directory
+- Unmanage packages by removing symbolic links from target directory
+- Remanage packages with incremental updates
 - Adopt existing files into packages
 - Conflict detection and resolution
 - Transactional operations with rollback
@@ -36,7 +36,27 @@ go install github.com/user/dot/cmd/dot@latest
 
 ## Usage
 
-Documentation will be provided as features are implemented.
+```bash
+# Manage a package (create symbolic links)
+dot manage vim
+
+# Unmanage a package (remove symbolic links)
+dot unmanage vim
+
+# Remanage a package (update symbolic links)
+dot remanage vim
+
+# Adopt existing files into a package
+dot adopt ~/.vimrc --package vim
+
+# Check status of managed packages
+dot status
+
+# Verify configuration health
+dot doctor
+```
+
+Detailed documentation will be provided as features are implemented.
 
 ## Development
 

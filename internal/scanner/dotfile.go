@@ -41,13 +41,13 @@ func UntranslateDotfile(name string) string {
 func TranslatePath(path string) string {
 	dir := filepath.Dir(path)
 	base := filepath.Base(path)
-	
+
 	translated := TranslateDotfile(base)
-	
+
 	if dir == "." {
 		return translated
 	}
-	
+
 	return filepath.Join(dir, translated)
 }
 
@@ -56,13 +56,12 @@ func TranslatePath(path string) string {
 func UntranslatePath(path string) string {
 	dir := filepath.Dir(path)
 	base := filepath.Base(path)
-	
+
 	untranslated := UntranslateDotfile(base)
-	
+
 	if dir == "." {
 		return untranslated
 	}
-	
+
 	return filepath.Join(dir, untranslated)
 }
-

@@ -39,7 +39,7 @@ func TestTranslateDotfile(t *testing.T) {
 			expected: "some-dot-file",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := scanner.TranslateDotfile(tt.input)
@@ -75,7 +75,7 @@ func TestUntranslateDotfile(t *testing.T) {
 			expected: "dot-vimrc",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := scanner.UntranslateDotfile(tt.input)
@@ -91,7 +91,7 @@ func TestRoundTripTranslation(t *testing.T) {
 		".vimrc",
 		"README.md",
 	}
-	
+
 	for _, original := range tests {
 		t.Run(original, func(t *testing.T) {
 			// For dot- prefixed files, round trip should work
@@ -131,7 +131,7 @@ func TestTranslatePath(t *testing.T) {
 			expected: "vim/README.md",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := scanner.TranslatePath(tt.input)
@@ -139,4 +139,3 @@ func TestTranslatePath(t *testing.T) {
 		})
 	}
 }
-

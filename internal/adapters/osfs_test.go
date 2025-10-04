@@ -280,6 +280,8 @@ func TestOSFileInfoWrapper(t *testing.T) {
 	assert.Equal(t, osInfo.Size(), wrapped.Size())
 	assert.Equal(t, osInfo.Mode(), wrapped.Mode())
 	assert.Equal(t, osInfo.IsDir(), wrapped.IsDir())
+	assert.Equal(t, osInfo.ModTime(), wrapped.ModTime())
+	assert.Equal(t, osInfo.Sys(), wrapped.Sys())
 }
 
 func TestOSDirEntryWrapper(t *testing.T) {
@@ -296,4 +298,10 @@ func TestOSDirEntryWrapper(t *testing.T) {
 	assert.Equal(t, "test.txt", wrapped.Name())
 	assert.False(t, wrapped.IsDir())
 	assert.Equal(t, fs.FileMode(0), wrapped.Type())
+
+	// Test Info method
+	info, err := wrapped.Info()
+	require.NoError(t, err)
+	assert.Equal(t, "test.txt", info.Name())
+	assert.False(t, info.IsDir())
 }

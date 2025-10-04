@@ -454,7 +454,7 @@ func TestClient_Adopt(t *testing.T) {
     require.NoError(t, err)
     
     ctx := context.Background()
-    err = client.Adopt(ctx, "package1", ".bashrc")
+    err = client.Adopt(ctx, []string{".bashrc"}, "package1")
     require.NoError(t, err)
     
     // Verify file moved and link created
@@ -473,7 +473,7 @@ func TestClient_PlanAdopt(t *testing.T) {
     require.NoError(t, err)
     
     ctx := context.Background()
-    plan, err := client.PlanAdopt(ctx, "package1", ".bashrc")
+    plan, err := client.PlanAdopt(ctx, []string{".bashrc"}, "package1")
     require.NoError(t, err)
     require.NotEmpty(t, plan.Operations())
 }
@@ -482,8 +482,8 @@ func TestClient_PlanAdopt(t *testing.T) {
 **Implementation**:
 ```go
 // Adopt moves existing files from target into package then creates symlinks.
-func (c *Client) Adopt(ctx context.Context, pkg string, files ...string) error {
-    plan, err := c.PlanAdopt(ctx, pkg, files...)
+func (c *Client) Adopt(ctx context.Context, files []string, pkg string) error {
+    plan, err := c.PlanAdopt(ctx, files, pkg)
     if err != nil {
         return err
     }
@@ -498,7 +498,7 @@ func (c *Client) Adopt(ctx context.Context, pkg string, files ...string) error {
 }
 
 // PlanAdopt computes the execution plan for adopting files.
-func (c *Client) PlanAdopt(ctx context.Context, pkg string, files ...string) (Plan, error) {
+func (c *Client) PlanAdopt(ctx context.Context, files []string, pkg string) (Plan, error) {
     input := adopt.AdoptInput{
         Package:   pkg,
         Files:     files,
@@ -512,8 +512,8 @@ func (c *Client) PlanAdopt(ctx context.Context, pkg string, files ...string) (Pl
 ```
 
 **Tasks**:
-- [ ] Implement Adopt() method
-- [ ] Implement PlanAdopt() method
+- [ ] Implement Adopt() method with files-first signature
+- [ ] Implement PlanAdopt() method with files-first signature
 - [ ] Write tests for successful adoption
 - [ ] Write tests for adopting non-existent file
 - [ ] Write tests for adopting multiple files

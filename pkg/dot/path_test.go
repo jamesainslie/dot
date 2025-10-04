@@ -77,7 +77,7 @@ func TestNewTargetPath(t *testing.T) {
 
 func TestPathJoin(t *testing.T) {
 	pkgPath := dot.NewPackagePath("/home/user/.dotfiles").Unwrap()
-	
+
 	joined := pkgPath.Join("vim")
 	assert.Contains(t, joined.String(), "vim")
 	assert.Contains(t, joined.String(), "/home/user/.dotfiles")
@@ -85,10 +85,10 @@ func TestPathJoin(t *testing.T) {
 
 func TestPathParent(t *testing.T) {
 	pkgPath := dot.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
-	
+
 	parent := pkgPath.Parent()
 	require.True(t, parent.IsOk())
-	
+
 	parentPath := parent.Unwrap()
 	assert.Equal(t, "/home/user/.dotfiles", parentPath.String())
 }
@@ -96,7 +96,7 @@ func TestPathParent(t *testing.T) {
 func TestPathString(t *testing.T) {
 	path := "/home/user/.dotfiles"
 	pkgPath := dot.NewPackagePath(path).Unwrap()
-	
+
 	assert.Equal(t, path, pkgPath.String())
 }
 
@@ -127,7 +127,7 @@ func TestPathClean(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := dot.NewPackagePath(tt.input)
 			require.True(t, result.IsOk())
-			
+
 			path := result.Unwrap()
 			assert.Equal(t, tt.expected, path.String())
 		})
@@ -145,11 +145,10 @@ func TestPathEquality(t *testing.T) {
 
 func TestFilePath(t *testing.T) {
 	filePath := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	
+
 	assert.Contains(t, filePath.String(), "vimrc")
-	
+
 	parent := filePath.Parent()
 	require.True(t, parent.IsOk())
 	assert.Contains(t, parent.Unwrap().String(), "vim")
 }
-

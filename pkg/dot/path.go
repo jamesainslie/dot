@@ -103,4 +103,3 @@ func clean(path string) string {
 	}
 	return cleaned
 }
-

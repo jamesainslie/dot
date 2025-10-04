@@ -13,7 +13,7 @@ func TestErrInvalidPath(t *testing.T) {
 		Path:   "/some/path",
 		Reason: "must be absolute",
 	}
-	
+
 	assert.Contains(t, err.Error(), "/some/path")
 	assert.Contains(t, err.Error(), "must be absolute")
 }
@@ -22,7 +22,7 @@ func TestErrPackageNotFound(t *testing.T) {
 	err := dot.ErrPackageNotFound{
 		Package: "vim",
 	}
-	
+
 	assert.Contains(t, err.Error(), "vim")
 	assert.Contains(t, err.Error(), "not found")
 }
@@ -32,7 +32,7 @@ func TestErrConflict(t *testing.T) {
 		Path:   "/home/user/.vimrc",
 		Reason: "file already exists",
 	}
-	
+
 	assert.Contains(t, err.Error(), "/home/user/.vimrc")
 	assert.Contains(t, err.Error(), "file already exists")
 }
@@ -41,7 +41,7 @@ func TestErrCyclicDependency(t *testing.T) {
 	err := dot.ErrCyclicDependency{
 		Cycle: []string{"a", "b", "c", "a"},
 	}
-	
+
 	msg := err.Error()
 	assert.Contains(t, msg, "a")
 	assert.Contains(t, msg, "b")
@@ -56,7 +56,7 @@ func TestErrFilesystemOperation(t *testing.T) {
 		Path:      "/home/user/.vimrc",
 		Err:       inner,
 	}
-	
+
 	assert.Contains(t, err.Error(), "create symlink")
 	assert.Contains(t, err.Error(), "/home/user/.vimrc")
 	assert.ErrorIs(t, err, inner)
@@ -67,7 +67,7 @@ func TestErrPermissionDenied(t *testing.T) {
 		Path:      "/root/.vimrc",
 		Operation: "write",
 	}
-	
+
 	assert.Contains(t, err.Error(), "/root/.vimrc")
 	assert.Contains(t, err.Error(), "write")
 	assert.Contains(t, err.Error(), "permission denied")
@@ -77,11 +77,11 @@ func TestErrMultiple(t *testing.T) {
 	err1 := errors.New("error 1")
 	err2 := errors.New("error 2")
 	err3 := errors.New("error 3")
-	
+
 	multi := dot.ErrMultiple{
 		Errors: []error{err1, err2, err3},
 	}
-	
+
 	msg := multi.Error()
 	assert.Contains(t, msg, "3 errors")
 	assert.Contains(t, msg, "error 1")
@@ -92,11 +92,11 @@ func TestErrMultiple(t *testing.T) {
 func TestErrMultipleUnwrap(t *testing.T) {
 	err1 := errors.New("error 1")
 	err2 := errors.New("error 2")
-	
+
 	multi := dot.ErrMultiple{
 		Errors: []error{err1, err2},
 	}
-	
+
 	unwrapped := multi.Unwrap()
 	assert.Len(t, unwrapped, 2)
 	assert.Equal(t, err1, unwrapped[0])
@@ -133,7 +133,7 @@ func TestUserFacingErrorMessage(t *testing.T) {
 			contains: []string{".vimrc", "file exists"},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			msg := dot.UserFacingError(tt.err)
@@ -143,4 +143,3 @@ func TestUserFacingErrorMessage(t *testing.T) {
 		})
 	}
 }
-

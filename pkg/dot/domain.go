@@ -12,10 +12,10 @@ type NodeType int
 const (
 	// NodeFile represents a regular file.
 	NodeFile NodeType = iota
-	
+
 	// NodeDir represents a directory.
 	NodeDir
-	
+
 	// NodeSymlink represents a symbolic link.
 	NodeSymlink
 )
@@ -80,4 +80,3 @@ type PlanMetadata struct {
 	LinkCount      int
 	DirCount       int
 }
-

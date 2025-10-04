@@ -18,7 +18,7 @@ func TestParallelizationPlan_EmptyGraph(t *testing.T) {
 }
 
 func TestParallelizationPlan_SingleOperation(t *testing.T) {
-	op := dot.NewLinkCreate(mustParsePath("/a"), mustParsePath("/b"))
+	op := dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
 	graph := BuildGraph([]dot.Operation{op})
 
 	batches := graph.ParallelizationPlan()
@@ -29,9 +29,9 @@ func TestParallelizationPlan_SingleOperation(t *testing.T) {
 }
 
 func TestParallelizationPlan_IndependentOperations(t *testing.T) {
-	op1 := dot.NewLinkCreate(mustParsePath("/a"), mustParsePath("/b"))
-	op2 := dot.NewLinkCreate(mustParsePath("/c"), mustParsePath("/d"))
-	op3 := dot.NewDirCreate(mustParsePath("/e"))
+	op1 := dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
+	op2 := dot.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
+	op3 := dot.NewDirCreate("dir1", mustParsePath("/e"))
 	graph := BuildGraph([]dot.Operation{op1, op2, op3})
 
 	batches := graph.ParallelizationPlan()
@@ -47,13 +47,13 @@ func TestParallelizationPlan_IndependentOperations(t *testing.T) {
 
 func TestParallelizationPlan_LinearChain(t *testing.T) {
 	// Create linear dependency: A -> B -> C
-	opA := dot.NewDirCreate(mustParsePath("/a"))
+	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/b")),
+		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
 		deps: []dot.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewLinkCreate(mustParsePath("/src"), mustParsePath("/c")),
+		op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/c")),
 		deps: []dot.Operation{opB},
 	}
 
@@ -74,17 +74,17 @@ func TestParallelizationPlan_LinearChain(t *testing.T) {
 
 func TestParallelizationPlan_DiamondPattern(t *testing.T) {
 	// Diamond: A -> B, A -> C, B -> D, C -> D
-	opA := dot.NewDirCreate(mustParsePath("/a"))
+	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/b")),
+		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
 		deps: []dot.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/c")),
+		op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
 		deps: []dot.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewLinkCreate(mustParsePath("/src"), mustParsePath("/d")),
+		op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
 		deps: []dot.Operation{opB, opC},
 	}
 
@@ -120,25 +120,25 @@ func TestParallelizationPlan_ComplexGraph(t *testing.T) {
 	//    \ /
 	//     F
 
-	opA := dot.NewDirCreate(mustParsePath("/a"))
+	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/b")),
+		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
 		deps: []dot.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/c")),
+		op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
 		deps: []dot.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/d")),
+		op:   dot.NewDirCreate("dir4", mustParsePath("/d")),
 		deps: []dot.Operation{opB, opC},
 	}
 	opE := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/e")),
+		op:   dot.NewDirCreate("dir5", mustParsePath("/e")),
 		deps: []dot.Operation{opB, opC},
 	}
 	opF := &mockOperation{
-		op:   dot.NewLinkCreate(mustParsePath("/src"), mustParsePath("/f")),
+		op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/f")),
 		deps: []dot.Operation{opD, opE},
 	}
 
@@ -176,9 +176,9 @@ func TestParallelizationSafety(t *testing.T) {
 		{
 			name: "simple chain",
 			ops: func() []dot.Operation {
-				opA := dot.NewDirCreate(mustParsePath("/a"))
+				opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
 				opB := &mockOperation{
-					op:   dot.NewDirCreate(mustParsePath("/b")),
+					op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
 					deps: []dot.Operation{opA},
 				}
 				return []dot.Operation{opB, opA}
@@ -187,17 +187,17 @@ func TestParallelizationSafety(t *testing.T) {
 		{
 			name: "diamond",
 			ops: func() []dot.Operation {
-				opA := dot.NewDirCreate(mustParsePath("/a"))
+				opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
 				opB := &mockOperation{
-					op:   dot.NewDirCreate(mustParsePath("/b")),
+					op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
 					deps: []dot.Operation{opA},
 				}
 				opC := &mockOperation{
-					op:   dot.NewDirCreate(mustParsePath("/c")),
+					op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
 					deps: []dot.Operation{opA},
 				}
 				opD := &mockOperation{
-					op:   dot.NewLinkCreate(mustParsePath("/src"), mustParsePath("/d")),
+					op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
 					deps: []dot.Operation{opB, opC},
 				}
 				return []dot.Operation{opD, opC, opB, opA}
@@ -235,17 +235,17 @@ func TestParallelizationSafety(t *testing.T) {
 
 func TestParallelizationDependenciesSatisfied(t *testing.T) {
 	// Create a complex graph
-	opA := dot.NewDirCreate(mustParsePath("/a"))
+	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/b")),
+		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
 		deps: []dot.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/c")),
+		op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
 		deps: []dot.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/d")),
+		op:   dot.NewDirCreate("dir4", mustParsePath("/d")),
 		deps: []dot.Operation{opB, opC},
 	}
 
@@ -283,8 +283,11 @@ func TestParallelizationPlan_LargeGraph(t *testing.T) {
 	levels := make([][]dot.Operation, numLevels)
 
 	// Level 0: independent operations
+	idCounter := 0
 	for i := 0; i < opsPerLevel; i++ {
-		op := dot.NewDirCreate(mustParsePath(formatPath("/level0/op", i)))
+		idCounter++
+		opID := dot.OperationID(formatPath("dir-%d", idCounter))
+		op := dot.NewDirCreate(opID, mustParsePath(formatPath("/level0/op", i)))
 		levels[0] = append(levels[0], op)
 		ops = append(ops, op)
 	}
@@ -292,8 +295,10 @@ func TestParallelizationPlan_LargeGraph(t *testing.T) {
 	// Each subsequent level depends on all operations from previous level
 	for level := 1; level < numLevels; level++ {
 		for i := 0; i < opsPerLevel; i++ {
+			idCounter++
+			opID := dot.OperationID(formatPath("dir-%d", idCounter))
 			op := &mockOperation{
-				op:   dot.NewDirCreate(mustParsePath(formatPath("/level%d/op", level, i))),
+				op:   dot.NewDirCreate(opID, mustParsePath(formatPath("/level%d/op", level, i))),
 				deps: levels[level-1],
 			}
 			levels[level] = append(levels[level], op)

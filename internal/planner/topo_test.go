@@ -19,7 +19,7 @@ func TestTopologicalSort_EmptyGraph(t *testing.T) {
 }
 
 func TestTopologicalSort_SingleNode(t *testing.T) {
-	op := dot.NewLinkCreate(mustParsePath("/a"), mustParsePath("/b"))
+	op := dot.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
 	graph := BuildGraph([]dot.Operation{op})
 
 	sorted, err := graph.TopologicalSort()
@@ -30,8 +30,8 @@ func TestTopologicalSort_SingleNode(t *testing.T) {
 }
 
 func TestTopologicalSort_IndependentNodes(t *testing.T) {
-	op1 := dot.NewLinkCreate(mustParsePath("/a"), mustParsePath("/b"))
-	op2 := dot.NewLinkCreate(mustParsePath("/c"), mustParsePath("/d"))
+	op1 := dot.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
+	op2 := dot.NewLinkCreate("link-auto", mustParsePath("/c"), mustParsePath("/d"))
 	graph := BuildGraph([]dot.Operation{op1, op2})
 
 	sorted, err := graph.TopologicalSort()
@@ -45,13 +45,13 @@ func TestTopologicalSort_IndependentNodes(t *testing.T) {
 
 func TestTopologicalSort_LinearChain(t *testing.T) {
 	// Create linear dependency: A -> B -> C
-	opA := dot.NewDirCreate(mustParsePath("/dir1"))
+	opA := dot.NewDirCreate("dir-auto", mustParsePath("/dir1"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/dir1/dir2")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/dir1/dir2")),
 		deps: []dot.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewLinkCreate(mustParsePath("/src"), mustParsePath("/dir1/dir2/file")),
+		op:   dot.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/dir1/dir2/file")),
 		deps: []dot.Operation{opB},
 	}
 
@@ -73,17 +73,17 @@ func TestTopologicalSort_LinearChain(t *testing.T) {
 
 func TestTopologicalSort_DiamondPattern(t *testing.T) {
 	// Diamond: A -> B, A -> C, B -> D, C -> D
-	opA := dot.NewDirCreate(mustParsePath("/root"))
+	opA := dot.NewDirCreate("dir-auto", mustParsePath("/root"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/root/dir1")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/root/dir1")),
 		deps: []dot.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/root/dir2")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/root/dir2")),
 		deps: []dot.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewLinkCreate(mustParsePath("/src"), mustParsePath("/root/file")),
+		op:   dot.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/root/file")),
 		deps: []dot.Operation{opB, opC},
 	}
 
@@ -109,25 +109,25 @@ func TestTopologicalSort_DiamondPattern(t *testing.T) {
 func TestTopologicalSort_ComplexGraph(t *testing.T) {
 	// More complex graph with multiple dependencies
 	ops := make([]dot.Operation, 6)
-	ops[0] = dot.NewDirCreate(mustParsePath("/a"))
+	ops[0] = dot.NewDirCreate("dir-auto", mustParsePath("/a"))
 	ops[1] = &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/b")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/b")),
 		deps: []dot.Operation{ops[0]},
 	}
 	ops[2] = &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/c")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/c")),
 		deps: []dot.Operation{ops[0]},
 	}
 	ops[3] = &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/d")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/d")),
 		deps: []dot.Operation{ops[1], ops[2]},
 	}
 	ops[4] = &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/e")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/e")),
 		deps: []dot.Operation{ops[2]},
 	}
 	ops[5] = &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/f")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/f")),
 		deps: []dot.Operation{ops[3], ops[4]},
 	}
 
@@ -149,9 +149,9 @@ func TestTopologicalSort_ComplexGraph(t *testing.T) {
 }
 
 func TestFindCycle_NoCycle(t *testing.T) {
-	opA := dot.NewDirCreate(mustParsePath("/a"))
+	opA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/b")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/b")),
 		deps: []dot.Operation{opA},
 	}
 
@@ -164,7 +164,7 @@ func TestFindCycle_NoCycle(t *testing.T) {
 
 func TestFindCycle_SelfLoop(t *testing.T) {
 	// Operation depends on itself
-	baseOp := dot.NewDirCreate(mustParsePath("/a"))
+	baseOp := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
 	opA := &mockOperation{
 		op:   baseOp,
 		deps: nil, // Will set after creation
@@ -185,8 +185,8 @@ func TestFindCycle_SimpleCycle(t *testing.T) {
 	// Create cycle: A -> B -> A
 	var opA, opB dot.Operation
 
-	baseA := dot.NewDirCreate(mustParsePath("/a"))
-	baseB := dot.NewDirCreate(mustParsePath("/b"))
+	baseA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
+	baseB := dot.NewDirCreate("dir-auto", mustParsePath("/b"))
 
 	opA = &mockOperation{
 		op:   baseA,
@@ -211,9 +211,9 @@ func TestFindCycle_LongerCycle(t *testing.T) {
 	// Create cycle: A -> B -> C -> A
 	var opA, opB, opC dot.Operation
 
-	baseA := dot.NewDirCreate(mustParsePath("/a"))
-	baseB := dot.NewDirCreate(mustParsePath("/b"))
-	baseC := dot.NewDirCreate(mustParsePath("/c"))
+	baseA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
+	baseB := dot.NewDirCreate("dir-auto", mustParsePath("/b"))
+	baseC := dot.NewDirCreate("dir-auto", mustParsePath("/c"))
 
 	opA = &mockOperation{
 		op:   baseA,
@@ -242,8 +242,8 @@ func TestTopologicalSort_WithCycle(t *testing.T) {
 	// Create cycle: A -> B -> A
 	var opA, opB dot.Operation
 
-	baseA := dot.NewDirCreate(mustParsePath("/a"))
-	baseB := dot.NewDirCreate(mustParsePath("/b"))
+	baseA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
+	baseB := dot.NewDirCreate("dir-auto", mustParsePath("/b"))
 
 	opA = &mockOperation{
 		op:   baseA,
@@ -269,11 +269,11 @@ func TestTopologicalSort_WithCycle(t *testing.T) {
 
 func TestTopologicalSort_CycleInLargerGraph(t *testing.T) {
 	// Graph with acyclic part and cycle: A, B -> C -> D -> C
-	opA := dot.NewDirCreate(mustParsePath("/a"))
+	opA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
 
 	var opC, opD dot.Operation
-	baseC := dot.NewDirCreate(mustParsePath("/c"))
-	baseD := dot.NewDirCreate(mustParsePath("/d"))
+	baseC := dot.NewDirCreate("dir-auto", mustParsePath("/c"))
+	baseD := dot.NewDirCreate("dir-auto", mustParsePath("/d"))
 
 	opC = &mockOperation{
 		op:   baseC,
@@ -286,7 +286,7 @@ func TestTopologicalSort_CycleInLargerGraph(t *testing.T) {
 	opC.(*mockOperation).deps = []dot.Operation{opD}
 
 	opB := &mockOperation{
-		op:   dot.NewDirCreate(mustParsePath("/b")),
+		op:   dot.NewDirCreate("dir-auto", mustParsePath("/b")),
 		deps: []dot.Operation{opC},
 	}
 

@@ -82,4 +82,3 @@ func (g *DependencyGraph) ParallelizationPlan() [][]dot.Operation {
 
 	return batches
 }
-

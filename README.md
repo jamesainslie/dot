@@ -1,5 +1,9 @@
 # dot
 
+[![CI](https://github.com/jamesainslie/dot/actions/workflows/ci.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/ci.yml)
+[![Release](https://github.com/jamesainslie/dot/actions/workflows/release.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/release.yml)
+
+
 A type-safe dotfile and configuration management tool with modern Go practices.
 
 ## Overview

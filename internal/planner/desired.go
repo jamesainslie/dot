@@ -23,6 +23,17 @@ type DesiredState struct {
 	Dirs  map[string]DirSpec  // Key: directory path
 }
 
+// PlanResult contains planning results with optional conflict resolution
+type PlanResult struct {
+	Desired  DesiredState
+	Resolved *ResolveResult // Optional resolution results
+}
+
+// HasConflicts returns true if there are unresolved conflicts
+func (pr PlanResult) HasConflicts() bool {
+	return pr.Resolved != nil && pr.Resolved.HasConflicts()
+}
+
 // ComputeDesiredState computes desired state from packages.
 // This is a pure function that determines what links and directories
 // should exist based on the package contents.
@@ -151,4 +162,22 @@ func relativePath(base dot.PackagePath, target dot.FilePath) dot.Result[string] 
 
 func translatePath(path string) string {
 	return scanner.TranslatePath(path)
+}
+
+// ComputeOperationsFromDesiredState converts desired state into operations
+func ComputeOperationsFromDesiredState(desired DesiredState) []dot.Operation {
+	// Preallocate slice for directories and links
+	ops := make([]dot.Operation, 0, len(desired.Dirs)+len(desired.Links))
+
+	// Create directory operations
+	for _, dirSpec := range desired.Dirs {
+		ops = append(ops, dot.NewDirCreate(dirSpec.Path))
+	}
+
+	// Create link operations
+	for _, linkSpec := range desired.Links {
+		ops = append(ops, dot.NewLinkCreate(linkSpec.Source, linkSpec.Target))
+	}
+
+	return ops
 }

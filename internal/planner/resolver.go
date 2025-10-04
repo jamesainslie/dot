@@ -79,3 +79,74 @@ func (c Conflict) WithSuggestion(s Suggestion) Conflict {
 	return c
 }
 
+// WarningSeverity indicates the severity level of a warning
+type WarningSeverity int
+
+const (
+	// WarnInfo is informational only
+	WarnInfo WarningSeverity = iota
+	// WarnCaution requires attention
+	WarnCaution
+	// WarnDanger indicates potentially destructive operation
+	WarnDanger
+)
+
+// String returns the string representation of WarningSeverity
+func (ws WarningSeverity) String() string {
+	switch ws {
+	case WarnInfo:
+		return "info"
+	case WarnCaution:
+		return "caution"
+	case WarnDanger:
+		return "danger"
+	default:
+		return "unknown"
+	}
+}
+
+// Warning represents a non-fatal issue
+type Warning struct {
+	Message  string
+	Severity WarningSeverity
+	Context  map[string]string
+}
+
+// ResolutionStatus indicates the outcome of conflict resolution
+type ResolutionStatus int
+
+const (
+	// ResolveOK indicates no conflict, proceed with operation
+	ResolveOK ResolutionStatus = iota
+	// ResolveConflict indicates unresolved conflict, operation fails
+	ResolveConflict
+	// ResolveWarning indicates resolved with warning
+	ResolveWarning
+	// ResolveSkip indicates operation was skipped
+	ResolveSkip
+)
+
+// String returns the string representation of ResolutionStatus
+func (rs ResolutionStatus) String() string {
+	switch rs {
+	case ResolveOK:
+		return "ok"
+	case ResolveConflict:
+		return "conflict"
+	case ResolveWarning:
+		return "warning"
+	case ResolveSkip:
+		return "skip"
+	default:
+		return "unknown"
+	}
+}
+
+// ResolutionOutcome captures the result of resolving a single operation
+type ResolutionOutcome struct {
+	Status     ResolutionStatus
+	Operations []dot.Operation // Modified operations after resolution
+	Conflict   *Conflict       // If status is ResolveConflict
+	Warning    *Warning        // If status is ResolveWarning
+}
+

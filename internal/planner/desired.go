@@ -2,6 +2,8 @@
 package planner
 
 import (
+	"fmt"
+
 	"github.com/jamesainslie/dot/internal/scanner"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
@@ -170,13 +172,18 @@ func ComputeOperationsFromDesiredState(desired DesiredState) []dot.Operation {
 	ops := make([]dot.Operation, 0, len(desired.Dirs)+len(desired.Links))
 
 	// Create directory operations
+	opID := 0
 	for _, dirSpec := range desired.Dirs {
-		ops = append(ops, dot.NewDirCreate(dirSpec.Path))
+		opID++
+		id := dot.OperationID(fmt.Sprintf("dir-%d", opID))
+		ops = append(ops, dot.NewDirCreate(id, dirSpec.Path))
 	}
 
 	// Create link operations
 	for _, linkSpec := range desired.Links {
-		ops = append(ops, dot.NewLinkCreate(linkSpec.Source, linkSpec.Target))
+		opID++
+		id := dot.OperationID(fmt.Sprintf("link-%d", opID))
+		ops = append(ops, dot.NewLinkCreate(id, linkSpec.Source, linkSpec.Target))
 	}
 
 	return ops

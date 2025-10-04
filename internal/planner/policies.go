@@ -65,7 +65,7 @@ func applyFailPolicy(c Conflict) ResolutionOutcome {
 // applySkipPolicy skips operation with warning
 func applySkipPolicy(op dot.LinkCreate, c Conflict) ResolutionOutcome {
 	warning := Warning{
-		Message: "Skipping due to conflict: " + op.Target.String(),
+		Message:  "Skipping due to conflict: " + op.Target.String(),
 		Severity: WarnInfo,
 	}
 
@@ -74,4 +74,3 @@ func applySkipPolicy(op dot.LinkCreate, c Conflict) ResolutionOutcome {
 		Warning: &warning,
 	}
 }
-

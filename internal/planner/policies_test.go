@@ -91,4 +91,3 @@ func TestPolicySkip(t *testing.T) {
 	assert.NotNil(t, outcome.Warning)
 	assert.Contains(t, outcome.Warning.Message, "Skipping")
 }
-

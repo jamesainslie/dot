@@ -293,3 +293,165 @@ func detectDirCreateConflicts(op dot.DirCreate, current CurrentState) Resolution
 		Operations: []dot.Operation{op},
 	}
 }
+
+// resolveOperation applies policies to resolve conflicts for a single operation
+func resolveOperation(
+	op dot.Operation,
+	current CurrentState,
+	policies ResolutionPolicies,
+) ResolutionOutcome {
+	switch op := op.(type) {
+	case dot.LinkCreate:
+		return resolveLinkCreate(op, current, policies)
+	case dot.DirCreate:
+		return resolveDirCreate(op, current, policies)
+	case dot.LinkDelete:
+		// LinkDelete operations have no conflicts with existing state
+		return ResolutionOutcome{
+			Status:     ResolveOK,
+			Operations: []dot.Operation{op},
+		}
+	case dot.DirDelete:
+		// DirDelete operations have no conflicts with existing state
+		return ResolutionOutcome{
+			Status:     ResolveOK,
+			Operations: []dot.Operation{op},
+		}
+	default:
+		// Unknown operation types pass through
+		return ResolutionOutcome{
+			Status:     ResolveOK,
+			Operations: []dot.Operation{op},
+		}
+	}
+}
+
+// resolveLinkCreate detects and resolves conflicts for LinkCreate operations
+func resolveLinkCreate(
+	op dot.LinkCreate,
+	current CurrentState,
+	policies ResolutionPolicies,
+) ResolutionOutcome {
+	// Detect conflicts
+	outcome := detectLinkCreateConflicts(op, current)
+	if outcome.Status == ResolveOK || outcome.Status == ResolveSkip {
+		return outcome
+	}
+
+	// Apply policy based on conflict type
+	conflict := *outcome.Conflict
+	var policy ResolutionPolicy
+
+	switch conflict.Type {
+	case ConflictFileExists:
+		policy = policies.OnFileExists
+	case ConflictWrongLink:
+		policy = policies.OnWrongLink
+	case ConflictPermission:
+		policy = policies.OnPermissionErr
+	default:
+		policy = PolicyFail
+	}
+
+	return applyPolicyToLinkCreate(op, conflict, policy)
+}
+
+// resolveDirCreate detects and resolves conflicts for DirCreate operations
+func resolveDirCreate(
+	op dot.DirCreate,
+	current CurrentState,
+	policies ResolutionPolicies,
+) ResolutionOutcome {
+	// Detect conflicts
+	outcome := detectDirCreateConflicts(op, current)
+	if outcome.Status == ResolveOK || outcome.Status == ResolveSkip {
+		return outcome
+	}
+
+	// Apply policy
+	conflict := *outcome.Conflict
+	policy := policies.OnTypeMismatch
+
+	return applyPolicyToDirCreate(op, conflict, policy)
+}
+
+// applyPolicyToLinkCreate applies a policy to a link creation conflict
+func applyPolicyToLinkCreate(
+	op dot.LinkCreate,
+	conflict Conflict,
+	policy ResolutionPolicy,
+) ResolutionOutcome {
+	switch policy {
+	case PolicyFail:
+		return applyFailPolicy(conflict)
+	case PolicySkip:
+		return applySkipPolicy(op, conflict)
+	case PolicyBackup, PolicyOverwrite:
+		// These require additional operation types (FileDelete)
+		// For now, fall back to fail
+		return applyFailPolicy(conflict)
+	default:
+		return applyFailPolicy(conflict)
+	}
+}
+
+// applyPolicyToDirCreate applies a policy to a directory creation conflict
+func applyPolicyToDirCreate(
+	op dot.DirCreate,
+	conflict Conflict,
+	policy ResolutionPolicy,
+) ResolutionOutcome {
+	switch policy {
+	case PolicyFail:
+		return applyFailPolicy(conflict)
+	case PolicySkip:
+		warning := Warning{
+			Message:  "Skipping directory creation due to conflict: " + op.Path.String(),
+			Severity: WarnInfo,
+		}
+		return ResolutionOutcome{
+			Status:  ResolveSkip,
+			Warning: &warning,
+		}
+	default:
+		return applyFailPolicy(conflict)
+	}
+}
+
+// Resolve applies conflict resolution to a list of operations
+func Resolve(
+	operations []dot.Operation,
+	current CurrentState,
+	policies ResolutionPolicies,
+	backupDir string,
+) ResolveResult {
+	result := NewResolveResult(nil)
+
+	for _, op := range operations {
+		outcome := resolveOperation(op, current, policies)
+
+		switch outcome.Status {
+		case ResolveOK:
+			result.Operations = append(result.Operations, outcome.Operations...)
+
+		case ResolveWarning:
+			result.Operations = append(result.Operations, outcome.Operations...)
+			if outcome.Warning != nil {
+				result = result.WithWarning(*outcome.Warning)
+			}
+
+		case ResolveConflict:
+			if outcome.Conflict != nil {
+				enriched := enrichConflictWithSuggestions(*outcome.Conflict)
+				result = result.WithConflict(enriched)
+			}
+
+		case ResolveSkip:
+			if outcome.Warning != nil {
+				result = result.WithWarning(*outcome.Warning)
+			}
+		}
+	}
+
+	return result
+}

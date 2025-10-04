@@ -28,6 +28,7 @@ type Opts struct {
 
 // New creates a new Executor with the given options.
 // If no checkpoint store is provided, a memory-based store is used.
+// For metrics collection, wrap the returned executor with NewInstrumented().
 func New(opts Opts) *Executor {
 	if opts.Checkpoint == nil {
 		opts.Checkpoint = NewMemoryCheckpointStore()

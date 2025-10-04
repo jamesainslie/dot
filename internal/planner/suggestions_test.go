@@ -139,6 +139,113 @@ func TestEnrichMultipleConflicts(t *testing.T) {
 	assert.NotEqual(t, enriched1.Suggestions, enriched2.Suggestions)
 }
 
+// Additional coverage tests for suggestion generation edge cases
+func TestGenerateSuggestionsForDirExpected(t *testing.T) {
+	targetPath := dot.NewFilePath("/home/user/.config").Unwrap()
+	conflict := NewConflict(ConflictDirExpected, targetPath, "Directory expected but file found")
+
+	suggestions := generateSuggestions(conflict)
+
+	assert.NotEmpty(t, suggestions)
+
+	// Should have actionable suggestions
+	for _, s := range suggestions {
+		assert.NotEmpty(t, s.Action)
+		assert.NotEmpty(t, s.Explanation)
+	}
+}
+
+func TestGenerateSuggestionsForUnknownType(t *testing.T) {
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	conflict := NewConflict(ConflictType(999), targetPath, "Unknown conflict")
+
+	suggestions := generateSuggestions(conflict)
+
+	// Unknown conflict types should return empty suggestions
+	assert.Empty(t, suggestions)
+}
+
+func TestGeneratePermissionSuggestionsWithRoot(t *testing.T) {
+	// Test path at root level where Parent() might fail
+	rootPath := dot.NewFilePath("/etc").Unwrap()
+	conflict := NewConflict(ConflictPermission, rootPath, "Permission denied")
+
+	suggestions := generatePermissionSuggestions(conflict)
+
+	assert.NotEmpty(t, suggestions)
+	assert.GreaterOrEqual(t, len(suggestions), 2)
+}
+
+func TestGenerateTypeMismatchBothDirections(t *testing.T) {
+	t.Run("file expected", func(t *testing.T) {
+		path := dot.NewFilePath("/home/user/.config").Unwrap()
+		conflict := NewConflict(ConflictFileExpected, path, "File expected")
+
+		suggestions := generateTypeMismatchSuggestions(conflict)
+
+		assert.NotEmpty(t, suggestions)
+		// Should mention removing directory
+		found := false
+		for _, s := range suggestions {
+			if containsIgnoreCase(s.Action, "directory") {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	})
+
+	t.Run("dir expected", func(t *testing.T) {
+		path := dot.NewFilePath("/home/user/.config").Unwrap()
+		conflict := NewConflict(ConflictDirExpected, path, "Dir expected")
+
+		suggestions := generateTypeMismatchSuggestions(conflict)
+
+		assert.NotEmpty(t, suggestions)
+		// Should mention removing file
+		found := false
+		for _, s := range suggestions {
+			if containsIgnoreCase(s.Action, "file") {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	})
+}
+
+func TestAllSuggestionTemplatesHaveExamples(t *testing.T) {
+	testCases := []struct {
+		name           string
+		conflictType   ConflictType
+		minSuggestions int
+	}{
+		{"file exists", ConflictFileExists, 2},
+		{"wrong link", ConflictWrongLink, 2},
+		{"permission", ConflictPermission, 2},
+		{"circular", ConflictCircular, 2},
+		{"type mismatch", ConflictFileExpected, 2},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := dot.NewFilePath("/home/user/test").Unwrap()
+			conflict := NewConflict(tc.conflictType, path, "Test conflict")
+
+			suggestions := generateSuggestions(conflict)
+
+			assert.GreaterOrEqual(t, len(suggestions), tc.minSuggestions,
+				"Should have at least %d suggestions", tc.minSuggestions)
+
+			for i, s := range suggestions {
+				assert.NotEmpty(t, s.Action, "Suggestion %d should have action", i)
+				assert.NotEmpty(t, s.Explanation, "Suggestion %d should have explanation", i)
+				// Example is optional, so we don't assert it
+			}
+		})
+	}
+}
+
 // Helper function
 func containsIgnoreCase(s, substr string) bool {
 	s = toLower(s)

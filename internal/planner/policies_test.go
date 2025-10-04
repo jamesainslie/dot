@@ -91,3 +91,28 @@ func TestPolicySkip(t *testing.T) {
 	assert.NotNil(t, outcome.Warning)
 	assert.Contains(t, outcome.Warning.Message, "Skipping")
 }
+
+// Additional coverage tests
+func TestResolutionPolicyStringEdgeCases(t *testing.T) {
+	// Test unknown policy
+	unknownPolicy := ResolutionPolicy(999)
+	assert.Equal(t, "unknown", unknownPolicy.String())
+}
+
+func TestConflictTypeStringEdgeCases(t *testing.T) {
+	// Test unknown conflict type
+	unknownType := ConflictType(999)
+	assert.Equal(t, "unknown", unknownType.String())
+}
+
+func TestResolutionStatusStringEdgeCases(t *testing.T) {
+	// Test unknown status
+	unknownStatus := ResolutionStatus(999)
+	assert.Equal(t, "unknown", unknownStatus.String())
+}
+
+func TestWarningSeverityStringEdgeCases(t *testing.T) {
+	// Test unknown severity
+	unknownSeverity := WarningSeverity(999)
+	assert.Equal(t, "unknown", unknownSeverity.String())
+}

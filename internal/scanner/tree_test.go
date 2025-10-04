@@ -99,78 +99,78 @@ func (m *MockFS) IsSymlink(ctx context.Context, name string) (bool, error) {
 func TestScanTree_SingleFile(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
-	
+
 	path := dot.NewFilePath("/test/file.txt").Unwrap()
-	
+
 	// Mock: path is not a symlink, and is a file (not a directory)
 	mockFS.On("IsSymlink", ctx, "/test/file.txt").Return(false, nil)
 	mockFS.On("IsDir", ctx, "/test/file.txt").Return(false, nil)
-	
+
 	result := scanner.ScanTree(ctx, mockFS, path)
 	require.True(t, result.IsOk())
-	
+
 	node := result.Unwrap()
 	assert.Equal(t, path, node.Path)
 	assert.Equal(t, dot.NodeFile, node.Type)
 	assert.Nil(t, node.Children)
-	
+
 	mockFS.AssertExpectations(t)
 }
 
 func TestScanTree_EmptyDirectory(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
-	
+
 	path := dot.NewFilePath("/test/dir").Unwrap()
-	
+
 	// Mock: path is not a symlink, is a directory with no children
 	mockFS.On("IsSymlink", ctx, "/test/dir").Return(false, nil)
 	mockFS.On("IsDir", ctx, "/test/dir").Return(true, nil)
 	mockFS.On("ReadDir", ctx, "/test/dir").Return([]dot.DirEntry{}, nil)
-	
+
 	result := scanner.ScanTree(ctx, mockFS, path)
 	require.True(t, result.IsOk())
-	
+
 	node := result.Unwrap()
 	assert.Equal(t, path, node.Path)
 	assert.Equal(t, dot.NodeDir, node.Type)
 	assert.Empty(t, node.Children)
-	
+
 	mockFS.AssertExpectations(t)
 }
 
 func TestScanTree_Symlink(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
-	
+
 	path := dot.NewFilePath("/test/link").Unwrap()
-	
+
 	// Mock: path is a symlink
 	mockFS.On("IsSymlink", ctx, "/test/link").Return(true, nil)
-	
+
 	result := scanner.ScanTree(ctx, mockFS, path)
 	require.True(t, result.IsOk())
-	
+
 	node := result.Unwrap()
 	assert.Equal(t, path, node.Path)
 	assert.Equal(t, dot.NodeSymlink, node.Type)
 	assert.Nil(t, node.Children)
-	
+
 	mockFS.AssertExpectations(t)
 }
 
 func TestScanTree_Error(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
-	
+
 	path := dot.NewFilePath("/test/error").Unwrap()
-	
+
 	// Mock: IsSymlink returns an error
 	mockFS.On("IsSymlink", ctx, "/test/error").Return(false, assert.AnError)
-	
+
 	result := scanner.ScanTree(ctx, mockFS, path)
 	assert.True(t, result.IsErr())
-	
+
 	mockFS.AssertExpectations(t)
 }
 
@@ -190,14 +190,14 @@ func TestWalk(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Collect all visited paths
 	var visited []string
 	err := scanner.Walk(root, func(n dot.Node) error {
 		visited = append(visited, n.Path.String())
 		return nil
 	})
-	
+
 	require.NoError(t, err)
 	assert.Len(t, visited, 3) // root + 2 children
 	assert.Contains(t, visited, "/test")
@@ -216,12 +216,12 @@ func TestWalk_ErrorStopsTraversal(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Return error on first visit
 	err := scanner.Walk(root, func(n dot.Node) error {
 		return assert.AnError
 	})
-	
+
 	assert.Error(t, err)
 }
 
@@ -246,15 +246,15 @@ func TestCollectFiles(t *testing.T) {
 			},
 		},
 	}
-	
+
 	files := scanner.CollectFiles(root)
 	assert.Len(t, files, 2)
-	
+
 	paths := make([]string, len(files))
 	for i, f := range files {
 		paths[i] = f.String()
 	}
-	
+
 	assert.Contains(t, paths, "/test/file1.txt")
 	assert.Contains(t, paths, "/test/subdir/file2.txt")
 }
@@ -280,7 +280,7 @@ func TestCountNodes(t *testing.T) {
 			},
 		},
 	}
-	
+
 	count := scanner.CountNodes(root)
 	assert.Equal(t, 4, count) // root + file1 + dir + file2
 }
@@ -315,14 +315,14 @@ func TestRelativePath(t *testing.T) {
 			wantErr:  false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			base := dot.NewFilePath(tt.base).Unwrap()
 			target := dot.NewFilePath(tt.target).Unwrap()
-			
+
 			result := scanner.RelativePath(base, target)
-			
+
 			if tt.wantErr {
 				assert.True(t, result.IsErr())
 			} else {
@@ -332,4 +332,3 @@ func TestRelativePath(t *testing.T) {
 		})
 	}
 }
-

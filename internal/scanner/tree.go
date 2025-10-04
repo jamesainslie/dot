@@ -27,7 +27,7 @@ func ScanTree(ctx context.Context, fs dot.FS, path dot.FilePath) dot.Result[dot.
 	if err != nil {
 		return dot.Err[dot.Node](fmt.Errorf("check symlink %s: %w", path.String(), err))
 	}
-	
+
 	if isLink {
 		return dot.Ok(dot.Node{
 			Path:     path,
@@ -35,13 +35,13 @@ func ScanTree(ctx context.Context, fs dot.FS, path dot.FilePath) dot.Result[dot.
 			Children: nil,
 		})
 	}
-	
+
 	// Check if directory
 	isDir, err := fs.IsDir(ctx, path.String())
 	if err != nil {
 		return dot.Err[dot.Node](fmt.Errorf("check directory %s: %w", path.String(), err))
 	}
-	
+
 	if !isDir {
 		// Regular file
 		return dot.Ok(dot.Node{
@@ -50,26 +50,26 @@ func ScanTree(ctx context.Context, fs dot.FS, path dot.FilePath) dot.Result[dot.
 			Children: nil,
 		})
 	}
-	
+
 	// Directory - scan children
 	entries, err := fs.ReadDir(ctx, path.String())
 	if err != nil {
 		return dot.Err[dot.Node](fmt.Errorf("read directory %s: %w", path.String(), err))
 	}
-	
+
 	// Recursively scan each child
 	children := make([]dot.Node, 0, len(entries))
 	for _, entry := range entries {
 		childPath := path.Join(entry.Name())
-		
+
 		childResult := ScanTree(ctx, fs, childPath)
 		if childResult.IsErr() {
 			return dot.Err[dot.Node](childResult.UnwrapErr())
 		}
-		
+
 		children = append(children, childResult.Unwrap())
 	}
-	
+
 	return dot.Ok(dot.Node{
 		Path:     path,
 		Type:     dot.NodeDir,
@@ -86,14 +86,14 @@ func Walk(node dot.Node, fn func(dot.Node) error) error {
 	if err := fn(node); err != nil {
 		return err
 	}
-	
+
 	// Visit children
 	for _, child := range node.Children {
 		if err := Walk(child, fn); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -101,25 +101,25 @@ func Walk(node dot.Node, fn func(dot.Node) error) error {
 // Useful for collecting all files in a package.
 func CollectFiles(node dot.Node) []dot.FilePath {
 	var files []dot.FilePath
-	
+
 	Walk(node, func(n dot.Node) error {
 		if n.Type == dot.NodeFile {
 			files = append(files, n.Path)
 		}
 		return nil
 	})
-	
+
 	return files
 }
 
 // CountNodes returns the total number of nodes in a tree.
 func CountNodes(node dot.Node) int {
 	count := 1 // Count this node
-	
+
 	for _, child := range node.Children {
 		count += CountNodes(child)
 	}
-	
+
 	return count
 }
 
@@ -132,4 +132,3 @@ func RelativePath(base, target dot.FilePath) dot.Result[string] {
 	}
 	return dot.Ok(rel)
 }
-

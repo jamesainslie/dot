@@ -105,15 +105,58 @@ func TestPlanValidation(t *testing.T) {
 }
 
 func TestPlanMetadata(t *testing.T) {
-	metadata := dot.PlanMetadata{
-		PackageCount:   3,
-		OperationCount: 10,
-		LinkCount:      7,
-		DirCount:       3,
-	}
+	t.Run("basic fields", func(t *testing.T) {
+		metadata := dot.PlanMetadata{
+			PackageCount:   3,
+			OperationCount: 10,
+			LinkCount:      7,
+			DirCount:       3,
+		}
 
-	assert.Equal(t, 3, metadata.PackageCount)
-	assert.Equal(t, 10, metadata.OperationCount)
-	assert.Equal(t, 7, metadata.LinkCount)
-	assert.Equal(t, 3, metadata.DirCount)
+		assert.Equal(t, 3, metadata.PackageCount)
+		assert.Equal(t, 10, metadata.OperationCount)
+		assert.Equal(t, 7, metadata.LinkCount)
+		assert.Equal(t, 3, metadata.DirCount)
+	})
+
+	t.Run("with conflicts and warnings", func(t *testing.T) {
+		metadata := dot.PlanMetadata{
+			PackageCount:   2,
+			OperationCount: 5,
+			LinkCount:      3,
+			DirCount:       2,
+			Conflicts: []dot.ConflictInfo{
+				{
+					Type:    "file_exists",
+					Path:    "/home/user/.bashrc",
+					Details: "File exists",
+					Context: map[string]string{"package": "bash"},
+				},
+			},
+			Warnings: []dot.WarningInfo{
+				{
+					Message:  "Backup created",
+					Severity: "caution",
+					Context:  map[string]string{"path": "/home/user/.bashrc"},
+				},
+			},
+		}
+
+		assert.Equal(t, 2, metadata.PackageCount)
+		assert.Equal(t, 5, metadata.OperationCount)
+		assert.Len(t, metadata.Conflicts, 1)
+		assert.Len(t, metadata.Warnings, 1)
+		assert.Equal(t, "file_exists", metadata.Conflicts[0].Type)
+		assert.Equal(t, "caution", metadata.Warnings[0].Severity)
+	})
+
+	t.Run("conflicts and warnings are optional", func(t *testing.T) {
+		metadata := dot.PlanMetadata{
+			PackageCount:   1,
+			OperationCount: 2,
+		}
+
+		assert.Nil(t, metadata.Conflicts)
+		assert.Nil(t, metadata.Warnings)
+	})
 }

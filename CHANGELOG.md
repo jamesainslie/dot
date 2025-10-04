@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configuration management package with Viper and XDG compliance
 - Support for YAML, JSON, TOML configuration formats
 - Environment variable overrides with DOT_ prefix
-- Comprehensive test suite with 83% coverage for config package
 - Phantom-typed paths (PackagePath, TargetPath, FilePath) for compile-time safety
 - Result monad for functional error handling with Map, FlatMap, Collect
 - Error taxonomy with domain and infrastructure error types
@@ -26,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Domain value objects (Package, Node, Plan, PlanMetadata)
 - Infrastructure port interfaces (FS, Logger, Tracer, Metrics)
 - Mock implementations for all ports enabling pure functional testing
+- OS filesystem adapter wrapping os package with context cancellation
+- Slog logger adapter with console-slog integration for human-readable output
+- No-op adapters for logger, tracer, and metrics (testing and performance)
 - README.md with project overview and architecture
 - Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format

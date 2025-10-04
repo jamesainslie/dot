@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jamesainslie/dot/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/jamesainslie/dot/internal/config"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -236,4 +236,3 @@ func TestLoadWithEnv_EnvOnly(t *testing.T) {
 	assert.Equal(t, "ERROR", cfg.LogLevel)
 	assert.Equal(t, "text", cfg.LogFormat)
 }
-

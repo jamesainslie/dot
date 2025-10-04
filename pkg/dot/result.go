@@ -90,4 +90,3 @@ func Collect[T any](results []Result[T]) Result[[]T] {
 	}
 	return Ok(values)
 }
-

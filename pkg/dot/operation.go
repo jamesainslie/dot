@@ -8,19 +8,19 @@ type OperationKind int
 const (
 	// OpKindLinkCreate creates a symbolic link.
 	OpKindLinkCreate OperationKind = iota
-	
+
 	// OpKindLinkDelete removes a symbolic link.
 	OpKindLinkDelete
-	
+
 	// OpKindDirCreate creates a directory.
 	OpKindDirCreate
-	
+
 	// OpKindDirDelete removes an empty directory.
 	OpKindDirDelete
-	
+
 	// OpKindFileMove moves a file.
 	OpKindFileMove
-	
+
 	// OpKindFileBackup creates a backup copy of a file.
 	OpKindFileBackup
 )
@@ -50,16 +50,16 @@ func (k OperationKind) String() string {
 type Operation interface {
 	// Kind returns the operation type.
 	Kind() OperationKind
-	
+
 	// Validate checks if the operation is valid.
 	Validate() error
-	
+
 	// Dependencies returns operations that must execute before this one.
 	Dependencies() []Operation
-	
+
 	// String returns a human-readable description.
 	String() string
-	
+
 	// Equals checks if two operations are equivalent.
 	Equals(other Operation) bool
 }
@@ -304,4 +304,3 @@ func (op FileBackup) Equals(other Operation) bool {
 	}
 	return op.Source.Equals(o.Source) && op.Backup.Equals(o.Backup)
 }
-

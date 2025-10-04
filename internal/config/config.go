@@ -57,7 +57,7 @@ func LoadFromFile(path string) (*Config, error) {
 // Environment variables use DOT_ prefix and replace dots with underscores.
 func LoadWithEnv(path string) (*Config, error) {
 	v := viper.New()
-	
+
 	// Set up defaults
 	v.SetDefault("log_level", "INFO")
 	v.SetDefault("log_format", "json")
@@ -66,7 +66,7 @@ func LoadWithEnv(path string) (*Config, error) {
 	v.SetEnvPrefix("DOT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
-	
+
 	// Bind specific keys to env vars
 	v.BindEnv("log_level")
 	v.BindEnv("log_format")
@@ -137,4 +137,3 @@ func contains(slice []string, value string) bool {
 	}
 	return false
 }
-

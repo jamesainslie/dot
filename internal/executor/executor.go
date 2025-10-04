@@ -69,7 +69,12 @@ func (e *Executor) Execute(ctx context.Context, plan dot.Plan) dot.Result[Execut
 	e.log.Info(ctx, "checkpoint_created", "checkpoint_id", checkpoint.ID)
 
 	// Phase 2: Commit - execute operations
-	result := e.executeSequential(ctx, plan, checkpoint)
+	var result ExecutionResult
+	if plan.CanParallelize() {
+		result = e.executeParallel(ctx, plan, checkpoint)
+	} else {
+		result = e.executeSequential(ctx, plan, checkpoint)
+	}
 
 	if len(result.Failed) > 0 {
 		// Automatic rollback
@@ -265,4 +270,113 @@ func (e *Executor) rollback(ctx context.Context, executed []dot.OperationID, che
 		"succeeded", len(rolledBack))
 
 	return rolledBack
+}
+
+// executeParallel executes operations in parallel batches based on dependencies.
+func (e *Executor) executeParallel(ctx context.Context, plan dot.Plan, checkpoint *Checkpoint) ExecutionResult {
+	batches := plan.ParallelBatches()
+
+	e.log.Info(ctx, "executing_parallel",
+		"batch_count", len(batches),
+		"total_operations", len(plan.Operations))
+
+	result := ExecutionResult{
+		Executed:   []dot.OperationID{},
+		Failed:     []dot.OperationID{},
+		RolledBack: []dot.OperationID{},
+		Errors:     []error{},
+	}
+
+	for i, batch := range batches {
+		e.log.Debug(ctx, "executing_batch", "batch", i, "size", len(batch))
+
+		batchResult := e.executeBatch(ctx, batch, checkpoint)
+
+		result.Executed = append(result.Executed, batchResult.Executed...)
+		result.Failed = append(result.Failed, batchResult.Failed...)
+		result.Errors = append(result.Errors, batchResult.Errors...)
+
+		if len(batchResult.Failed) > 0 {
+			// Stop on first batch failure
+			e.log.Error(ctx, "batch_failed", "batch", i, "failures", len(batchResult.Failed))
+			break
+		}
+	}
+
+	return result
+}
+
+// executeBatch executes a batch of operations concurrently.
+func (e *Executor) executeBatch(ctx context.Context, batch []dot.Operation, checkpoint *Checkpoint) ExecutionResult {
+	result := ExecutionResult{
+		Executed:   []dot.OperationID{},
+		Failed:     []dot.OperationID{},
+		RolledBack: []dot.OperationID{},
+		Errors:     []error{},
+	}
+
+	if len(batch) == 0 {
+		return result
+	}
+
+	// If only one operation, execute sequentially
+	if len(batch) == 1 {
+		op := batch[0]
+		opID := op.ID()
+
+		e.log.Debug(ctx, "executing_operation", "op_id", opID, "op_kind", op.Kind())
+
+		if err := op.Execute(ctx, e.fs); err != nil {
+			e.log.Error(ctx, "operation_failed", "op_id", opID, "error", err)
+			result.Failed = append(result.Failed, opID)
+			result.Errors = append(result.Errors, err)
+		} else {
+			result.Executed = append(result.Executed, opID)
+			checkpoint.Record(opID, op)
+		}
+
+		return result
+	}
+
+	// Execute multiple operations concurrently
+	type opResult struct {
+		id  dot.OperationID
+		err error
+	}
+
+	resultCh := make(chan opResult, len(batch))
+
+	for _, op := range batch {
+		go func(operation dot.Operation) {
+			opID := operation.ID()
+
+			e.log.Debug(ctx, "executing_operation_parallel",
+				"op_id", opID,
+				"op_kind", operation.Kind())
+
+			err := operation.Execute(ctx, e.fs)
+			resultCh <- opResult{id: opID, err: err}
+		}(op)
+	}
+
+	// Collect results
+	opMap := make(map[dot.OperationID]dot.Operation)
+	for _, op := range batch {
+		opMap[op.ID()] = op
+	}
+
+	for i := 0; i < len(batch); i++ {
+		res := <-resultCh
+
+		if res.err != nil {
+			e.log.Error(ctx, "operation_failed", "op_id", res.id, "error", res.err)
+			result.Failed = append(result.Failed, res.id)
+			result.Errors = append(result.Errors, res.err)
+		} else {
+			result.Executed = append(result.Executed, res.id)
+			checkpoint.Record(res.id, opMap[res.id])
+		}
+	}
+
+	return result
 }

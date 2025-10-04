@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jamesainslie/dot/actions/workflows/ci.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/ci.yml)
 [![Release](https://github.com/jamesainslie/dot/actions/workflows/release.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/release.yml)
-
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/jamesainslie/dot?utm_source=oss&utm_medium=github&utm_campaign=jamesainslie%2Fdot&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 A type-safe dotfile and configuration management tool with modern Go practices.
 

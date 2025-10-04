@@ -1,0 +1,87 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - contextcheck
+    - copyloopvar
+    - depguard
+    - dupl
+    - gocritic
+    - gocyclo
+    - gosec
+    - importas
+    - misspell
+    - nakedret
+    - nolintlint
+    - prealloc
+    - revive
+    - unconvert
+    - whitespace
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: Please use "errors" package from standard library
+            - pkg: gotest.tools/v3
+              desc: Please keep tests unified using only github.com/stretchr/testify
+        viper_usage:
+          files:
+            - $all
+            - '!**/internal/config/*.go'
+          deny:
+            - pkg: github.com/spf13/viper
+              desc: Please use internal/config package for configuration access
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+    gocyclo:
+      min-complexity: 15
+    gosec:
+      excludes:
+        - G104
+        - G301
+        - G302
+        - G304
+    importas:
+      alias:
+        - pkg: github.com/stretchr/testify/assert
+          alias: assert
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+    rules:
+      - linters:
+          - bodyclose
+          - depguard
+          - dupl
+          - funlen
+          - gochecknoglobals
+          - goconst
+          - gosec
+          - noctx
+          - wrapcheck
+        path: _test\.go$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+

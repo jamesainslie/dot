@@ -163,3 +163,64 @@ func TestDesiredState(t *testing.T) {
 	assert.Contains(t, state.Links, target.String())
 	assert.Contains(t, state.Dirs, dirPath.String())
 }
+
+// Task 7.5: Test Integration with Planner
+func TestPlanResult(t *testing.T) {
+	t.Run("without resolution", func(t *testing.T) {
+		desired := planner.DesiredState{
+			Links: make(map[string]planner.LinkSpec),
+			Dirs:  make(map[string]planner.DirSpec),
+		}
+
+		result := planner.PlanResult{
+			Desired: desired,
+		}
+
+		assert.NotNil(t, result.Desired)
+		assert.Nil(t, result.Resolved)
+		assert.False(t, result.HasConflicts())
+	})
+
+	t.Run("with resolution", func(t *testing.T) {
+		desired := planner.DesiredState{
+			Links: make(map[string]planner.LinkSpec),
+			Dirs:  make(map[string]planner.DirSpec),
+		}
+
+		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+		conflict := planner.NewConflict(planner.ConflictFileExists, targetPath, "File exists")
+
+		resolved := planner.NewResolveResult(nil).WithConflict(conflict)
+
+		result := planner.PlanResult{
+			Desired:  desired,
+			Resolved: &resolved,
+		}
+
+		assert.NotNil(t, result.Resolved)
+		assert.True(t, result.HasConflicts())
+	})
+}
+
+func TestComputeOperationsFromDesiredState(t *testing.T) {
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+
+	desired := planner.DesiredState{
+		Links: map[string]planner.LinkSpec{
+			targetPath.String(): {
+				Source: sourcePath,
+				Target: targetPath,
+			},
+		},
+		Dirs: make(map[string]planner.DirSpec),
+	}
+
+	ops := planner.ComputeOperationsFromDesiredState(desired)
+
+	assert.Len(t, ops, 1)
+	linkOp, ok := ops[0].(dot.LinkCreate)
+	assert.True(t, ok)
+	assert.Equal(t, sourcePath, linkOp.Source)
+	assert.Equal(t, targetPath, linkOp.Target)
+}

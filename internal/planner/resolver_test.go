@@ -130,3 +130,76 @@ func TestResolutionOutcomeCreation(t *testing.T) {
 	})
 }
 
+// Task 7.1.4: Test ResolveResult Type
+func TestResolveResultConstruction(t *testing.T) {
+	t.Run("with operations", func(t *testing.T) {
+		ops := []dot.Operation{}
+		result := NewResolveResult(ops)
+		assert.Len(t, result.Operations, 0)
+		assert.Empty(t, result.Conflicts)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("with conflicts", func(t *testing.T) {
+		targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
+
+		result := NewResolveResult(nil)
+		result = result.WithConflict(conflict)
+
+		assert.Len(t, result.Conflicts, 1)
+		assert.Equal(t, ConflictFileExists, result.Conflicts[0].Type)
+	})
+
+	t.Run("with warnings", func(t *testing.T) {
+		warning := Warning{
+			Message:  "File backed up",
+			Severity: WarnInfo,
+		}
+
+		result := NewResolveResult(nil)
+		result = result.WithWarning(warning)
+
+		assert.Len(t, result.Warnings, 1)
+		assert.Equal(t, "File backed up", result.Warnings[0].Message)
+	})
+}
+
+func TestResolveResultQueries(t *testing.T) {
+	t.Run("HasConflicts", func(t *testing.T) {
+		result := NewResolveResult(nil)
+		assert.False(t, result.HasConflicts())
+
+		targetPath := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
+		result = result.WithConflict(conflict)
+
+		assert.True(t, result.HasConflicts())
+	})
+
+	t.Run("ConflictCount", func(t *testing.T) {
+		result := NewResolveResult(nil)
+		assert.Equal(t, 0, result.ConflictCount())
+
+		targetPath1 := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+		conflict1 := NewConflict(ConflictFileExists, targetPath1, "File exists")
+		result = result.WithConflict(conflict1)
+
+		targetPath2 := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
+		conflict2 := NewConflict(ConflictWrongLink, targetPath2, "Wrong link")
+		result = result.WithConflict(conflict2)
+
+		assert.Equal(t, 2, result.ConflictCount())
+	})
+
+	t.Run("WarningCount", func(t *testing.T) {
+		result := NewResolveResult(nil)
+		assert.Equal(t, 0, result.WarningCount())
+
+		warning := Warning{Message: "Test warning"}
+		result = result.WithWarning(warning)
+
+		assert.Equal(t, 1, result.WarningCount())
+	})
+}
+

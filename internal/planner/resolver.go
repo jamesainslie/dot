@@ -150,3 +150,49 @@ type ResolutionOutcome struct {
 	Warning    *Warning        // If status is ResolveWarning
 }
 
+// ResolveResult contains all resolved operations, conflicts, and warnings
+type ResolveResult struct {
+	Operations []dot.Operation
+	Conflicts  []Conflict
+	Warnings   []Warning
+}
+
+// NewResolveResult creates a new ResolveResult with the given operations
+func NewResolveResult(ops []dot.Operation) ResolveResult {
+	if ops == nil {
+		ops = []dot.Operation{}
+	}
+	return ResolveResult{
+		Operations: ops,
+		Conflicts:  []Conflict{},
+		Warnings:   []Warning{},
+	}
+}
+
+// WithConflict adds a conflict to the result
+func (r ResolveResult) WithConflict(c Conflict) ResolveResult {
+	r.Conflicts = append(r.Conflicts, c)
+	return r
+}
+
+// WithWarning adds a warning to the result
+func (r ResolveResult) WithWarning(w Warning) ResolveResult {
+	r.Warnings = append(r.Warnings, w)
+	return r
+}
+
+// HasConflicts returns true if there are any conflicts
+func (r ResolveResult) HasConflicts() bool {
+	return len(r.Conflicts) > 0
+}
+
+// ConflictCount returns the number of conflicts
+func (r ResolveResult) ConflictCount() int {
+	return len(r.Conflicts)
+}
+
+// WarningCount returns the number of warnings
+func (r ResolveResult) WarningCount() int {
+	return len(r.Warnings)
+}
+

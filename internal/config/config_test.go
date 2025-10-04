@@ -148,3 +148,92 @@ log_format: json
 	assert.Equal(t, "json", cfg.LogFormat) // File value for non-overridden
 }
 
+func TestGetConfigPath(t *testing.T) {
+	tests := []struct {
+		name        string
+		appName     string
+		envVars     map[string]string
+		shouldExist bool
+	}{
+		{
+			name:    "with XDG_CONFIG_HOME set",
+			appName: "testapp",
+			envVars: map[string]string{
+				"XDG_CONFIG_HOME": "/tmp/config",
+			},
+			shouldExist: false,
+		},
+		{
+			name:        "without XDG_CONFIG_HOME",
+			appName:     "testapp",
+			envVars:     map[string]string{},
+			shouldExist: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set environment variables
+			for k, v := range tt.envVars {
+				os.Setenv(k, v)
+				defer os.Unsetenv(k)
+			}
+
+			path := config.GetConfigPath(tt.appName)
+			assert.NotEmpty(t, path)
+			assert.Contains(t, path, tt.appName)
+		})
+	}
+}
+
+func TestContainsFunction(t *testing.T) {
+	// Test the validation logic indirectly through Validate
+	cfg := &config.Config{
+		LogLevel:  "INFO",
+		LogFormat: "json",
+	}
+
+	err := cfg.Validate()
+	assert.NoError(t, err)
+
+	// Test with all valid log levels
+	validLevels := []string{"DEBUG", "INFO", "WARN", "ERROR"}
+	for _, level := range validLevels {
+		cfg.LogLevel = level
+		err := cfg.Validate()
+		assert.NoError(t, err, "Level %s should be valid", level)
+	}
+
+	// Test with all valid formats
+	validFormats := []string{"json", "text"}
+	for _, format := range validFormats {
+		cfg.LogFormat = format
+		err := cfg.Validate()
+		assert.NoError(t, err, "Format %s should be valid", format)
+	}
+}
+
+func TestLoadWithEnv_FileNotFound(t *testing.T) {
+	// Test that missing file is handled gracefully with defaults
+	cfg, err := config.LoadWithEnv("/nonexistent/config.yaml")
+	require.NoError(t, err)
+
+	// Should return defaults
+	assert.Equal(t, "INFO", cfg.LogLevel)
+	assert.Equal(t, "json", cfg.LogFormat)
+}
+
+func TestLoadWithEnv_EnvOnly(t *testing.T) {
+	// Test loading with only environment variables
+	os.Setenv("DOT_LOG_LEVEL", "ERROR")
+	os.Setenv("DOT_LOG_FORMAT", "text")
+	defer os.Unsetenv("DOT_LOG_LEVEL")
+	defer os.Unsetenv("DOT_LOG_FORMAT")
+
+	cfg, err := config.LoadWithEnv("/nonexistent/config.yaml")
+	require.NoError(t, err)
+
+	assert.Equal(t, "ERROR", cfg.LogLevel)
+	assert.Equal(t, "text", cfg.LogFormat)
+}
+

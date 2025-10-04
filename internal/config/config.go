@@ -57,13 +57,21 @@ func LoadFromFile(path string) (*Config, error) {
 // Environment variables use DOT_ prefix and replace dots with underscores.
 func LoadWithEnv(path string) (*Config, error) {
 	v := viper.New()
-	v.SetConfigFile(path)
+	
+	// Set up defaults
+	v.SetDefault("log_level", "INFO")
+	v.SetDefault("log_format", "json")
 
 	// Set up environment variable handling
 	v.SetEnvPrefix("DOT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+	
+	// Bind specific keys to env vars
+	v.BindEnv("log_level")
+	v.BindEnv("log_format")
 
+	v.SetConfigFile(path)
 	if err := v.ReadInConfig(); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read config file: %w", err)
@@ -71,7 +79,7 @@ func LoadWithEnv(path string) (*Config, error) {
 		// File not found is acceptable, use defaults with env overrides
 	}
 
-	cfg := Default()
+	cfg := &Config{}
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}

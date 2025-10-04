@@ -31,6 +31,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tree scanner with recursive directory traversal
 - Dotfile translation (dot- prefix to . prefix and reverse)
 - Tree utility functions (Walk, CollectFiles, CountNodes, RelativePath)
+- Ignore pattern engine with glob-to-regex conversion
+- IgnoreSet for aggregating multiple ignore patterns
+- Default ignore patterns (.git, .DS_Store, etc.)
+- Package scanner with ignore pattern support
+- Planner foundation (DesiredState, LinkSpec, DirSpec, ComputeDesiredState)
+- Conflict type enumeration with 6 conflict categories
+- Conflict value object with context and suggestions
+- Resolution status types (OK, Conflict, Warning, Skip)
+- ResolveResult aggregation for conflicts and warnings
+- CurrentState representation for filesystem state
+- Conflict detection for LinkCreate and DirCreate operations
+- Resolution policies (Fail, Backup, Overwrite, Skip)
+- ResolutionPolicies configuration with fail-safe defaults
+- Warning severity levels (Info, Caution, Danger)
+- Context-aware suggestion generation for all conflict types
+- Conflict enrichment with actionable suggestions and examples
+- Main Resolve() function for conflict resolution orchestration
+- Policy dispatcher with operation-specific resolution logic
+- PlanResult type for planning with optional conflict resolution
+- ComputeOperationsFromDesiredState for state-to-operation conversion
 - README.md with project overview and architecture
 - Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format

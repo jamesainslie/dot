@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tree scanner with recursive directory traversal
 - Dotfile translation (dot- prefix to . prefix and reverse)
 - Tree utility functions (Walk, CollectFiles, CountNodes, RelativePath)
+- Ignore pattern engine with glob-to-regex conversion
+- IgnoreSet for aggregating multiple ignore patterns
+- Default ignore patterns (.git, .DS_Store, etc.)
+- Package scanner with ignore pattern support
 - README.md with project overview and architecture
 - Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format

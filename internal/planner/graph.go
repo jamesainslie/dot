@@ -8,10 +8,10 @@ import "github.com/jamesainslie/dot/pkg/dot"
 type DependencyGraph struct {
 	// nodes maps each operation to its index for quick lookup
 	nodes map[dot.Operation]int
-	
+
 	// ops stores operations in insertion order
 	ops []dot.Operation
-	
+
 	// edges stores dependencies: edges[op] = operations that op depends on
 	edges map[dot.Operation][]dot.Operation
 }
@@ -32,7 +32,7 @@ func BuildGraph(ops []dot.Operation) *DependencyGraph {
 	for i, op := range ops {
 		graph.nodes[op] = i
 		graph.ops = append(graph.ops, op)
-		
+
 		// Build edges from dependencies
 		deps := op.Dependencies()
 		if len(deps) > 0 {
@@ -73,4 +73,3 @@ func (g *DependencyGraph) Operations() []dot.Operation {
 	copy(result, g.ops)
 	return result
 }
-

@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OS filesystem adapter wrapping os package with context cancellation
 - Slog logger adapter with console-slog integration for human-readable output
 - No-op adapters for logger, tracer, and metrics (testing and performance)
+- Tree scanner with recursive directory traversal
+- Dotfile translation (dot- prefix to . prefix and reverse)
+- Tree utility functions (Walk, CollectFiles, CountNodes, RelativePath)
 - README.md with project overview and architecture
 - Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format

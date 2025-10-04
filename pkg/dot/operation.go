@@ -1,6 +1,9 @@
 package dot
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // OperationKind identifies the type of operation.
 type OperationKind int
@@ -45,9 +48,15 @@ func (k OperationKind) String() string {
 	}
 }
 
+// OperationID uniquely identifies an operation.
+type OperationID string
+
 // Operation represents a filesystem operation.
 // Operations are pure data structures with no side effects.
 type Operation interface {
+	// ID returns the unique identifier for this operation.
+	ID() OperationID
+
 	// Kind returns the operation type.
 	Kind() OperationKind
 
@@ -56,6 +65,12 @@ type Operation interface {
 
 	// Dependencies returns operations that must execute before this one.
 	Dependencies() []Operation
+
+	// Execute performs the operation with side effects.
+	Execute(ctx context.Context, fs FS) error
+
+	// Rollback undoes the operation.
+	Rollback(ctx context.Context, fs FS) error
 
 	// String returns a human-readable description.
 	String() string
@@ -66,16 +81,22 @@ type Operation interface {
 
 // LinkCreate creates a symbolic link from source to target.
 type LinkCreate struct {
+	OpID   OperationID
 	Source FilePath
 	Target FilePath
 }
 
 // NewLinkCreate creates a new link creation operation.
-func NewLinkCreate(source, target FilePath) LinkCreate {
+func NewLinkCreate(id OperationID, source, target FilePath) LinkCreate {
 	return LinkCreate{
+		OpID:   id,
 		Source: source,
 		Target: target,
 	}
+}
+
+func (op LinkCreate) ID() OperationID {
+	return op.OpID
 }
 
 func (op LinkCreate) Kind() OperationKind {
@@ -83,12 +104,22 @@ func (op LinkCreate) Kind() OperationKind {
 }
 
 func (op LinkCreate) Validate() error {
-	// Validation will be implemented when we have filesystem access
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
 	return nil
 }
 
 func (op LinkCreate) Dependencies() []Operation {
 	return nil
+}
+
+func (op LinkCreate) Execute(ctx context.Context, fs FS) error {
+	return fs.Symlink(ctx, op.Source.String(), op.Target.String())
+}
+
+func (op LinkCreate) Rollback(ctx context.Context, fs FS) error {
+	return fs.Remove(ctx, op.Target.String())
 }
 
 func (op LinkCreate) String() string {
@@ -108,14 +139,20 @@ func (op LinkCreate) Equals(other Operation) bool {
 
 // LinkDelete removes a symbolic link at target.
 type LinkDelete struct {
+	OpID   OperationID
 	Target FilePath
 }
 
 // NewLinkDelete creates a new link deletion operation.
-func NewLinkDelete(target FilePath) LinkDelete {
+func NewLinkDelete(id OperationID, target FilePath) LinkDelete {
 	return LinkDelete{
+		OpID:   id,
 		Target: target,
 	}
+}
+
+func (op LinkDelete) ID() OperationID {
+	return op.OpID
 }
 
 func (op LinkDelete) Kind() OperationKind {
@@ -123,10 +160,23 @@ func (op LinkDelete) Kind() OperationKind {
 }
 
 func (op LinkDelete) Validate() error {
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
 	return nil
 }
 
 func (op LinkDelete) Dependencies() []Operation {
+	return nil
+}
+
+func (op LinkDelete) Execute(ctx context.Context, fs FS) error {
+	return fs.Remove(ctx, op.Target.String())
+}
+
+func (op LinkDelete) Rollback(ctx context.Context, fs FS) error {
+	// Cannot restore deleted link without knowing original target
+	// This would require storing the original target in the operation
 	return nil
 }
 
@@ -147,14 +197,20 @@ func (op LinkDelete) Equals(other Operation) bool {
 
 // DirCreate creates a directory at path.
 type DirCreate struct {
+	OpID OperationID
 	Path FilePath
 }
 
 // NewDirCreate creates a new directory creation operation.
-func NewDirCreate(path FilePath) DirCreate {
+func NewDirCreate(id OperationID, path FilePath) DirCreate {
 	return DirCreate{
+		OpID: id,
 		Path: path,
 	}
+}
+
+func (op DirCreate) ID() OperationID {
+	return op.OpID
 }
 
 func (op DirCreate) Kind() OperationKind {
@@ -162,11 +218,22 @@ func (op DirCreate) Kind() OperationKind {
 }
 
 func (op DirCreate) Validate() error {
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
 	return nil
 }
 
 func (op DirCreate) Dependencies() []Operation {
 	return nil
+}
+
+func (op DirCreate) Execute(ctx context.Context, fs FS) error {
+	return fs.MkdirAll(ctx, op.Path.String(), 0755)
+}
+
+func (op DirCreate) Rollback(ctx context.Context, fs FS) error {
+	return fs.Remove(ctx, op.Path.String())
 }
 
 func (op DirCreate) String() string {
@@ -186,14 +253,20 @@ func (op DirCreate) Equals(other Operation) bool {
 
 // DirDelete removes an empty directory at path.
 type DirDelete struct {
+	OpID OperationID
 	Path FilePath
 }
 
 // NewDirDelete creates a new directory deletion operation.
-func NewDirDelete(path FilePath) DirDelete {
+func NewDirDelete(id OperationID, path FilePath) DirDelete {
 	return DirDelete{
+		OpID: id,
 		Path: path,
 	}
+}
+
+func (op DirDelete) ID() OperationID {
+	return op.OpID
 }
 
 func (op DirDelete) Kind() OperationKind {
@@ -201,11 +274,22 @@ func (op DirDelete) Kind() OperationKind {
 }
 
 func (op DirDelete) Validate() error {
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
 	return nil
 }
 
 func (op DirDelete) Dependencies() []Operation {
 	return nil
+}
+
+func (op DirDelete) Execute(ctx context.Context, fs FS) error {
+	return fs.Remove(ctx, op.Path.String())
+}
+
+func (op DirDelete) Rollback(ctx context.Context, fs FS) error {
+	return fs.Mkdir(ctx, op.Path.String(), 0755)
 }
 
 func (op DirDelete) String() string {
@@ -225,16 +309,22 @@ func (op DirDelete) Equals(other Operation) bool {
 
 // FileMove moves a file from source to destination.
 type FileMove struct {
+	OpID   OperationID
 	Source FilePath
 	Dest   FilePath
 }
 
 // NewFileMove creates a new file move operation.
-func NewFileMove(source, dest FilePath) FileMove {
+func NewFileMove(id OperationID, source, dest FilePath) FileMove {
 	return FileMove{
+		OpID:   id,
 		Source: source,
 		Dest:   dest,
 	}
+}
+
+func (op FileMove) ID() OperationID {
+	return op.OpID
 }
 
 func (op FileMove) Kind() OperationKind {
@@ -242,11 +332,22 @@ func (op FileMove) Kind() OperationKind {
 }
 
 func (op FileMove) Validate() error {
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
 	return nil
 }
 
 func (op FileMove) Dependencies() []Operation {
 	return nil
+}
+
+func (op FileMove) Execute(ctx context.Context, fs FS) error {
+	return fs.Rename(ctx, op.Source.String(), op.Dest.String())
+}
+
+func (op FileMove) Rollback(ctx context.Context, fs FS) error {
+	return fs.Rename(ctx, op.Dest.String(), op.Source.String())
 }
 
 func (op FileMove) String() string {
@@ -266,16 +367,22 @@ func (op FileMove) Equals(other Operation) bool {
 
 // FileBackup creates a backup copy of a file.
 type FileBackup struct {
+	OpID   OperationID
 	Source FilePath
 	Backup FilePath
 }
 
 // NewFileBackup creates a new file backup operation.
-func NewFileBackup(source, backup FilePath) FileBackup {
+func NewFileBackup(id OperationID, source, backup FilePath) FileBackup {
 	return FileBackup{
+		OpID:   id,
 		Source: source,
 		Backup: backup,
 	}
+}
+
+func (op FileBackup) ID() OperationID {
+	return op.OpID
 }
 
 func (op FileBackup) Kind() OperationKind {
@@ -283,11 +390,26 @@ func (op FileBackup) Kind() OperationKind {
 }
 
 func (op FileBackup) Validate() error {
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
 	return nil
 }
 
 func (op FileBackup) Dependencies() []Operation {
 	return nil
+}
+
+func (op FileBackup) Execute(ctx context.Context, fs FS) error {
+	data, err := fs.ReadFile(ctx, op.Source.String())
+	if err != nil {
+		return err
+	}
+	return fs.WriteFile(ctx, op.Backup.String(), data, 0644)
+}
+
+func (op FileBackup) Rollback(ctx context.Context, fs FS) error {
+	return fs.Remove(ctx, op.Backup.String())
 }
 
 func (op FileBackup) String() string {

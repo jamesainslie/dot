@@ -335,3 +335,148 @@ func TestDetectDirCreateConflicts(t *testing.T) {
 		assert.Equal(t, ResolveOK, outcome.Status)
 	})
 }
+
+// Task 7.4.1: Test Main Resolve Function
+func TestResolveFunction(t *testing.T) {
+	t.Run("no conflicts", func(t *testing.T) {
+		sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+
+		ops := []dot.Operation{
+			dot.NewLinkCreate(sourcePath, targetPath),
+		}
+
+		current := CurrentState{
+			Files: make(map[string]FileInfo),
+			Links: make(map[string]LinkTarget),
+			Dirs:  make(map[string]bool),
+		}
+
+		policies := DefaultPolicies()
+
+		result := Resolve(ops, current, policies, "/backup")
+
+		assert.False(t, result.HasConflicts())
+		assert.Len(t, result.Operations, 1)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("with conflict using fail policy", func(t *testing.T) {
+		sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+
+		ops := []dot.Operation{
+			dot.NewLinkCreate(sourcePath, targetPath),
+		}
+
+		current := CurrentState{
+			Files: map[string]FileInfo{
+				targetPath.String(): {Size: 100},
+			},
+			Links: make(map[string]LinkTarget),
+			Dirs:  make(map[string]bool),
+		}
+
+		policies := DefaultPolicies() // Defaults to PolicyFail
+
+		result := Resolve(ops, current, policies, "/backup")
+
+		assert.True(t, result.HasConflicts())
+		assert.Len(t, result.Conflicts, 1)
+		assert.Equal(t, ConflictFileExists, result.Conflicts[0].Type)
+
+		// Should have suggestions
+		assert.NotEmpty(t, result.Conflicts[0].Suggestions)
+	})
+
+	t.Run("with conflict using skip policy", func(t *testing.T) {
+		sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+
+		ops := []dot.Operation{
+			dot.NewLinkCreate(sourcePath, targetPath),
+		}
+
+		current := CurrentState{
+			Files: map[string]FileInfo{
+				targetPath.String(): {Size: 100},
+			},
+			Links: make(map[string]LinkTarget),
+			Dirs:  make(map[string]bool),
+		}
+
+		policies := DefaultPolicies()
+		policies.OnFileExists = PolicySkip
+
+		result := Resolve(ops, current, policies, "/backup")
+
+		assert.False(t, result.HasConflicts())
+		assert.Empty(t, result.Operations) // Operation was skipped
+		assert.Len(t, result.Warnings, 1)
+	})
+}
+
+// Task 7.4.2: Test Conflict Aggregation
+func TestConflictAggregation(t *testing.T) {
+	source1 := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	target1 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+
+	source2 := dot.NewFilePath("/stow/vim/dot-vimrc").Unwrap()
+	target2 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+
+	ops := []dot.Operation{
+		dot.NewLinkCreate(source1, target1),
+		dot.NewLinkCreate(source2, target2),
+	}
+
+	current := CurrentState{
+		Files: map[string]FileInfo{
+			target1.String(): {Size: 100},
+			target2.String(): {Size: 200},
+		},
+		Links: make(map[string]LinkTarget),
+		Dirs:  make(map[string]bool),
+	}
+
+	policies := DefaultPolicies()
+
+	result := Resolve(ops, current, policies, "/backup")
+
+	// Both operations should have conflicts
+	assert.True(t, result.HasConflicts())
+	assert.Equal(t, 2, result.ConflictCount())
+
+	// Both conflicts should have suggestions
+	for _, c := range result.Conflicts {
+		assert.NotEmpty(t, c.Suggestions)
+	}
+}
+
+func TestMixedOperations(t *testing.T) {
+	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
+
+	ops := []dot.Operation{
+		dot.NewLinkCreate(sourcePath, targetPath),
+		dot.NewDirCreate(dirPath),
+	}
+
+	current := CurrentState{
+		Files: map[string]FileInfo{
+			targetPath.String(): {Size: 100}, // Conflict for link
+		},
+		Links: make(map[string]LinkTarget),
+		Dirs:  make(map[string]bool), // No conflict for dir
+	}
+
+	policies := DefaultPolicies()
+	policies.OnFileExists = PolicySkip
+
+	result := Resolve(ops, current, policies, "/backup")
+
+	// One operation skipped (link), one succeeded (dir)
+	assert.False(t, result.HasConflicts())
+	assert.Len(t, result.Operations, 1) // Only dir create
+	assert.Len(t, result.Warnings, 1)   // Warning for skipped link
+}

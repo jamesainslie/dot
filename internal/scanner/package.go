@@ -22,14 +22,13 @@ func ScanPackage(ctx context.Context, fs dot.FS, path dot.PackagePath, name stri
 			Package: name,
 		})
 	}
-	
+
 	// For now, create basic package
 	// Full tree scanning with ignore support will be added
 	// when we integrate with the tree scanner
-	
+
 	return dot.Ok(dot.Package{
 		Name: name,
 		Path: path,
 	})
 }
-

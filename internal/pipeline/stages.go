@@ -23,9 +23,23 @@ type ScanInput struct {
 // Returns a slice of scanned packages with their file trees.
 func ScanStage() Pipeline[ScanInput, []dot.Package] {
 	return func(ctx context.Context, input ScanInput) dot.Result[[]dot.Package] {
+		// Early cancellation check
+		select {
+		case <-ctx.Done():
+			return dot.Err[[]dot.Package](ctx.Err())
+		default:
+		}
+
 		packages := make([]dot.Package, 0, len(input.Packages))
 
 		for _, pkgName := range input.Packages {
+			// Check for cancellation before processing each package
+			select {
+			case <-ctx.Done():
+				return dot.Err[[]dot.Package](ctx.Err())
+			default:
+			}
+
 			// Create package path by joining stow dir with package name
 			pkgPathStr := filepath.Join(input.StowDir.String(), pkgName)
 			pkgPathResult := dot.NewPackagePath(pkgPathStr)
@@ -34,6 +48,7 @@ func ScanStage() Pipeline[ScanInput, []dot.Package] {
 			}
 			pkgPath := pkgPathResult.Unwrap()
 
+			// scanner.ScanPackage already accepts context and should handle cancellation
 			pkgResult := scanner.ScanPackage(ctx, input.FS, pkgPath, pkgName, input.IgnoreSet)
 
 			if pkgResult.IsErr() {
@@ -57,6 +72,13 @@ type PlanInput struct {
 // Takes scanned packages and computes what links should exist.
 func PlanStage() Pipeline[PlanInput, planner.DesiredState] {
 	return func(ctx context.Context, input PlanInput) dot.Result[planner.DesiredState] {
+		// Early cancellation check before potentially long-running planning
+		select {
+		case <-ctx.Done():
+			return dot.Err[planner.DesiredState](ctx.Err())
+		default:
+		}
+
 		return planner.ComputeDesiredState(input.Packages, input.TargetDir)
 	}
 }
@@ -73,8 +95,22 @@ type ResolveInput struct {
 // Takes desired state and current filesystem state to generate operations.
 func ResolveStage() Pipeline[ResolveInput, planner.ResolveResult] {
 	return func(ctx context.Context, input ResolveInput) dot.Result[planner.ResolveResult] {
+		// Early cancellation check
+		select {
+		case <-ctx.Done():
+			return dot.Err[planner.ResolveResult](ctx.Err())
+		default:
+		}
+
 		// Convert desired state to operations
 		operations := planner.ComputeOperationsFromDesiredState(input.Desired)
+
+		// Check for cancellation before building current state
+		select {
+		case <-ctx.Done():
+			return dot.Err[planner.ResolveResult](ctx.Err())
+		default:
+		}
 
 		// For now, use empty current state (will scan target in future phases)
 		// This will be enhanced when we add current state scanning
@@ -82,6 +118,13 @@ func ResolveStage() Pipeline[ResolveInput, planner.ResolveResult] {
 			Files: make(map[string]planner.FileInfo),
 			Links: make(map[string]planner.LinkTarget),
 			Dirs:  make(map[string]bool),
+		}
+
+		// Check for cancellation before potentially long-running conflict resolution
+		select {
+		case <-ctx.Done():
+			return dot.Err[planner.ResolveResult](ctx.Err())
+		default:
 		}
 
 		// Resolve conflicts
@@ -99,11 +142,33 @@ type SortInput struct {
 // Takes operations and returns them in dependency order.
 func SortStage() Pipeline[SortInput, []dot.Operation] {
 	return func(ctx context.Context, input SortInput) dot.Result[[]dot.Operation] {
+		// Early cancellation check
+		select {
+		case <-ctx.Done():
+			return dot.Err[[]dot.Operation](ctx.Err())
+		default:
+		}
+
 		if len(input.Operations) == 0 {
 			return dot.Ok([]dot.Operation{})
 		}
 
+		// Check for cancellation before building dependency graph
+		select {
+		case <-ctx.Done():
+			return dot.Err[[]dot.Operation](ctx.Err())
+		default:
+		}
+
 		graph := planner.BuildGraph(input.Operations)
+
+		// Check for cancellation before potentially long-running topological sort
+		select {
+		case <-ctx.Done():
+			return dot.Err[[]dot.Operation](ctx.Err())
+		default:
+		}
+
 		sorted, err := graph.TopologicalSort()
 		if err != nil {
 			return dot.Err[[]dot.Operation](err)

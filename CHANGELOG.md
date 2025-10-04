@@ -24,11 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User-facing error messages without technical jargon
 - Operation type hierarchy (LinkCreate, LinkDelete, DirCreate, DirDelete, FileMove, FileBackup)
 - Domain value objects (Package, Node, Plan, PlanMetadata)
+- Infrastructure port interfaces (FS, Logger, Tracer, Metrics)
+- Mock implementations for all ports enabling pure functional testing
 - README.md with project overview and architecture
 - Command terminology: manage/unmanage/remanage for clarity
 - CHANGELOG.md following Keep a Changelog format
 - MIT LICENSE file
 - .gitignore for Go project artifacts
 
-[Unreleased]: https://github.com/user/dot/commits/main
+[Unreleased]: https://github.com/jamesainslie/dot/commits/main
 

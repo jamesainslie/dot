@@ -74,10 +74,12 @@ func (p Plan) Validate() error {
 	return nil
 }
 
-// PlanMetadata contains statistics about a plan.
+// PlanMetadata contains statistics and diagnostic information about a plan.
 type PlanMetadata struct {
-	PackageCount   int
-	OperationCount int
-	LinkCount      int
-	DirCount       int
+	PackageCount   int            `json:"package_count"`
+	OperationCount int            `json:"operation_count"`
+	LinkCount      int            `json:"link_count"`
+	DirCount       int            `json:"dir_count"`
+	Conflicts      []ConflictInfo `json:"conflicts,omitempty"`
+	Warnings       []WarningInfo  `json:"warnings,omitempty"`
 }

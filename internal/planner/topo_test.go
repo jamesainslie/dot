@@ -308,4 +308,3 @@ func findOperationIndex(ops []dot.Operation, target dot.Operation) int {
 	}
 	return -1
 }
-

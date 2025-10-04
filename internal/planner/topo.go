@@ -149,4 +149,3 @@ func formatCycle(cycle []dot.Operation) []string {
 	}
 	return result
 }
-

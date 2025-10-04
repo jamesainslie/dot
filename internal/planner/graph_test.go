@@ -48,7 +48,7 @@ func TestBuildGraph_IndependentOperations(t *testing.T) {
 	assert.Equal(t, 2, graph.Size())
 	assert.True(t, graph.HasOperation(op1))
 	assert.True(t, graph.HasOperation(op2))
-	
+
 	// No dependencies between operations
 	deps1 := graph.Dependencies(op1)
 	deps2 := graph.Dependencies(op2)
@@ -60,12 +60,12 @@ func TestBuildGraph_LinearDependencies(t *testing.T) {
 	// Create a linear dependency chain: dirCreate -> linkCreate
 	dirPath := mustParsePath("/home/user/.config")
 	dirOp := dot.NewDirCreate(dirPath)
-	
+
 	linkOp := dot.NewLinkCreate(
 		mustParsePath("/stow/pkg/config"),
 		mustParsePath("/home/user/.config/app.conf"),
 	)
-	
+
 	// Mock linkOp to depend on dirOp
 	linkOpWithDep := &mockOperation{
 		op:   linkOp,
@@ -77,12 +77,12 @@ func TestBuildGraph_LinearDependencies(t *testing.T) {
 
 	require.NotNil(t, graph)
 	assert.Equal(t, 2, graph.Size())
-	
+
 	// linkOp should depend on dirOp
 	deps := graph.Dependencies(linkOpWithDep)
 	require.Len(t, deps, 1)
 	assert.True(t, dirOp.Equals(deps[0]), "link should depend on directory creation")
-	
+
 	// dirOp should have no dependencies
 	dirDeps := graph.Dependencies(dirOp)
 	assert.Empty(t, dirDeps)
@@ -202,4 +202,3 @@ func mustParsePath(s string) dot.FilePath {
 	}
 	return result.Unwrap()
 }
-

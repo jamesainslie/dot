@@ -1,0 +1,108 @@
+version: 2
+
+before:
+  hooks:
+    - go test ./...
+    - golangci-lint run
+    - go mod tidy
+
+builds:
+  - id: default
+    main: ./cmd/dot
+    binary: dot
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+    flags:
+      - -trimpath
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - '^style:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '^feat.*'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix.*'
+      order: 1
+    - title: Performance Improvements
+      regexp: '^perf.*'
+      order: 2
+    - title: Refactoring
+      regexp: '^refactor.*'
+      order: 3
+    - title: Others
+      order: 999
+
+release:
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Release {{.Tag}}
+    
+    **Release Date**: {{.Date}}
+    
+    For detailed changes, see the [CHANGELOG](https://github.com/user/dot/blob/main/CHANGELOG.md).
+  footer: |
+    ## Installation
+    
+    ### Binary Download
+    Download the appropriate binary for your platform from the assets below.
+    
+    ### Go Install
+    ```bash
+    go install github.com/user/dot/cmd/dot@{{.Tag}}
+    ```
+  name_template: "{{.ProjectName}} {{.Version}}"
+

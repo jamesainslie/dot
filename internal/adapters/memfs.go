@@ -233,6 +233,14 @@ func (f *MemFS) Symlink(ctx context.Context, oldname, newname string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	// Check if parent directory exists
+	parent := filepath.Dir(newname)
+	if parent != "." && parent != "/" {
+		if _, exists := f.files[parent]; !exists {
+			return fs.ErrNotExist
+		}
+	}
+
 	f.files[newname] = &memFile{
 		mode:    fs.ModeSymlink | 0777,
 		modTime: time.Now(),

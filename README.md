@@ -19,9 +19,9 @@ This project is under active development. Phase 0 (Project Initialization) is in
 ## Features
 
 Planned features for v0.1.0:
-- Manage packages by creating symbolic links to target directory
-- Unmanage packages by removing symbolic links from target directory
-- Remanage packages with incremental updates
+- Stow packages by creating symbolic links to target directory
+- Unstow packages by removing symbolic links from target directory
+- Restow packages with incremental updates
 - Adopt existing files into packages
 - Conflict detection and resolution
 - Transactional operations with rollback
@@ -41,19 +41,19 @@ go install github.com/user/dot/cmd/dot@latest
 ## Usage
 
 ```bash
-# Manage a package (create symbolic links)
-dot manage vim
+# Stow a package (create symbolic links)
+dot stow vim
 
-# Unmanage a package (remove symbolic links)
-dot unmanage vim
+# Unstow a package (remove symbolic links)
+dot unstow vim
 
-# Remanage a package (update symbolic links)
-dot remanage vim
+# Restow a package (update symbolic links)
+dot restow vim
 
 # Adopt existing files into a package
-dot adopt ~/.vimrc --package vim
+dot adopt vim ~/.vimrc
 
-# Check status of managed packages
+# Check status of packages
 dot status
 
 # Verify configuration health
@@ -120,7 +120,5 @@ This project adheres to strict development standards:
 - Semantic versioning
 - Keep a Changelog format
 
-For detailed standards, see:
-- `constitution.md` - Core principles
-- `.cursor/rules/` - Development rules
-
+---
+Made with ❤️ by James Ainslie

@@ -26,9 +26,13 @@ func TestAdopt_WithExecutionError(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	// Adopt will fail during execution (precondition: source doesn't exist after move)
-	err = client.Adopt(ctx, []string{".bashrc"}, "bash")
-	assert.Error(t, err) // Execution fails
+	// Cancel context to force execution error
+	cancelCtx, cancel := context.WithCancel(ctx)
+	cancel() // Cancel before execution
+
+	// Adopt will fail during execution due to cancelled context
+	err = client.Adopt(cancelCtx, []string{".bashrc"}, "bash")
+	assert.Error(t, err) // Execution fails with context cancelled error
 }
 
 func TestAdopt_WithPlanAdoptError(t *testing.T) {

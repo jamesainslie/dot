@@ -15,7 +15,7 @@ func TestAdopt_WithExecutionError(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
 
-	// Setup file  
+	// Setup file
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
 	filePath := filepath.Join(cfg.TargetDir, ".bashrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("test"), 0644))
@@ -203,4 +203,3 @@ func TestDoctor_WithEmptyManifest(t *testing.T) {
 	assert.Equal(t, dot.HealthOK, report.OverallHealth)
 	assert.Equal(t, 0, report.Statistics.TotalLinks)
 }
-

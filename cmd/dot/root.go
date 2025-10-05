@@ -149,6 +149,11 @@ func formatError(err error) error {
 
 // shouldColorize determines if output should be colorized based on the color flag.
 func shouldColorize(color string) bool {
+	// Respect NO_COLOR environment variable (https://no-color.org/)
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+
 	switch color {
 	case "always":
 		return true

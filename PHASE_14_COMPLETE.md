@@ -321,15 +321,19 @@ pkg/dot/                        # Domain types
 ## Git History
 
 ```
+12c04b9 fix(test): improve test isolation and cross-platform compatibility
+501a1e8 fix(cli): improve JSON/YAML output and doctor performance
+ea55882 docs(readme): update documentation for Phase 14 completion
 b20d30a feat(cli): implement doctor command for health checks
 2c0ddcd feat(cli): implement list command for package inventory
 5bc15b9 feat(cli): implement status command for installation state inspection
 c502bf8 feat(cli): implement output renderer infrastructure
 ```
 
-**Total Commits**: 4 atomic commits
-**Lines Added**: ~1,500 lines (code + tests + docs)
+**Total Commits**: 7 atomic commits (4 features + 2 fixes + 1 docs)
+**Lines Added**: ~1,650 lines (code + tests + docs)
 **Files Created**: 13 files
+**Files Modified**: 5 files (code review fixes)
 
 ## Dependencies Added
 
@@ -421,6 +425,69 @@ Building on the query command foundation:
 5. **Diff command**: Show changes between installed and package
 6. **Fix flag**: Auto-repair with `doctor --fix`
 
+## Code Review Improvements
+
+After initial implementation, code review identified several issues that were addressed:
+
+### Test Isolation Issues ✅
+
+**Problem**: Tests used shared globalCfg state, causing order-dependent failures
+**Solution**: 
+- Created `setupGlobalCfg(t)` helper to isolate test state
+- Use `t.TempDir()` for deterministic temporary directories
+- Set `dryRun=true` in all tests to prevent filesystem mutations
+- Register `t.Cleanup()` to restore previous globalCfg state
+
+**Affected Tests**: All command execution tests in commands_test.go
+
+### Filesystem Side Effects ✅
+
+**Problem**: Root command tests mutated real HOME directory
+**Solution**:
+- Add `t.TempDir()` to all root command execution tests
+- Include `--target` flag pointing to temp directory
+- Include `--dry-run` flag to prevent actual filesystem changes
+
+**Affected Tests**: 5 root command flag tests (lines 270-304)
+
+### Global State Pollution ✅
+
+**Problem**: config_test.go mutated globalCfg without cleanup
+**Solution**:
+- Capture previous globalCfg before mutation
+- Register `t.Cleanup()` to restore previous state
+- Apply pattern to all 8 tests that mutate globalCfg
+
+**Affected Tests**: All buildConfig and createLogger tests
+
+### Windows Compatibility ✅
+
+**Problem**: `os.Getenv("HOME")` is empty on Windows
+**Solution**:
+- Replace with `os.UserHomeDir()` for cross-platform compatibility
+- Add fallback chain: UserHomeDir → Getwd → "."
+- Ensures reliable default on all platforms
+
+**Affected Code**: root.go target flag default (line 44-45)
+
+### Dependency Management ✅
+
+**Problem**: Cobra marked as indirect despite direct use
+**Solution**:
+- Move Cobra to direct dependencies in go.mod
+- Also promote yaml.v3 and x/term to direct (actually used)
+- Run `go mod tidy` to clean up module file
+
+**Affected File**: go.mod
+
+### Verification
+
+All fixes verified with:
+- Test shuffle mode (`-shuffle=on`) - no order dependencies
+- Windows compatibility - fallback chain tested
+- Module consistency - `go mod tidy` successful
+- Quality gates - all tests and linters pass
+
 ## Lessons Learned
 
 ### What Went Well
@@ -429,18 +496,25 @@ Building on the query command foundation:
 2. **Reuse**: List and Status share rendering logic efficiently
 3. **Testing**: TDD approach caught interface compliance issues early
 4. **Refactoring**: Complexity reduction was straightforward with helper extraction
+5. **Code review**: Identified test isolation issues before they became problems
 
 ### Challenges
 
 1. **FS interface**: Had to use IsSymlink() instead of Lstat() (not in interface)
 2. **Complexity**: Initial Doctor() exceeded cyclomatic limit, required refactoring
 3. **Type compatibility**: manifest.Manifest required pointer in signatures
+4. **Test isolation**: Global state in tests required careful cleanup patterns
+5. **Cross-platform**: HOME environment variable not portable to Windows
 
 ### Improvements Applied
 
 1. Extracted checkLink() to reduce Doctor() complexity from 18 to <15
 2. Used existing IsSymlink() from FS interface instead of mode bit checking
 3. Properly handled pointer vs value types for manifest
+4. Created setupGlobalCfg() helper for test isolation
+5. Replaced os.Getenv("HOME") with os.UserHomeDir() fallback chain
+6. Added t.Cleanup() to all tests mutating global state
+7. Used t.TempDir() consistently to prevent filesystem side effects
 
 ## Metrics
 

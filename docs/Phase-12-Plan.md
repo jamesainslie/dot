@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 12 delivers a clean, embeddable Go API for the dot library. This phase creates the public interface in `pkg/dot/` that wraps the internal functional core, providing a simple facade for library consumers.
+Phase 12 delivers a clean, embeddable Go API for the dot library. This phase creates the public interface in `pkg/dot/` that wraps the internal functional core, providing a simple facade for library consumers using manage/unmanage/remanage terminology.
 
 **Dependencies**: Phases 1-11 must be complete (domain model, ports, adapters, scanner, planner, resolver, sorter, pipeline orchestration, executor, manifest management).
 
@@ -151,11 +151,11 @@ func New(cfg Config) (*Client, error) {
 
 ---
 
-#### 12.1.2: Stow Operations
+#### 12.1.2: Manage Operations
 
 **Test-First Approach**:
 ```go
-func TestClient_Stow(t *testing.T) {
+func TestClient_Manage(t *testing.T) {
     fs := memfs.New()
     setupStowFixtures(fs, "package1")
     
@@ -164,14 +164,14 @@ func TestClient_Stow(t *testing.T) {
     require.NoError(t, err)
     
     ctx := context.Background()
-    err = client.Stow(ctx, "package1")
+    err = client.Manage(ctx, "package1")
     require.NoError(t, err)
     
     // Verify links created
     assertLinkExists(t, fs, "/test/target/.bashrc")
 }
 
-func TestClient_PlanStow(t *testing.T) {
+func TestClient_PlanManage(t *testing.T) {
     fs := memfs.New()
     setupStowFixtures(fs, "package1")
     
@@ -180,12 +180,12 @@ func TestClient_PlanStow(t *testing.T) {
     require.NoError(t, err)
     
     ctx := context.Background()
-    plan, err := client.PlanStow(ctx, "package1")
+    plan, err := client.PlanManage(ctx, "package1")
     require.NoError(t, err)
     require.NotEmpty(t, plan.Operations())
 }
 
-func TestClient_Stow_DryRun(t *testing.T) {
+func TestClient_Manage_DryRun(t *testing.T) {
     fs := memfs.New()
     setupStowFixtures(fs, "package1")
     
@@ -195,7 +195,7 @@ func TestClient_Stow_DryRun(t *testing.T) {
     require.NoError(t, err)
     
     ctx := context.Background()
-    err = client.Stow(ctx, "package1")
+    err = client.Manage(ctx, "package1")
     require.NoError(t, err)
     
     // Verify no changes made
@@ -205,10 +205,10 @@ func TestClient_Stow_DryRun(t *testing.T) {
 
 **Implementation**:
 ```go
-// Stow installs the specified packages by creating symlinks.
+// Manage installs the specified packages by creating symlinks.
 // If DryRun is enabled, returns the plan without executing.
-func (c *Client) Stow(ctx context.Context, packages ...string) error {
-    plan, err := c.PlanStow(ctx, packages...)
+func (c *Client) Manage(ctx context.Context, packages ...string) error {
+    plan, err := c.PlanManage(ctx, packages...)
     if err != nil {
         return err
     }
@@ -222,9 +222,9 @@ func (c *Client) Stow(ctx context.Context, packages ...string) error {
     return err
 }
 
-// PlanStow computes the execution plan for stowing packages
+// PlanManage computes the execution plan for managing packages
 // without applying changes.
-func (c *Client) PlanStow(ctx context.Context, packages ...string) (Plan, error) {
+func (c *Client) PlanManage(ctx context.Context, packages ...string) (Plan, error) {
     input := scanner.ScanInput{
         StowDir:   c.mustParsePath(c.config.StowDir),
         TargetDir: c.mustParsePath(c.config.TargetDir),
@@ -232,30 +232,30 @@ func (c *Client) PlanStow(ctx context.Context, packages ...string) (Plan, error)
         Ignore:    c.config.Ignore,
     }
     
-    result := c.pipeline.Stow(ctx, input)
+    result := c.pipeline.Manage(ctx, input)
     return result.Unwrap()
 }
 ```
 
 **Tasks**:
-- [ ] Implement Stow() method
-- [ ] Implement PlanStow() method
-- [ ] Write tests for successful stow
-- [ ] Write tests for stow with conflicts
+- [ ] Implement Manage() method
+- [ ] Implement PlanManage() method
+- [ ] Write tests for successful manage
+- [ ] Write tests for manage with conflicts
 - [ ] Write tests for dry-run mode
 - [ ] Write tests for empty package list
 - [ ] Write tests for non-existent package
 - [ ] Test context cancellation
 
-**Commit**: `feat(api): implement Stow and PlanStow methods`
+**Commit**: `feat(api): implement Manage and PlanManage methods`
 
 ---
 
-#### 12.1.3: Unstow Operations
+#### 12.1.3: Unmanage Operations
 
 **Test-First Approach**:
 ```go
-func TestClient_Unstow(t *testing.T) {
+func TestClient_Unmanage(t *testing.T) {
     fs := memfs.New()
     setupStowFixtures(fs, "package1")
     
@@ -265,19 +265,19 @@ func TestClient_Unstow(t *testing.T) {
     
     ctx := context.Background()
     
-    // Stow first
-    err = client.Stow(ctx, "package1")
+    // Manage first
+    err = client.Manage(ctx, "package1")
     require.NoError(t, err)
     
-    // Then unstow
-    err = client.Unstow(ctx, "package1")
+    // Then unmanage
+    err = client.Unmanage(ctx, "package1")
     require.NoError(t, err)
     
     // Verify links removed
     assertLinkNotExists(t, fs, "/test/target/.bashrc")
 }
 
-func TestClient_PlanUnstow(t *testing.T) {
+func TestClient_PlanUnmanage(t *testing.T) {
     fs := memfs.New()
     setupInstalledPackage(fs, "package1")
     
@@ -286,7 +286,7 @@ func TestClient_PlanUnstow(t *testing.T) {
     require.NoError(t, err)
     
     ctx := context.Background()
-    plan, err := client.PlanUnstow(ctx, "package1")
+    plan, err := client.PlanUnmanage(ctx, "package1")
     require.NoError(t, err)
     require.NotEmpty(t, plan.Operations())
 }
@@ -294,9 +294,9 @@ func TestClient_PlanUnstow(t *testing.T) {
 
 **Implementation**:
 ```go
-// Unstow removes the specified packages by deleting symlinks.
-func (c *Client) Unstow(ctx context.Context, packages ...string) error {
-    plan, err := c.PlanUnstow(ctx, packages...)
+// Unmanage removes the specified packages by deleting symlinks.
+func (c *Client) Unmanage(ctx context.Context, packages ...string) error {
+    plan, err := c.PlanUnmanage(ctx, packages...)
     if err != nil {
         return err
     }
@@ -310,8 +310,8 @@ func (c *Client) Unstow(ctx context.Context, packages ...string) error {
     return err
 }
 
-// PlanUnstow computes the execution plan for unstowing packages.
-func (c *Client) PlanUnstow(ctx context.Context, packages ...string) (Plan, error) {
+// PlanUnmanage computes the execution plan for unmanaging packages.
+func (c *Client) PlanUnmanage(ctx context.Context, packages ...string) (Plan, error) {
     input := scanner.ScanInput{
         StowDir:   c.mustParsePath(c.config.StowDir),
         TargetDir: c.mustParsePath(c.config.TargetDir),
@@ -319,29 +319,29 @@ func (c *Client) PlanUnstow(ctx context.Context, packages ...string) (Plan, erro
         Ignore:    c.config.Ignore,
     }
     
-    result := c.pipeline.Unstow(ctx, input)
+    result := c.pipeline.Unmanage(ctx, input)
     return result.Unwrap()
 }
 ```
 
 **Tasks**:
-- [ ] Implement Unstow() method
-- [ ] Implement PlanUnstow() method
-- [ ] Write tests for successful unstow
-- [ ] Write tests for unstow of non-installed package
+- [ ] Implement Unmanage() method
+- [ ] Implement PlanUnmanage() method
+- [ ] Write tests for successful unmanage
+- [ ] Write tests for unmanage of non-installed package
 - [ ] Write tests for dry-run mode
-- [ ] Write tests for partial unstow
+- [ ] Write tests for partial unmanage
 - [ ] Test context cancellation
 
-**Commit**: `feat(api): implement Unstow and PlanUnstow methods`
+**Commit**: `feat(api): implement Unmanage and PlanUnmanage methods`
 
 ---
 
-#### 12.1.4: Restow Operations
+#### 12.1.4: Remanage Operations
 
 **Test-First Approach**:
 ```go
-func TestClient_Restow(t *testing.T) {
+func TestClient_Remanage(t *testing.T) {
     fs := memfs.New()
     setupStowFixtures(fs, "package1")
     
@@ -351,22 +351,22 @@ func TestClient_Restow(t *testing.T) {
     
     ctx := context.Background()
     
-    // Initial stow
-    err = client.Stow(ctx, "package1")
+    // Initial manage
+    err = client.Manage(ctx, "package1")
     require.NoError(t, err)
     
     // Modify package
     modifyPackage(fs, "package1")
     
-    // Restow
-    err = client.Restow(ctx, "package1")
+    // Remanage
+    err = client.Remanage(ctx, "package1")
     require.NoError(t, err)
     
     // Verify updated links
     assertLinkPointsTo(t, fs, "/test/target/.bashrc", "/test/stow/package1/dot-bashrc")
 }
 
-func TestClient_Restow_Incremental(t *testing.T) {
+func TestClient_Remanage_Incremental(t *testing.T) {
     fs := memfs.New()
     setupStowFixtures(fs, "package1", "package2")
     
@@ -376,15 +376,15 @@ func TestClient_Restow_Incremental(t *testing.T) {
     
     ctx := context.Background()
     
-    // Initial stow
-    err = client.Stow(ctx, "package1", "package2")
+    // Initial manage
+    err = client.Manage(ctx, "package1", "package2")
     require.NoError(t, err)
     
     // Modify only package1
     modifyPackage(fs, "package1")
     
-    // Restow - should only process package1
-    err = client.Restow(ctx, "package1", "package2")
+    // Remanage - should only process package1
+    err = client.Remanage(ctx, "package1", "package2")
     require.NoError(t, err)
     
     // Verify incremental behavior via logs/metrics
@@ -393,10 +393,10 @@ func TestClient_Restow_Incremental(t *testing.T) {
 
 **Implementation**:
 ```go
-// Restow reinstalls packages by unstowing then stowing.
+// Remanage reinstalls packages by unmanaging then managing.
 // Uses incremental planning to skip unchanged packages.
-func (c *Client) Restow(ctx context.Context, packages ...string) error {
-    plan, err := c.PlanRestow(ctx, packages...)
+func (c *Client) Remanage(ctx context.Context, packages ...string) error {
+    plan, err := c.PlanRemanage(ctx, packages...)
     if err != nil {
         return err
     }
@@ -410,9 +410,9 @@ func (c *Client) Restow(ctx context.Context, packages ...string) error {
     return err
 }
 
-// PlanRestow computes an incremental restow plan.
+// PlanRemanage computes an incremental remanage plan.
 // Only processes packages that changed since last operation.
-func (c *Client) PlanRestow(ctx context.Context, packages ...string) (Plan, error) {
+func (c *Client) PlanRemanage(ctx context.Context, packages ...string) (Plan, error) {
     input := scanner.ScanInput{
         StowDir:   c.mustParsePath(c.config.StowDir),
         TargetDir: c.mustParsePath(c.config.TargetDir),
@@ -420,21 +420,21 @@ func (c *Client) PlanRestow(ctx context.Context, packages ...string) (Plan, erro
         Ignore:    c.config.Ignore,
     }
     
-    result := c.pipeline.Restow(ctx, input)
+    result := c.pipeline.Remanage(ctx, input)
     return result.Unwrap()
 }
 ```
 
 **Tasks**:
-- [ ] Implement Restow() method
-- [ ] Implement PlanRestow() method
-- [ ] Write tests for successful restow
-- [ ] Write tests for incremental restow
-- [ ] Write tests for restow with no changes
+- [ ] Implement Remanage() method
+- [ ] Implement PlanRemanage() method
+- [ ] Write tests for successful remanage
+- [ ] Write tests for incremental remanage
+- [ ] Write tests for remanage with no changes
 - [ ] Write tests for dry-run mode
 - [ ] Test context cancellation
 
-**Commit**: `feat(api): implement Restow and PlanRestow methods`
+**Commit**: `feat(api): implement Remanage and PlanRemanage methods`
 
 ---
 
@@ -539,8 +539,8 @@ func TestClient_Status(t *testing.T) {
     
     ctx := context.Background()
     
-    // Stow package
-    err = client.Stow(ctx, "package1")
+    // Manage package
+    err = client.Manage(ctx, "package1")
     require.NoError(t, err)
     
     // Get status
@@ -579,8 +579,8 @@ func TestClient_List(t *testing.T) {
     
     ctx := context.Background()
     
-    // Stow packages
-    err = client.Stow(ctx, "package1", "package2")
+    // Manage packages
+    err = client.Manage(ctx, "package1", "package2")
     require.NoError(t, err)
     
     // List installed
@@ -990,7 +990,7 @@ func (b *ConfigBuilder) Build() Config {
 **Test-First Approach**:
 ```go
 // pkg/dot/streaming_test.go
-func TestClient_StowStream(t *testing.T) {
+func TestClient_ManageStream(t *testing.T) {
     fs := memfs.New()
     setupStowFixtures(fs, "package1")
     
@@ -999,7 +999,7 @@ func TestClient_StowStream(t *testing.T) {
     require.NoError(t, err)
     
     ctx := context.Background()
-    stream := client.StowStream(ctx, "package1")
+    stream := client.ManageStream(ctx, "package1")
     
     var ops []Operation
     for result := range stream {
@@ -1010,7 +1010,7 @@ func TestClient_StowStream(t *testing.T) {
     require.NotEmpty(t, ops)
 }
 
-func TestClient_StowStream_Cancellation(t *testing.T) {
+func TestClient_ManageStream_Cancellation(t *testing.T) {
     fs := memfs.New()
     setupLargeFixtures(fs, "package1") // Many files
     
@@ -1019,7 +1019,7 @@ func TestClient_StowStream_Cancellation(t *testing.T) {
     require.NoError(t, err)
     
     ctx, cancel := context.WithCancel(context.Background())
-    stream := client.StowStream(ctx, "package1")
+    stream := client.ManageStream(ctx, "package1")
     
     // Read a few operations then cancel
     count := 0
@@ -1051,10 +1051,10 @@ import (
     "github.com/yourorg/dot/internal/scanner"
 )
 
-// StowStream returns a stream of operations for stowing packages.
+// ManageStream returns a stream of operations for managing packages.
 // Operations are emitted as they are computed, enabling memory-efficient
 // processing of large package sets.
-func (c *Client) StowStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
+func (c *Client) ManageStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
     input := scanner.ScanInput{
         StowDir:   c.mustParsePath(c.config.StowDir),
         TargetDir: c.mustParsePath(c.config.TargetDir),
@@ -1062,11 +1062,11 @@ func (c *Client) StowStream(ctx context.Context, packages ...string) <-chan Resu
         Ignore:    c.config.Ignore,
     }
     
-    return c.pipeline.StowStream(ctx, input)
+    return c.pipeline.ManageStream(ctx, input)
 }
 
-// UnstowStream returns a stream of operations for unstowing packages.
-func (c *Client) UnstowStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
+// UnmanageStream returns a stream of operations for unmanaging packages.
+func (c *Client) UnmanageStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
     input := scanner.ScanInput{
         StowDir:   c.mustParsePath(c.config.StowDir),
         TargetDir: c.mustParsePath(c.config.TargetDir),
@@ -1074,11 +1074,11 @@ func (c *Client) UnstowStream(ctx context.Context, packages ...string) <-chan Re
         Ignore:    c.config.Ignore,
     }
     
-    return c.pipeline.UnstowStream(ctx, input)
+    return c.pipeline.UnmanageStream(ctx, input)
 }
 
-// RestowStream returns a stream of operations for restowing packages.
-func (c *Client) RestowStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
+// RemanageStream returns a stream of operations for remanaging packages.
+func (c *Client) RemanageStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
     input := scanner.ScanInput{
         StowDir:   c.mustParsePath(c.config.StowDir),
         TargetDir: c.mustParsePath(c.config.TargetDir),
@@ -1086,14 +1086,14 @@ func (c *Client) RestowStream(ctx context.Context, packages ...string) <-chan Re
         Ignore:    c.config.Ignore,
     }
     
-    return c.pipeline.RestowStream(ctx, input)
+    return c.pipeline.RemanageStream(ctx, input)
 }
 ```
 
 **Tasks**:
-- [ ] Implement StowStream() method
-- [ ] Implement UnstowStream() method
-- [ ] Implement RestowStream() method
+- [ ] Implement ManageStream() method
+- [ ] Implement UnmanageStream() method
+- [ ] Implement RemanageStream() method
 - [ ] Write tests for successful streaming
 - [ ] Write tests for stream cancellation
 - [ ] Write tests for error propagation
@@ -1471,7 +1471,7 @@ atomic operations, functional programming, and comprehensive error handling.
 
 # Basic Usage
 
-Create a client and stow packages:
+Create a client and manage packages:
 
     cfg := dot.NewConfig().
         WithStowDir("/home/user/dotfiles").
@@ -1486,7 +1486,7 @@ Create a client and stow packages:
     }
 
     ctx := context.Background()
-    if err := client.Stow(ctx, "vim", "zsh", "git"); err != nil {
+    if err := client.Manage(ctx, "vim", "zsh", "git"); err != nil {
         log.Fatal(err)
     }
 
@@ -1508,7 +1508,7 @@ Preview operations without applying changes:
     }
 
     // Shows plan without executing
-    if err := client.Stow(ctx, "vim"); err != nil {
+    if err := client.Manage(ctx, "vim"); err != nil {
         log.Fatal(err)
     }
 
@@ -1516,7 +1516,7 @@ Preview operations without applying changes:
 
 For memory-efficient processing of large package sets:
 
-    stream := client.StowStream(ctx, "large-package")
+    stream := client.ManageStream(ctx, "large-package")
 
     for result := range stream {
         if !result.IsOk() {
@@ -1625,7 +1625,7 @@ import (
     "github.com/yourorg/dot/pkg/dot"
 )
 
-func ExampleClient_Stow() {
+func ExampleClient_Manage() {
     cfg := dot.NewConfig().
         WithStowDir("/home/user/dotfiles").
         WithTargetDir("/home/user").
@@ -1639,7 +1639,7 @@ func ExampleClient_Stow() {
     }
     
     ctx := context.Background()
-    if err := client.Stow(ctx, "vim", "zsh"); err != nil {
+    if err := client.Manage(ctx, "vim", "zsh"); err != nil {
         log.Fatal(err)
     }
     
@@ -1647,7 +1647,7 @@ func ExampleClient_Stow() {
     // Output: Packages installed successfully
 }
 
-func ExampleClient_PlanStow() {
+func ExampleClient_PlanManage() {
     cfg := dot.NewConfig().
         WithStowDir("/home/user/dotfiles").
         WithTargetDir("/home/user").
@@ -1661,7 +1661,7 @@ func ExampleClient_PlanStow() {
     }
     
     ctx := context.Background()
-    plan, err := client.PlanStow(ctx, "vim")
+    plan, err := client.PlanManage(ctx, "vim")
     if err != nil {
         log.Fatal(err)
     }
@@ -1670,7 +1670,7 @@ func ExampleClient_PlanStow() {
     // Output: Plan contains 3 operations
 }
 
-func ExampleClient_StowStream() {
+func ExampleClient_ManageStream() {
     cfg := dot.NewConfig().
         WithStowDir("/home/user/dotfiles").
         WithTargetDir("/home/user").
@@ -1684,7 +1684,7 @@ func ExampleClient_StowStream() {
     }
     
     ctx := context.Background()
-    stream := client.StowStream(ctx, "vim")
+    stream := client.ManageStream(ctx, "vim")
     
     count := 0
     for result := range stream {
@@ -1792,9 +1792,9 @@ func ExampleCollectStream() {
 ```
 
 **Tasks**:
-- [ ] Write Example_Stow test
-- [ ] Write Example_PlanStow test
-- [ ] Write Example_StowStream test
+- [ ] Write Example_Manage test
+- [ ] Write Example_PlanManage test
+- [ ] Write Example_ManageStream test
 - [ ] Write Example_Status test
 - [ ] Write Example_ConfigBuilder test
 - [ ] Write Example_StreamMap test
@@ -1855,10 +1855,10 @@ func main() {
         packages = []string{"vim", "zsh", "git"}
     }
     
-    // Stow packages
+    // Manage packages
     fmt.Printf("Installing packages: %v\n", packages)
-    if err := client.Stow(ctx, packages...); err != nil {
-        log.Fatalf("Failed to stow packages: %v", err)
+    if err := client.Manage(ctx, packages...); err != nil {
+        log.Fatalf("Failed to manage packages: %v", err)
     }
     
     fmt.Println("Packages installed successfully")
@@ -1940,7 +1940,7 @@ func main() {
     fmt.Printf("Streaming operations for packages: %v\n", packages)
     
     // Get operation stream
-    stream := client.StowStream(ctx, packages...)
+    stream := client.ManageStream(ctx, packages...)
     
     // Process operations as they arrive
     var (
@@ -2036,12 +2036,12 @@ func main() {
     
     ctx := context.Background()
     
-    // Stow packages
-    if err := client.Stow(ctx, "vim", "git"); err != nil {
-        log.Fatalf("Failed to stow: %v", err)
+    // Manage packages
+    if err := client.Manage(ctx, "vim", "git"); err != nil {
+        log.Fatalf("Failed to manage: %v", err)
     }
     
-    fmt.Println("Stowed packages successfully")
+    fmt.Println("Managed packages successfully")
     
     // Verify links created
     verifyLinks(fs)

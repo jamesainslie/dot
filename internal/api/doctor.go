@@ -20,7 +20,7 @@ func (c *client) Doctor(ctx context.Context) (dot.DiagnosticReport, error) {
 	// Load manifest
 	manifestResult := c.manifest.Load(ctx, targetPath)
 
-	var issues []dot.Issue
+	issues := make([]dot.Issue, 0)
 	stats := dot.DiagnosticStats{}
 
 	if !manifestResult.IsOk() {
@@ -52,12 +52,9 @@ func (c *client) Doctor(ctx context.Context) (dot.DiagnosticReport, error) {
 		}
 	}
 
-	// Scan target directory for orphaned links (links not in manifest)
-	err := c.scanForOrphanedLinks(ctx, c.config.TargetDir, &m, &issues, &stats)
-	if err != nil {
-		// Log warning but continue
-		c.config.Logger.Warn(ctx, "failed to scan for orphaned links", "error", err)
-	}
+	// TODO: Implement orphaned link detection with depth limiting
+	// Scanning entire home directory is too slow for now
+	// Future enhancement: only scan directories containing managed links
 
 	// Determine overall health
 	health := dot.HealthOK

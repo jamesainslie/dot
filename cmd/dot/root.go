@@ -60,6 +60,7 @@ comprehensive conflict detection, and incremental updates.`,
 		newAdoptCommand(),
 		newStatusCommand(),
 		newListCommand(),
+		newDoctorCommand(),
 	)
 
 	return rootCmd

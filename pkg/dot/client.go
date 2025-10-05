@@ -79,6 +79,15 @@ type Client interface {
 	// Equivalent to Status() with no package filter.
 	List(ctx context.Context) ([]PackageInfo, error)
 
+	// Doctor performs health checks on the installation.
+	// Detects broken links, orphaned links, permission issues, and inconsistencies.
+	//
+	// Returns a DiagnosticReport with:
+	//   - Overall health status
+	//   - List of issues found
+	//   - Summary statistics
+	Doctor(ctx context.Context) (DiagnosticReport, error)
+
 	// Config returns a copy of the client's configuration.
 	Config() Config
 }

@@ -159,3 +159,32 @@ func TestContentHasher_HashPackage_OrderIndependent(t *testing.T) {
 	// Hash should be deterministic regardless of filesystem order
 	assert.Len(t, hash, 64)
 }
+
+func TestContentHasher_HashPackage_NoCollisions(t *testing.T) {
+	// Test that delimiter prevents hash collisions from ambiguous concatenations
+	// Without delimiter: path="a", content="bc" vs path="ab", content="c" would hash the same
+	fs := adapters.NewMemFS()
+
+	// Scenario 1: file "a" with content "bc"
+	pkg1Path := mustPackagePath(t, "/stow/pkg1")
+	require.NoError(t, fs.MkdirAll(context.Background(), pkg1Path.String(), 0755))
+	require.NoError(t, fs.WriteFile(context.Background(),
+		filepath.Join(pkg1Path.String(), "a"), []byte("bc"), 0644))
+
+	// Scenario 2: file "ab" with content "c"
+	pkg2Path := mustPackagePath(t, "/stow/pkg2")
+	require.NoError(t, fs.MkdirAll(context.Background(), pkg2Path.String(), 0755))
+	require.NoError(t, fs.WriteFile(context.Background(),
+		filepath.Join(pkg2Path.String(), "ab"), []byte("c"), 0644))
+
+	hasher := NewContentHasher(fs)
+
+	hash1, err := hasher.HashPackage(context.Background(), pkg1Path)
+	require.NoError(t, err)
+
+	hash2, err := hasher.HashPackage(context.Background(), pkg2Path)
+	require.NoError(t, err)
+
+	// Hashes must be different due to delimiter preventing concatenation ambiguity
+	assert.NotEqual(t, hash1, hash2, "delimiter should prevent hash collision")
+}

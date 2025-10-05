@@ -59,6 +59,7 @@ comprehensive conflict detection, and incremental updates.`,
 		newRemanageCommand(),
 		newAdoptCommand(),
 		newStatusCommand(),
+		newListCommand(),
 	)
 
 	return rootCmd

@@ -127,4 +127,3 @@ func TestConfig_Validate_NegativeConcurrency(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "concurrency")
 }
-

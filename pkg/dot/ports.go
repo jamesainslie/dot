@@ -35,6 +35,7 @@ type FileInfo interface {
 	Mode() os.FileMode
 	ModTime() any
 	IsDir() bool
+	Sys() any
 }
 
 // DirEntry provides information about a directory entry.
@@ -82,9 +83,9 @@ type Attribute struct {
 
 // Metrics defines the metrics collection abstraction interface.
 type Metrics interface {
-	Counter(name string) Counter
-	Histogram(name string) Histogram
-	Gauge(name string) Gauge
+	Counter(name string, labels ...string) Counter
+	Histogram(name string, labels ...string) Histogram
+	Gauge(name string, labels ...string) Gauge
 }
 
 // Counter represents a monotonically increasing metric.
@@ -129,22 +130,22 @@ func NewNoopMetrics() Metrics {
 
 type noopMetrics struct{}
 
-func (n *noopMetrics) Counter(name string) Counter {
+func (n *noopMetrics) Counter(name string, labels ...string) Counter {
 	return &noopCounter{}
 }
 
-func (n *noopMetrics) Histogram(name string) Histogram {
+func (n *noopMetrics) Histogram(name string, labels ...string) Histogram {
 	return &noopHistogram{}
 }
 
-func (n *noopMetrics) Gauge(name string) Gauge {
+func (n *noopMetrics) Gauge(name string, labels ...string) Gauge {
 	return &noopGauge{}
 }
 
 type noopCounter struct{}
 
-func (n *noopCounter) Inc(labels ...string)                 {}
-func (n *noopCounter) Add(value float64, labels ...string)  {}
+func (n *noopCounter) Inc(labels ...string)                {}
+func (n *noopCounter) Add(value float64, labels ...string) {}
 
 type noopHistogram struct{}
 

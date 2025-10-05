@@ -38,9 +38,9 @@ type Config struct {
 	Concurrency int
 
 	// Infrastructure dependencies (required)
-	FS     FS
-	Logger Logger
-	Tracer Tracer
+	FS      FS
+	Logger  Logger
+	Tracer  Tracer
 	Metrics Metrics
 }
 
@@ -89,8 +89,8 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// withDefaults returns a copy of the config with defaults applied.
-func (c Config) withDefaults() Config {
+// WithDefaults returns a copy of the config with defaults applied.
+func (c Config) WithDefaults() Config {
 	cfg := c
 
 	if cfg.Tracer == nil {
@@ -111,4 +111,3 @@ func (c Config) withDefaults() Config {
 
 	return cfg
 }
-

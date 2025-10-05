@@ -41,7 +41,18 @@ comprehensive conflict detection, and incremental updates.`,
 	// Global flags
 	rootCmd.PersistentFlags().StringVarP(&globalCfg.stowDir, "dir", "d", ".",
 		"Stow directory containing packages")
-	rootCmd.PersistentFlags().StringVarP(&globalCfg.targetDir, "target", "t", os.Getenv("HOME"),
+
+	// Compute cross-platform home directory default
+	defaultTarget, err := os.UserHomeDir()
+	if err != nil || defaultTarget == "" {
+		// Fall back to current working directory
+		defaultTarget, err = os.Getwd()
+		if err != nil || defaultTarget == "" {
+			defaultTarget = "."
+		}
+	}
+
+	rootCmd.PersistentFlags().StringVarP(&globalCfg.targetDir, "target", "t", defaultTarget,
 		"Target directory for symlinks")
 	rootCmd.PersistentFlags().BoolVarP(&globalCfg.dryRun, "dry-run", "n", false,
 		"Show what would be done without applying changes")

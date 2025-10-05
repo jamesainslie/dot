@@ -169,12 +169,20 @@ func truncatePath(path string, maxLen int) string {
 	}
 
 	// Still too long, truncate the last part
-	availableLen := maxLen - len(first) - 5 // 5 for "/.../
+	// Account for "/.../" (5 chars) + "..." (3 chars) = 8 total
+	availableLen := maxLen - len(first) - 8
 	if availableLen > 0 && len(last) > availableLen {
-		return first + "/.../" + last[:availableLen] + "..."
+		result := first + "/.../" + last[:availableLen] + "..."
+		if len(result) <= maxLen {
+			return result
+		}
 	}
 
-	return truncated
+	// Fallback: return prefix that fits
+	if maxLen > 3 {
+		return path[:maxLen-3] + "..."
+	}
+	return path[:maxLen]
 }
 
 // pluralize returns the plural form of a word based on count.

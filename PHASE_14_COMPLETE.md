@@ -320,7 +320,7 @@ pkg/dot/                        # Domain types
 
 ## Git History
 
-```
+```shell
 12c04b9 fix(test): improve test isolation and cross-platform compatibility
 501a1e8 fix(cli): improve JSON/YAML output and doctor performance
 ea55882 docs(readme): update documentation for Phase 14 completion

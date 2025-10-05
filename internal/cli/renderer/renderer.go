@@ -56,9 +56,10 @@ func NewRenderer(format string, colorize bool) (Renderer, error) {
 	switch format {
 	case "text":
 		return &TextRenderer{
-			colorize: colorize,
-			scheme:   scheme,
-			width:    width,
+			colorize:     colorize,
+			scheme:       scheme,
+			width:        width,
+			displayLimit: 5, // Default: show first 5 items
 		}, nil
 	case "json":
 		return &JSONRenderer{

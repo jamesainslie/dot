@@ -1844,20 +1844,20 @@ Update process:
 .PHONY: benchmark benchmark-compare benchmark-cpu benchmark-mem profile-analyze
 
 benchmark: ## Run benchmark suite
-	@echo "Running benchmarks..."
-	go test -bench=. -benchmem -benchtime=5s ./internal/benchmark/... | tee benchmark.txt
+    @echo "Running benchmarks..."
+    go test -bench=. -benchmem -benchtime=5s ./internal/benchmark/... | tee benchmark.txt
 
 benchmark-compare: ## Compare benchmarks with main branch
-	@echo "Running baseline benchmarks on main..."
-	git stash
-	git checkout main
-	go test -bench=. -benchmem -benchtime=5s ./internal/benchmark/... | tee baseline.txt
-	git checkout -
-	git stash pop || true
-	@echo "Running current benchmarks..."
-	go test -bench=. -benchmem -benchtime=5s ./internal/benchmark/... | tee current.txt
-	@echo "Comparing results..."
-	benchstat baseline.txt current.txt
+    @echo "Running baseline benchmarks on main..."
+    git stash
+    git checkout main
+    go test -bench=. -benchmem -benchtime=5s ./internal/benchmark/... | tee baseline.txt
+    git checkout -
+    git stash pop || true
+    @echo "Running current benchmarks..."
+    go test -bench=. -benchmem -benchtime=5s ./internal/benchmark/... | tee current.txt
+    @echo "Comparing results..."
+    benchstat baseline.txt current.txt
 
 benchmark-cpu: ## Run benchmarks with CPU profiling
 	go test -bench=. -benchmem -cpuprofile=cpu.prof ./internal/benchmark/...

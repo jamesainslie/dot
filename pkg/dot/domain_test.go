@@ -66,7 +66,7 @@ func TestPlan(t *testing.T) {
 	source := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
 	target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 
-	op := dot.NewLinkCreate(source, target)
+	op := dot.NewLinkCreate("link1", source, target)
 
 	plan := dot.Plan{
 		Operations: []dot.Operation{op},
@@ -95,7 +95,7 @@ func TestPlanValidation(t *testing.T) {
 
 		plan := dot.Plan{
 			Operations: []dot.Operation{
-				dot.NewLinkCreate(source, target),
+				dot.NewLinkCreate("link1", source, target),
 			},
 		}
 

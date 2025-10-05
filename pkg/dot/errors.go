@@ -72,6 +72,70 @@ func (e ErrPermissionDenied) Error() string {
 	return fmt.Sprintf("permission denied: cannot %s %q", e.Operation, e.Path)
 }
 
+// Executor Errors
+
+// ErrEmptyPlan indicates an attempt to execute a plan with no operations.
+type ErrEmptyPlan struct{}
+
+func (e ErrEmptyPlan) Error() string {
+	return "cannot execute empty plan"
+}
+
+// ErrExecutionFailed indicates one or more operations failed during execution.
+type ErrExecutionFailed struct {
+	Executed   int
+	Failed     int
+	RolledBack int
+	Errors     []error
+}
+
+func (e ErrExecutionFailed) Error() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "execution failed: %d succeeded, %d failed", e.Executed, e.Failed)
+	if e.RolledBack > 0 {
+		fmt.Fprintf(&b, ", %d rolled back", e.RolledBack)
+	}
+	if len(e.Errors) > 0 {
+		fmt.Fprintf(&b, "\nerrors:\n")
+		for i, err := range e.Errors {
+			fmt.Fprintf(&b, "  %d. %v\n", i+1, err)
+		}
+	}
+	return b.String()
+}
+
+// Unwrap returns the underlying errors.
+func (e ErrExecutionFailed) Unwrap() []error {
+	return e.Errors
+}
+
+// ErrSourceNotFound indicates an operation source file does not exist.
+type ErrSourceNotFound struct {
+	Path string
+}
+
+func (e ErrSourceNotFound) Error() string {
+	return fmt.Sprintf("source does not exist: %q", e.Path)
+}
+
+// ErrParentNotFound indicates a parent directory does not exist.
+type ErrParentNotFound struct {
+	Path string
+}
+
+func (e ErrParentNotFound) Error() string {
+	return fmt.Sprintf("parent directory does not exist: %q", e.Path)
+}
+
+// ErrCheckpointNotFound indicates a checkpoint ID was not found.
+type ErrCheckpointNotFound struct {
+	ID string
+}
+
+func (e ErrCheckpointNotFound) Error() string {
+	return fmt.Sprintf("checkpoint not found: %q", e.ID)
+}
+
 // Error Aggregation
 
 // ErrMultiple aggregates multiple errors into one.
@@ -124,6 +188,18 @@ func UserFacingError(err error) string {
 
 	case ErrPermissionDenied:
 		return fmt.Sprintf("Permission denied: cannot %s %q\nCheck file permissions and try again.", e.Operation, e.Path)
+
+	case ErrEmptyPlan:
+		return "Cannot execute empty plan. Ensure the plan contains operations."
+
+	case ErrExecutionFailed:
+		return fmt.Sprintf("Execution failed: %d operations succeeded, %d failed.\nRolled back %d operations.", e.Executed, e.Failed, e.RolledBack)
+
+	case ErrSourceNotFound:
+		return fmt.Sprintf("Source file not found: %q\nEnsure the file exists before creating a link.", e.Path)
+
+	case ErrParentNotFound:
+		return fmt.Sprintf("Parent directory not found: %q\nCreate the parent directory first.", e.Path)
 
 	case ErrMultiple:
 		if len(e.Errors) == 1 {

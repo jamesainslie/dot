@@ -39,13 +39,22 @@ func (h *ContentHasher) HashPackage(ctx context.Context, pkgPath dot.PackagePath
 
 	sort.Strings(files)
 
-	// Hash each file's path and content
+	// Hash each file's path and content with delimiter to prevent collisions
+	// Delimiter prevents ambiguous concatenations like:
+	// path="a", content="bc" vs path="ab", content="c"
+	delimiter := []byte{0} // null byte separator
+
 	for _, relPath := range files {
 		fullPath := filepath.Join(pkgPath.String(), relPath)
 
 		// Write path to hash
 		if _, err := hasher.Write([]byte(relPath)); err != nil {
 			return "", fmt.Errorf("failed to hash path: %w", err)
+		}
+
+		// Write delimiter
+		if _, err := hasher.Write(delimiter); err != nil {
+			return "", fmt.Errorf("failed to write delimiter: %w", err)
 		}
 
 		// Write content to hash

@@ -16,7 +16,7 @@ type CheckpointID string
 type Checkpoint struct {
 	ID         CheckpointID
 	CreatedAt  time.Time
-	Operations map[dot.OperationID]dot.Operation
+	operations map[dot.OperationID]dot.Operation
 	mu         sync.RWMutex
 }
 
@@ -24,14 +24,47 @@ type Checkpoint struct {
 func (c *Checkpoint) Record(id dot.OperationID, op dot.Operation) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.Operations[id] = op
+	if c.operations == nil {
+		c.operations = make(map[dot.OperationID]dot.Operation)
+	}
+	c.operations[id] = op
 }
 
 // Lookup retrieves an operation from the checkpoint.
+// Returns nil if the operation is not found.
 func (c *Checkpoint) Lookup(id dot.OperationID) dot.Operation {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.Operations[id]
+	return c.operations[id]
+}
+
+// GetOperation retrieves an operation by ID with thread safety.
+// Returns the operation and true if found, or nil and false if not found.
+func (c *Checkpoint) GetOperation(id dot.OperationID) (dot.Operation, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	op, exists := c.operations[id]
+	return op, exists
+}
+
+// ListOperations returns a snapshot of all operations in the checkpoint.
+// The returned slice is a copy and safe to use concurrently.
+func (c *Checkpoint) ListOperations() []dot.Operation {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	ops := make([]dot.Operation, 0, len(c.operations))
+	for _, op := range c.operations {
+		ops = append(ops, op)
+	}
+	return ops
+}
+
+// Len returns the number of operations in the checkpoint.
+func (c *Checkpoint) Len() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.operations)
 }
 
 // CheckpointStore manages checkpoint persistence.
@@ -61,9 +94,9 @@ func (s *MemoryCheckpointStore) Create(ctx context.Context) *Checkpoint {
 
 	id := CheckpointID(uuid.New().String())
 	checkpoint := &Checkpoint{
-		ID:         id,
-		CreatedAt:  time.Now(),
-		Operations: make(map[dot.OperationID]dot.Operation),
+		ID:        id,
+		CreatedAt: time.Now(),
+		// operations map lazily initialized in Record()
 	}
 	s.checkpoints[id] = checkpoint
 	return checkpoint

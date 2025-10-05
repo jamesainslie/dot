@@ -2,9 +2,9 @@ package dot
 
 // DiagnosticReport contains health check results.
 type DiagnosticReport struct {
-	OverallHealth HealthStatus
-	Issues        []Issue
-	Statistics    DiagnosticStats
+	OverallHealth HealthStatus    `json:"overall_health" yaml:"overall_health"`
+	Issues        []Issue         `json:"issues" yaml:"issues"`
+	Statistics    DiagnosticStats `json:"statistics" yaml:"statistics"`
 }
 
 // HealthStatus represents the overall health of the installation.
@@ -30,13 +30,23 @@ func (h HealthStatus) String() string {
 	}
 }
 
+// MarshalJSON marshals HealthStatus as a string.
+func (h HealthStatus) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + h.String() + `"`), nil
+}
+
+// MarshalYAML marshals HealthStatus as a string.
+func (h HealthStatus) MarshalYAML() (interface{}, error) {
+	return h.String(), nil
+}
+
 // Issue represents a single diagnostic issue.
 type Issue struct {
-	Severity   IssueSeverity
-	Type       IssueType
-	Path       string
-	Message    string
-	Suggestion string
+	Severity   IssueSeverity `json:"severity" yaml:"severity"`
+	Type       IssueType     `json:"type" yaml:"type"`
+	Path       string        `json:"path,omitempty" yaml:"path,omitempty"`
+	Message    string        `json:"message" yaml:"message"`
+	Suggestion string        `json:"suggestion,omitempty" yaml:"suggestion,omitempty"`
 }
 
 // IssueSeverity indicates the severity of an issue.
@@ -60,6 +70,16 @@ func (s IssueSeverity) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// MarshalJSON marshals IssueSeverity as a string.
+func (s IssueSeverity) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + s.String() + `"`), nil
+}
+
+// MarshalYAML marshals IssueSeverity as a string.
+func (s IssueSeverity) MarshalYAML() (interface{}, error) {
+	return s.String(), nil
 }
 
 // IssueType categorizes the type of issue.
@@ -94,10 +114,20 @@ func (t IssueType) String() string {
 	}
 }
 
+// MarshalJSON marshals IssueType as a string.
+func (t IssueType) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + t.String() + `"`), nil
+}
+
+// MarshalYAML marshals IssueType as a string.
+func (t IssueType) MarshalYAML() (interface{}, error) {
+	return t.String(), nil
+}
+
 // DiagnosticStats contains summary statistics.
 type DiagnosticStats struct {
-	TotalLinks    int
-	BrokenLinks   int
-	OrphanedLinks int
-	ManagedLinks  int
+	TotalLinks    int `json:"total_links" yaml:"total_links"`
+	BrokenLinks   int `json:"broken_links" yaml:"broken_links"`
+	OrphanedLinks int `json:"orphaned_links" yaml:"orphaned_links"`
+	ManagedLinks  int `json:"managed_links" yaml:"managed_links"`
 }

@@ -1,0 +1,75 @@
+// Package api provides the internal implementation of the public Client interface.
+// This package is internal to prevent direct use - consumers should use pkg/dot.
+package api
+
+import (
+	"fmt"
+
+	"github.com/jamesainslie/dot/internal/executor"
+	"github.com/jamesainslie/dot/internal/ignore"
+	"github.com/jamesainslie/dot/internal/manifest"
+	"github.com/jamesainslie/dot/internal/pipeline"
+	"github.com/jamesainslie/dot/internal/planner"
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
+func init() {
+	// Register our implementation with pkg/dot
+	dot.RegisterClientImpl(newClient)
+}
+
+// client implements the dot.Client interface.
+type client struct {
+	config   dot.Config
+	stowPipe *pipeline.StowPipeline
+	executor *executor.Executor
+	manifest manifest.ManifestStore
+}
+
+// newClient creates a new client implementation.
+func newClient(cfg dot.Config) (dot.Client, error) {
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	// Apply defaults
+	cfg = cfg.WithDefaults()
+
+	// Create default ignore set
+	ignoreSet := ignore.NewDefaultIgnoreSet()
+
+	// Create default resolution policies
+	policies := planner.ResolutionPolicies{
+		OnFileExists: planner.PolicyFail, // Safe default
+	}
+
+	// Create stow pipeline
+	stowPipe := pipeline.NewStowPipeline(pipeline.StowPipelineOpts{
+		FS:        cfg.FS,
+		IgnoreSet: ignoreSet,
+		Policies:  policies,
+	})
+
+	// Create executor
+	exec := executor.New(executor.Opts{
+		FS:     cfg.FS,
+		Logger: cfg.Logger,
+		Tracer: cfg.Tracer,
+	})
+
+	// Create manifest store
+	manifestStore := manifest.NewFSManifestStore(cfg.FS)
+
+	return &client{
+		config:   cfg,
+		stowPipe: stowPipe,
+		executor: exec,
+		manifest: manifestStore,
+	}, nil
+}
+
+// Config returns the client's configuration.
+func (c *client) Config() dot.Config {
+	return c.config
+}

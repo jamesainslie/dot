@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/jamesainslie/dot/pkg/dot"
-	"github.com/stretchr/testify/require"
 )
 
 // mockClient implements the Client interface for testing
@@ -65,4 +64,3 @@ func TestClientInterface(t *testing.T) {
 // Note: TestRegisterClientImpl will be added once internal/api is implemented
 // and registered via init(). The registration mechanism is tested through
 // the integration tests in internal/api/client_test.go.
-

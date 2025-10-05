@@ -14,7 +14,7 @@ Phase 12b refactors the codebase from the current architecture (domain types in 
 
 ## Current Architecture (Post-Phase 12)
 
-```
+```text
 pkg/dot/
 ├── Domain types:       Operation, Plan, Result, Path, etc.
 ├── Port interfaces:    FS, Logger, Tracer, Metrics
@@ -36,7 +36,7 @@ internal/manifest/      → imports pkg/dot (domain types)
 
 ## Target Architecture (Post-Phase 12b)
 
-```
+```text
 internal/domain/
 ├── Domain types:       Operation, Plan, Result, Path, etc.
 ├── Port interfaces:    FS, Logger, Tracer, Metrics  
@@ -84,7 +84,7 @@ mkdir -p internal/domain
 ```
 
 **Create initial package structure**:
-```
+```text
 internal/domain/
 ├── operation.go       # Operation interface and types
 ├── operation_test.go
@@ -1030,14 +1030,14 @@ Before starting Phase 12b:
 ### Architectural Benefits
 
 **Before** (Option 4 - Interface Pattern):
-```
+```text
 pkg/dot/client.go              # Interface definition
 internal/api/client.go         # Implementation (separate package)
                                # Indirection via registration
 ```
 
 **After** (Option 1 - Direct Implementation):
-```
+```text
 pkg/dot/client.go              # Direct struct implementation
                                # No indirection needed
 ```

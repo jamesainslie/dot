@@ -10,7 +10,7 @@ Phase 12 has been successfully implemented using the **interface-based Client pa
 
 **Solution**: Interface in `pkg/dot/`, implementation in `internal/api/`
 
-```
+```text
 pkg/dot/client.go           # Client interface definition
     ↓ registration pattern
 internal/api/client.go      # Concrete implementation

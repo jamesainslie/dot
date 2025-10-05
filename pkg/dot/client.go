@@ -112,4 +112,3 @@ func RegisterClientImpl(fn func(Config) (Client, error)) {
 func GetClientImpl() func(Config) (Client, error) {
 	return newClientImpl
 }
-

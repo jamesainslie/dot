@@ -58,6 +58,7 @@ comprehensive conflict detection, and incremental updates.`,
 		newUnmanageCommand(),
 		newRemanageCommand(),
 		newAdoptCommand(),
+		newStatusCommand(),
 	)
 
 	return rootCmd
@@ -121,5 +122,31 @@ func verbosityToLevel(v int) slog.Level {
 	default:
 		// Even more verbose
 		return slog.LevelDebug - slog.Level(v-1)
+	}
+}
+
+// formatError converts domain errors to user-friendly messages.
+func formatError(err error) error {
+	// For now, just return the error
+	// In the future, this can be enhanced to provide better error messages
+	return err
+}
+
+// shouldColorize determines if output should be colorized based on the color flag.
+func shouldColorize(color string) bool {
+	switch color {
+	case "always":
+		return true
+	case "never":
+		return false
+	case "auto":
+		// Check if stdout is a terminal
+		fileInfo, err := os.Stdout.Stat()
+		if err != nil {
+			return false
+		}
+		return (fileInfo.Mode() & os.ModeCharDevice) != 0
+	default:
+		return false
 	}
 }

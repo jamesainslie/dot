@@ -119,13 +119,13 @@ func TestList_WithError(t *testing.T) {
 	// Either succeeds or errors depending on timing
 }
 
-func TestDoctor_CheckLinkPermissionError(t *testing.T) {
+func TestDoctor_DetectsMissingLink(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
 
-	// Create manifest
+	// Create manifest with link that doesn't exist
 	manifestContent := []byte(`{
 		"version": "1.0",
 		"updated_at": "2024-01-01T00:00:00Z",
@@ -140,11 +140,12 @@ func TestDoctor_CheckLinkPermissionError(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	// Doctor will report broken link
+	// Doctor will report broken/missing link
 	report, err := client.Doctor(ctx)
 	require.NoError(t, err)
 
 	assert.Greater(t, len(report.Issues), 0)
+	assert.Equal(t, dot.IssueBrokenLink, report.Issues[0].Type)
 }
 
 func TestDoctor_ChecksAllBranches(t *testing.T) {

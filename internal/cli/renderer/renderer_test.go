@@ -2,7 +2,6 @@ package renderer
 
 import (
 	"bytes"
-	"os"
 	"testing"
 	"time"
 
@@ -61,6 +60,8 @@ func TestNewRenderer(t *testing.T) {
 }
 
 func TestColorSchemeDefaults(t *testing.T) {
+	t.Setenv("NO_COLOR", "") // Ensure NO_COLOR is not set
+
 	scheme := DefaultColorScheme()
 
 	assert.NotEmpty(t, scheme.Success)
@@ -71,9 +72,7 @@ func TestColorSchemeDefaults(t *testing.T) {
 }
 
 func TestColorSchemeRespectsNOCOLOR(t *testing.T) {
-	err := os.Setenv("NO_COLOR", "1")
-	require.NoError(t, err)
-	defer os.Unsetenv("NO_COLOR")
+	t.Setenv("NO_COLOR", "1")
 
 	scheme := DefaultColorScheme()
 

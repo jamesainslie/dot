@@ -52,6 +52,7 @@ func (c *client) Unmanage(ctx context.Context, packages ...string) error {
 		}
 		if err := c.manifest.Save(ctx, targetPath, m); err != nil {
 			c.config.Logger.Warn(ctx, "failed_to_update_manifest", "error", err)
+			return err
 		}
 	}
 
@@ -69,11 +70,17 @@ func (c *client) PlanUnmanage(ctx context.Context, packages ...string) (dot.Plan
 	// Load manifest
 	manifestResult := c.manifest.Load(ctx, targetPath)
 	if !manifestResult.IsOk() {
-		// No manifest means nothing is installed
-		return dot.Plan{
-			Operations: []dot.Operation{},
-			Metadata:   dot.PlanMetadata{},
-		}, nil
+		err := manifestResult.UnwrapErr()
+		// Check if this is a "file not found" error (no manifest = nothing installed)
+		if isManifestNotFoundError(err) {
+			// No manifest means nothing is installed - return empty plan
+			return dot.Plan{
+				Operations: []dot.Operation{},
+				Metadata:   dot.PlanMetadata{},
+			}, nil
+		}
+		// Other errors (corrupt manifest, permission errors, etc.) should propagate
+		return dot.Plan{}, err
 	}
 
 	m := manifestResult.Unwrap()

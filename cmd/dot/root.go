@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/term"
+
 	"github.com/jamesainslie/dot/internal/adapters"
 	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/spf13/cobra"
@@ -28,10 +30,10 @@ func NewRootCommand(version, commit, date string) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "dot",
 		Short: "Modern symlink manager for dotfiles",
-		Long: `dot is a type-safe GNU Stow replacement written in Go.
+		Long: `dot is a type-safe dotfile manager written in Go.
 
 dot manages dotfiles by creating symlinks from a source directory 
-(stow directory) to a target directory. It provides atomic operations,
+(package directory) to a target directory. It provides atomic operations,
 comprehensive conflict detection, and incremental updates.`,
 		Version:       fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date),
 		SilenceUsage:  true,
@@ -40,8 +42,19 @@ comprehensive conflict detection, and incremental updates.`,
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVarP(&globalCfg.stowDir, "dir", "d", ".",
-		"Stow directory containing packages")
-	rootCmd.PersistentFlags().StringVarP(&globalCfg.targetDir, "target", "t", os.Getenv("HOME"),
+		"Source directory containing packages")
+
+	// Compute cross-platform home directory default
+	defaultTarget, err := os.UserHomeDir()
+	if err != nil || defaultTarget == "" {
+		// Fall back to current working directory
+		defaultTarget, err = os.Getwd()
+		if err != nil || defaultTarget == "" {
+			defaultTarget = "."
+		}
+	}
+
+	rootCmd.PersistentFlags().StringVarP(&globalCfg.targetDir, "target", "t", defaultTarget,
 		"Target directory for symlinks")
 	rootCmd.PersistentFlags().BoolVarP(&globalCfg.dryRun, "dry-run", "n", false,
 		"Show what would be done without applying changes")
@@ -58,6 +71,9 @@ comprehensive conflict detection, and incremental updates.`,
 		newUnmanageCommand(),
 		newRemanageCommand(),
 		newAdoptCommand(),
+		newStatusCommand(),
+		newListCommand(),
+		newDoctorCommand(),
 	)
 
 	return rootCmd
@@ -121,5 +137,32 @@ func verbosityToLevel(v int) slog.Level {
 	default:
 		// Even more verbose
 		return slog.LevelDebug - slog.Level(v-1)
+	}
+}
+
+// formatError converts domain errors to user-friendly messages.
+func formatError(err error) error {
+	// For now, just return the error
+	// In the future, this can be enhanced to provide better error messages
+	return err
+}
+
+// shouldColorize determines if output should be colorized based on the color flag.
+func shouldColorize(color string) bool {
+	// Respect NO_COLOR environment variable (https://no-color.org/)
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+
+	switch color {
+	case "always":
+		return true
+	case "never":
+		return false
+	case "auto":
+		// Check if stdout is a terminal using portable detection
+		return term.IsTerminal(int(os.Stdout.Fd()))
+	default:
+		return false
 	}
 }

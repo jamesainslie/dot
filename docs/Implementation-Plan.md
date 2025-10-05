@@ -498,44 +498,66 @@ Refactor from interface pattern (Phase 12) to direct Client struct by moving dom
 
 ### Phase 13: CLI Layer - Core Commands
 
-Cobra-based CLI with core stow operations.
+Cobra-based CLI with core operations using new verb terminology.
+
+**New Verbs**: manage (was stow), unmanage (was unstow), remanage (was restow), adopt (new)
 
 #### 13.1: CLI Infrastructure
-- [ ] Implement cmd/dot/main.go entry point
-- [ ] Create root command with global flags
-- [ ] Add flag parsing and binding to config
-- [ ] Implement version embedding with build-time ldflags
-- [ ] Write CLI tests
+- [ ] Implement cmd/dot/main.go entry point with version support
+- [ ] Create root command with global flags (dir, target, dry-run, verbose, quiet, log-json)
+- [ ] Add configuration builder from flags
+- [ ] Implement logger creation with format selection
+- [ ] Add path absolutization and validation
+- [ ] Write infrastructure tests
 
-#### 13.2: Stow Command
-- [ ] Implement stow command with package arguments
-- [ ] Add flags: --no-folding, --absolute, --ignore
-- [ ] Integrate with dot.Client.Stow()
+#### 13.2: Manage Command
+- [ ] Implement manage command (replaces stow)
+- [ ] Add flags: --no-folding, --absolute
+- [ ] Integrate with dot.Client.Manage()
 - [ ] Add dry-run support
-- [ ] Write command tests
+- [ ] Write comprehensive command tests
+- [ ] Add help text with examples
 
-#### 13.3: Unstow Command
-- [ ] Implement unstow command
+#### 13.3: Unmanage Command
+- [ ] Implement unmanage command (replaces unstow)
 - [ ] Add package argument parsing
-- [ ] Integrate with dot.Client.Unstow()
+- [ ] Integrate with dot.Client.Unmanage()
 - [ ] Add dry-run support
 - [ ] Write command tests
+- [ ] Add help text with examples
 
-#### 13.4: Restow Command
-- [ ] Implement restow command
-- [ ] Use incremental planner by default
-- [ ] Integrate with dot.Client.Restow()
+#### 13.4: Remanage Command
+- [ ] Implement remanage command (replaces restow)
+- [ ] Use incremental planner via Client
+- [ ] Integrate with dot.Client.Remanage()
 - [ ] Add dry-run support
 - [ ] Write command tests
+- [ ] Add help text with examples
 
 #### 13.5: Adopt Command
 - [ ] Implement adopt command with package and file arguments
-- [ ] Add backup support
 - [ ] Integrate with dot.Client.Adopt()
 - [ ] Add dry-run support
 - [ ] Write command tests
+- [ ] Add help text with examples
 
-**Deliverable**: Working CLI with core commands
+#### 13.6: Error Handling and UX
+- [ ] Implement user-friendly error formatting
+- [ ] Add formatError helper for domain errors
+- [ ] Add formatConflict for conflict errors
+- [ ] Add formatMultipleErrors for aggregated errors
+- [ ] Write error formatting tests
+
+#### 13.7: Integration Testing
+- [ ] Write manage + unmanage workflow test
+- [ ] Write multiple package test
+- [ ] Write remanage workflow test
+- [ ] Write adopt workflow test
+- [ ] Verify end-to-end scenarios
+
+**Deliverable**: Working CLI with core commands using Client API
+
+**See Also**: [Phase 13 Detailed Plan](./Phase-13-Plan.md)
 
 ---
 

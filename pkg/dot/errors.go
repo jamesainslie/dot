@@ -136,6 +136,15 @@ func (e ErrCheckpointNotFound) Error() string {
 	return fmt.Sprintf("checkpoint not found: %q", e.ID)
 }
 
+// ErrNotImplemented indicates functionality is not yet implemented.
+type ErrNotImplemented struct {
+	Feature string
+}
+
+func (e ErrNotImplemented) Error() string {
+	return fmt.Sprintf("not implemented: %s", e.Feature)
+}
+
 // Error Aggregation
 
 // ErrMultiple aggregates multiple errors into one.

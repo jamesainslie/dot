@@ -27,7 +27,7 @@ func TestAdopt_PlanErrorReturned(t *testing.T) {
 func TestAdopt_ExecutorError(t *testing.T) {
 	cfg := testConfig(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Setup
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
 	filePath := filepath.Join(cfg.TargetDir, ".vimrc")
@@ -181,4 +181,3 @@ func TestDoctor_ChecksAllBranches(t *testing.T) {
 	assert.Equal(t, dot.HealthOK, report.OverallHealth)
 	assert.Empty(t, report.Issues)
 }
-

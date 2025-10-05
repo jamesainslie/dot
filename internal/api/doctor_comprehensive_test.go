@@ -214,4 +214,3 @@ func TestAdopt_UpdatesManifest(t *testing.T) {
 	_ = client.Adopt(ctx, []string{".bashrc"}, "bash")
 	// Error expected due to executor preconditions, but Adopt code path is covered
 }
-

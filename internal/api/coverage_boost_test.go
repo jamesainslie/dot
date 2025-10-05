@@ -238,4 +238,3 @@ func TestUnmanage_SkipsInvalidPaths(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, plan)
 }
-

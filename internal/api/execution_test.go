@@ -224,4 +224,3 @@ func TestStatus_ReturnsCorrectLinkCount(t *testing.T) {
 	assert.Equal(t, 5, status.Packages[0].LinkCount)
 	assert.Len(t, status.Packages[0].Links, 5)
 }
-

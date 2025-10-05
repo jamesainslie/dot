@@ -16,7 +16,7 @@ func TestCheckpoint_Create(t *testing.T) {
 
 	require.NotEmpty(t, checkpoint.ID)
 	require.NotZero(t, checkpoint.CreatedAt)
-	require.NotNil(t, checkpoint.Operations)
+	require.Equal(t, 0, checkpoint.Len())
 }
 
 func TestCheckpoint_Record(t *testing.T) {

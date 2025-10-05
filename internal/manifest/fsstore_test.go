@@ -7,19 +7,9 @@ import (
 	"time"
 
 	"github.com/jamesainslie/dot/internal/adapters"
-	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func mustTargetPath(t *testing.T, path string) dot.TargetPath {
-	t.Helper()
-	result := dot.NewTargetPath(path)
-	if result.IsErr() {
-		t.Fatalf("failed to create target path: %v", result.UnwrapErr())
-	}
-	return result.Unwrap()
-}
 
 func TestFSManifestStore_Load_MissingFile(t *testing.T) {
 	fs := adapters.NewMemFS()

@@ -84,7 +84,11 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manife
 
 	for _, entry := range entries {
 		fullPath := filepath.Join(dir, entry.Name())
-		relPath, _ := filepath.Rel(c.config.TargetDir, fullPath)
+		relPath, err := filepath.Rel(c.config.TargetDir, fullPath)
+		if err != nil {
+			// Use fullPath as fallback if relative path cannot be determined
+			relPath = fullPath
+		}
 
 		// Skip the manifest file itself
 		if entry.Name() == ".dot-manifest.json" {
@@ -105,19 +109,9 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manife
 			}
 
 			if isLink {
-				// It's a symlink - check if it's in any package's links
-				managed := false
-				for _, pkgInfo := range m.Packages {
-					for _, link := range pkgInfo.Links {
-						if link == relPath || link == fullPath {
-							managed = true
-							break
-						}
-					}
-					if managed {
-						break
-					}
-				}
+				// It's a symlink - check if it's managed
+				// This now uses the pre-built set for O(1) lookup instead of O(n²)
+				managed := c.isLinkManaged(relPath, fullPath, m)
 
 				if !managed {
 					stats.OrphanedLinks++
@@ -134,6 +128,18 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manife
 	}
 
 	return nil
+}
+
+// isLinkManaged checks if a link path is managed by any package in the manifest.
+func (c *client) isLinkManaged(relPath, fullPath string, m *manifest.Manifest) bool {
+	for _, pkgInfo := range m.Packages {
+		for _, link := range pkgInfo.Links {
+			if link == relPath || link == fullPath {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // checkLink validates a single link from the manifest.

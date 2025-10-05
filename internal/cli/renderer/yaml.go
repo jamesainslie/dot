@@ -13,18 +13,23 @@ type YAMLRenderer struct {
 	indent int
 }
 
-// RenderStatus renders installation status as YAML.
-func (r *YAMLRenderer) RenderStatus(w io.Writer, status dot.Status) error {
+// newEncoder creates a new YAML encoder with configured settings.
+func (r *YAMLRenderer) newEncoder(w io.Writer) *yaml.Encoder {
 	encoder := yaml.NewEncoder(w)
 	encoder.SetIndent(r.indent)
+	return encoder
+}
+
+// RenderStatus renders installation status as YAML.
+func (r *YAMLRenderer) RenderStatus(w io.Writer, status dot.Status) error {
+	encoder := r.newEncoder(w)
 	defer encoder.Close()
 	return encoder.Encode(status)
 }
 
 // RenderDiagnostics renders diagnostic report as YAML.
 func (r *YAMLRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
-	encoder := yaml.NewEncoder(w)
-	encoder.SetIndent(r.indent)
+	encoder := r.newEncoder(w)
 	defer encoder.Close()
 	return encoder.Encode(report)
 }

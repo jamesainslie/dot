@@ -181,4 +181,3 @@ func TestValidator_Validate_MultipleIssues(t *testing.T) {
 	assert.False(t, result.IsValid)
 	assert.GreaterOrEqual(t, len(result.Issues), 2) // At least missing and broken
 }
-

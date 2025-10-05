@@ -91,3 +91,56 @@ func (r *TableRenderer) resetColor() string {
 	}
 	return ""
 }
+
+// RenderDiagnostics renders diagnostic report as a table.
+func (r *TableRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
+	// Show overall health
+	healthColor := r.scheme.Success
+	if report.OverallHealth == dot.HealthWarnings {
+		healthColor = r.scheme.Warning
+	} else if report.OverallHealth == dot.HealthErrors {
+		healthColor = r.scheme.Error
+	}
+
+	fmt.Fprintf(w, "%sHealth Status: %s%s\n\n", r.colorText(healthColor), report.OverallHealth.String(), r.resetColor())
+
+	// Show statistics
+	fmt.Fprintln(w, "Statistics:")
+	fmt.Fprintf(w, "  Total Links: %d\n", report.Statistics.TotalLinks)
+	fmt.Fprintf(w, "  Managed Links: %d\n", report.Statistics.ManagedLinks)
+	fmt.Fprintf(w, "  Broken Links: %d\n", report.Statistics.BrokenLinks)
+	fmt.Fprintf(w, "  Orphaned Links: %d\n\n", report.Statistics.OrphanedLinks)
+
+	// Show issues in a table
+	if len(report.Issues) == 0 {
+		fmt.Fprintln(w, "No issues found")
+		return nil
+	}
+
+	headers := []string{"#", "Severity", "Type", "Path", "Message"}
+	rows := make([][]string, 0, len(report.Issues))
+
+	for i, issue := range report.Issues {
+		pathDisplay := issue.Path
+		if len(pathDisplay) > 30 {
+			pathDisplay = pathDisplay[:27] + "..."
+		}
+
+		rows = append(rows, []string{
+			fmt.Sprintf("%d", i+1),
+			issue.Severity.String(),
+			issue.Type.String(),
+			pathDisplay,
+			issue.Message,
+		})
+	}
+
+	return r.renderTable(w, headers, rows)
+}
+
+func (r *TableRenderer) colorText(color string) string {
+	if r.colorize && color != "" {
+		return color
+	}
+	return ""
+}

@@ -121,7 +121,7 @@ All errors have user-facing messages via `UserFacingError()`.
 
 ### Files Created
 
-```
+```text
 internal/executor/
 ├── checkpoint.go           (71 lines)
 ├── executor.go            (383 lines)

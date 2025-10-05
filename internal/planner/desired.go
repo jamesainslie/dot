@@ -171,18 +171,15 @@ func ComputeOperationsFromDesiredState(desired DesiredState) []dot.Operation {
 	// Preallocate slice for directories and links
 	ops := make([]dot.Operation, 0, len(desired.Dirs)+len(desired.Links))
 
-	// Create directory operations
-	opID := 0
+	// Create directory operations with content-based IDs for determinism
 	for _, dirSpec := range desired.Dirs {
-		opID++
-		id := dot.OperationID(fmt.Sprintf("dir-%d", opID))
+		id := dot.OperationID(fmt.Sprintf("dir-%s", dirSpec.Path.String()))
 		ops = append(ops, dot.NewDirCreate(id, dirSpec.Path))
 	}
 
-	// Create link operations
+	// Create link operations with content-based IDs for determinism
 	for _, linkSpec := range desired.Links {
-		opID++
-		id := dot.OperationID(fmt.Sprintf("link-%d", opID))
+		id := dot.OperationID(fmt.Sprintf("link-%s->%s", linkSpec.Source.String(), linkSpec.Target.String()))
 		ops = append(ops, dot.NewLinkCreate(id, linkSpec.Source, linkSpec.Target))
 	}
 

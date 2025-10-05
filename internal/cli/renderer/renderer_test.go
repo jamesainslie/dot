@@ -71,7 +71,8 @@ func TestColorSchemeDefaults(t *testing.T) {
 }
 
 func TestColorSchemeRespectsNOCOLOR(t *testing.T) {
-	os.Setenv("NO_COLOR", "1")
+	err := os.Setenv("NO_COLOR", "1")
+	require.NoError(t, err)
 	defer os.Unsetenv("NO_COLOR")
 
 	scheme := DefaultColorScheme()
@@ -114,13 +115,10 @@ func TestRendererInterface(t *testing.T) {
 
 	for _, r := range renderers {
 		var buf bytes.Buffer
-		err := r.RenderStatus(&buf, status)
 		// We expect implementation to exist (may return error but shouldn't panic)
 		assert.NotPanics(t, func() {
 			r.RenderStatus(&buf, status)
 		})
-		// For now, just verify interface is satisfied
-		_ = err
 	}
 }
 

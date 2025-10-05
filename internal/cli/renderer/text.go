@@ -9,9 +9,10 @@ import (
 
 // TextRenderer renders output as human-readable plain text.
 type TextRenderer struct {
-	colorize bool
-	scheme   ColorScheme
-	width    int
+	colorize     bool
+	scheme       ColorScheme
+	width        int
+	displayLimit int // Maximum number of items to display before truncation
 }
 
 // RenderStatus renders installation status as plain text.
@@ -28,10 +29,10 @@ func (r *TextRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 
 		if len(pkg.Links) > 0 {
 			fmt.Fprintf(w, "  Files:\n")
-			displayCount := 5
 			for i, link := range pkg.Links {
-				if i >= displayCount {
-					remaining := len(pkg.Links) - displayCount
+				// If displayLimit is 0, show all; otherwise respect the limit
+				if r.displayLimit > 0 && i >= r.displayLimit {
+					remaining := len(pkg.Links) - r.displayLimit
 					fmt.Fprintf(w, "    ... and %d more\n", remaining)
 					break
 				}

@@ -6,19 +6,9 @@ import (
 	"testing"
 
 	"github.com/jamesainslie/dot/internal/adapters"
-	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func mustPackagePath(t *testing.T, path string) dot.PackagePath {
-	t.Helper()
-	result := dot.NewPackagePath(path)
-	if result.IsErr() {
-		t.Fatalf("failed to create package path: %v", result.UnwrapErr())
-	}
-	return result.Unwrap()
-}
 
 func TestContentHasher_HashPackage_EmptyPackage(t *testing.T) {
 	fs := adapters.NewMemFS()

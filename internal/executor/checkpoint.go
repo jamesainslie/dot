@@ -45,6 +45,7 @@ type CheckpointStore interface {
 // Suitable for testing and simple cases where persistence is not required.
 type MemoryCheckpointStore struct {
 	checkpoints map[CheckpointID]*Checkpoint
+	mu          sync.RWMutex
 }
 
 // NewMemoryCheckpointStore creates a new in-memory checkpoint store.
@@ -55,6 +56,9 @@ func NewMemoryCheckpointStore() *MemoryCheckpointStore {
 }
 
 func (s *MemoryCheckpointStore) Create(ctx context.Context) *Checkpoint {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	id := CheckpointID(uuid.New().String())
 	checkpoint := &Checkpoint{
 		ID:         id,
@@ -66,11 +70,17 @@ func (s *MemoryCheckpointStore) Create(ctx context.Context) *Checkpoint {
 }
 
 func (s *MemoryCheckpointStore) Delete(ctx context.Context, id CheckpointID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	delete(s.checkpoints, id)
 	return nil
 }
 
 func (s *MemoryCheckpointStore) Restore(ctx context.Context, id CheckpointID) (*Checkpoint, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	checkpoint, exists := s.checkpoints[id]
 	if !exists {
 		return nil, dot.ErrCheckpointNotFound{ID: string(id)}

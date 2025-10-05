@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/term"
+
 	"github.com/jamesainslie/dot/internal/adapters"
 	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/spf13/cobra"
@@ -153,12 +155,8 @@ func shouldColorize(color string) bool {
 	case "never":
 		return false
 	case "auto":
-		// Check if stdout is a terminal
-		fileInfo, err := os.Stdout.Stat()
-		if err != nil {
-			return false
-		}
-		return (fileInfo.Mode() & os.ModeCharDevice) != 0
+		// Check if stdout is a terminal using portable detection
+		return term.IsTerminal(int(os.Stdout.Fd()))
 	default:
 		return false
 	}

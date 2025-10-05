@@ -60,7 +60,7 @@ Foundation documentation for end users learning to use dot.
 - [ ] Set up glossary structure
 
 **Structure**:
-```
+```text
 docs/user/
 ├── index.md              # User guide overview
 ├── 01-introduction.md    # What is dot, core concepts
@@ -565,7 +565,7 @@ Practical examples for users and developers.
 - [ ] Create template for example documentation
 
 **Structure**:
-```
+```text
 examples/
 ├── README.md                    # Examples index
 ├── basic/

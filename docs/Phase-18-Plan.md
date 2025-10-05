@@ -1902,7 +1902,7 @@ Each optimization must include:
 
 Follow atomic commit principle with conventional commits:
 
-```
+```text
 perf(scanner): reduce allocations in tree building
 
 Optimize node construction to reuse buffers and preallocate slices.

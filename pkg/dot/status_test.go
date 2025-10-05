@@ -48,4 +48,3 @@ func TestStatusEmpty(t *testing.T) {
 
 	require.Empty(t, status.Packages)
 }
-

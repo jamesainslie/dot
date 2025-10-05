@@ -14,4 +14,3 @@ type PackageInfo struct {
 	LinkCount   int
 	Links       []string
 }
-

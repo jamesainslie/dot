@@ -729,35 +729,94 @@ Verify algebraic laws, invariants, and mathematical properties using gopter.
 
 ### Phase 17: Integration Testing
 
-End-to-end scenario testing.
+End-to-end scenario testing to verify complete workflows, concurrent operations, error recovery, and cross-platform compatibility.
 
-#### 17.1: Test Scenarios
-- [ ] Create test/fixtures/scenarios/ with realistic setups
-- [ ] Implement fixture builders for common cases
-- [ ] Add golden test framework
-- [ ] Write scenario tests
+#### 17.1: Test Infrastructure Setup
+- [ ] Create test package structure (tests/integration/, tests/fixtures/)
+- [ ] Implement fixture builder framework (PackageBuilder, FileTreeBuilder)
+- [ ] Create test utilities (TestFS, assertion helpers)
+- [ ] Implement golden test framework
+- [ ] Build test harness with environment isolation
+- [ ] Write infrastructure tests
 
-#### 17.2: End-to-End Tests
-- [ ] Test complete stow workflow
-- [ ] Test complete unstow workflow
-- [ ] Test restow with changes
-- [ ] Test adopt workflow
-- [ ] Test conflict resolution
-- [ ] Write e2e tests
+#### 17.2: End-to-End Workflow Tests
+- [ ] Test complete manage workflow with all options
+- [ ] Test complete unmanage workflow with cleanup
+- [ ] Test remanage with incremental detection
+- [ ] Test adopt workflow with file preservation
+- [ ] Test combined workflows (manage + unmanage identity)
+- [ ] Write comprehensive workflow tests
 
 #### 17.3: Concurrent Testing
-- [ ] Test parallel execution safety
-- [ ] Test concurrent package operations
-- [ ] Test race conditions
+- [ ] Test parallel package processing and batches
+- [ ] Enable race detector and fix races
+- [ ] Test concurrent operations with isolation
+- [ ] Perform stress testing with high load
 - [ ] Write concurrency tests
 
 #### 17.4: Error Recovery Testing
-- [ ] Test rollback on failure
-- [ ] Test partial execution recovery
-- [ ] Test checkpoint restoration
+- [ ] Test transaction rollback on failures
+- [ ] Test checkpoint recovery mechanisms
+- [ ] Test error propagation and aggregation
+- [ ] Test partial failure handling
+- [ ] Test pre-execution validation
 - [ ] Write recovery tests
 
-**Deliverable**: Comprehensive integration test suite
+#### 17.5: Conflict Resolution Scenarios
+- [ ] Test all conflict type detection
+- [ ] Test all resolution policies (fail, backup, overwrite, skip)
+- [ ] Test conflict resolution integration
+- [ ] Write conflict scenario tests
+
+#### 17.6: State Management Integration
+- [ ] Test manifest persistence and updates
+- [ ] Test incremental detection with hashing
+- [ ] Test state validation and drift detection
+- [ ] Write state management tests
+
+#### 17.7: Query Command Integration
+- [ ] Test status command with all formats
+- [ ] Test doctor command diagnostics
+- [ ] Test list command sorting and filtering
+- [ ] Write query command tests
+
+#### 17.8: Cross-Platform Testing
+- [ ] Create platform-specific test suites
+- [ ] Test filesystem compatibility
+- [ ] Test path convention handling
+- [ ] Write cross-platform tests
+
+#### 17.9: Performance Regression Testing
+- [ ] Create benchmark suite for key operations
+- [ ] Implement performance monitoring with thresholds
+- [ ] Profile memory usage and leaks
+- [ ] Write performance tests
+
+#### 17.10: CLI Integration Testing
+- [ ] Test all command invocations with flags
+- [ ] Test flag interactions and precedence
+- [ ] Test exit codes match specification
+- [ ] Test output formats with golden tests
+- [ ] Write CLI integration tests
+
+#### 17.11: Scenario-Based Testing
+- [ ] Test new user scenario
+- [ ] Test GNU Stow migration scenario
+- [ ] Test multi-machine scenario
+- [ ] Test development workflow scenario
+- [ ] Test large repository scenario
+- [ ] Write scenario tests
+
+#### 17.12: Test Organization and Maintenance
+- [ ] Write integration testing guide and documentation
+- [ ] Implement test categorization and filtering
+- [ ] Integrate tests into CI pipeline
+- [ ] Create test maintenance utilities
+- [ ] Write maintenance documentation
+
+**Deliverable**: Comprehensive integration test suite with cross-platform verification, performance baselines, and CI integration
+
+**See Also**: [Phase 17 Detailed Plan](./Phase-17-Plan.md)
 
 ---
 
@@ -822,36 +881,55 @@ Comprehensive documentation for users and developers.
 
 ### Phase 20: Polish and Release Preparation
 
-Final polish and release preparation.
+Final polish and release preparation for production v0.1.0 release.
 
-#### 20.1: Code Quality
-- [ ] Run complete linter suite
-- [ ] Fix all linter warnings
-- [ ] Verify 80% test coverage
-- [ ] Run property tests with high iteration count
-- [ ] Perform security audit
+#### 20.1: Code Quality Assurance
+- [ ] Run complete linter suite and fix all warnings
+- [ ] Verify 80% test coverage across all packages
+- [ ] Run property tests with high iteration count (10,000+)
+- [ ] Perform comprehensive security audit
+- [ ] Document code quality metrics
 
-#### 20.2: Release Artifacts
-- [ ] Test cross-compilation for all platforms
-- [ ] Verify goreleaser configuration
-- [ ] Test release process locally
-- [ ] Create initial CHANGELOG.md entries
-- [ ] Tag v0.1.0 pre-release
+#### 20.2: Release Artifacts and Automation
+- [ ] Test cross-compilation for all platforms (12+ targets)
+- [ ] Verify and configure goreleaser for automated releases
+- [ ] Test release process locally with snapshots
+- [ ] Prepare comprehensive CHANGELOG.md for v0.1.0
+- [ ] Tag and create pre-release (v0.1.0-rc.1) for validation
 
-#### 20.3: Distribution
-- [ ] Create Homebrew formula
-- [ ] Create Scoop manifest
-- [ ] Test installation methods
-- [ ] Write installation documentation
+#### 20.3: Distribution Infrastructure
+- [ ] Create Homebrew formula with multi-platform support
+- [ ] Create Scoop manifest for Windows installation
+- [ ] Test all installation methods on target platforms
+- [ ] Write comprehensive installation documentation
+- [ ] Validate distribution channels
 
-#### 20.4: Final Testing
-- [ ] Test on Linux (multiple distributions)
-- [ ] Test on macOS (Intel and Apple Silicon)
-- [ ] Test on Windows
-- [ ] Test on BSD systems
-- [ ] Perform final integration testing
+#### 20.4: Final Cross-Platform Validation
+- [ ] Test on Linux distributions (Ubuntu, Debian, Fedora, Arch, Alpine)
+- [ ] Test on macOS versions (13, 14, 15) for Intel and Apple Silicon
+- [ ] Test on Windows (10, 11, Server 2022)
+- [ ] Test on BSD systems (FreeBSD, OpenBSD, NetBSD)
+- [ ] Execute comprehensive integration test matrix
+- [ ] Document platform-specific behaviors and limitations
 
-**Deliverable**: Production-ready v0.1.0 release
+#### 20.5: Documentation Finalization
+- [ ] Polish README.md with badges, examples, and complete installation guide
+- [ ] Complete user guide with all features documented
+- [ ] Finalize developer documentation and architecture docs
+- [ ] Create working examples and tutorials
+- [ ] Verify all documentation links and accuracy
+
+#### 20.6: Release Execution
+- [ ] Complete pre-release checklist
+- [ ] Create and push v0.1.0 tag with detailed release notes
+- [ ] Publish release on GitHub with all artifacts
+- [ ] Update all distribution channels
+- [ ] Post release announcements
+- [ ] Establish post-release monitoring
+
+**Deliverable**: Production-ready v0.1.0 release with complete distribution infrastructure
+
+**See Also**: [Phase 20 Detailed Plan](./Phase-20-Plan.md)
 
 ---
 

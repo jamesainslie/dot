@@ -14,7 +14,11 @@ dot manages symbolic links for configuration files and dotfiles through a clean,
 
 **Current Version**: v0.0.0 (in development)
 
-This project is under active development. Phase 0 (Project Initialization) is in progress.
+**Completed Phases**:
+- Phase 0-13: Core infrastructure and commands
+- Phase 14: Query commands (status, doctor, list)
+
+**Current Phase**: Phase 15 (Error Handling and User Experience)
 
 ## Features
 
@@ -40,9 +44,14 @@ go install github.com/user/dot/cmd/dot@latest
 
 ## Usage
 
+### Package Management
+
 ```bash
 # Manage a package (create symbolic links)
 dot manage vim
+
+# Manage multiple packages
+dot manage vim tmux zsh
 
 # Unmanage a package (remove symbolic links)
 dot unmanage vim
@@ -51,13 +60,58 @@ dot unmanage vim
 dot remanage vim
 
 # Adopt existing files into a package
-dot adopt ~/.vimrc --package vim
+dot adopt .vimrc vim
+```
 
-# Check status of packages
+### Query Commands
+
+```bash
+# Show status of all installed packages
 dot status
 
-# Verify configuration health
+# Show status for specific packages
+dot status vim tmux
+
+# Show status in different formats
+dot status --format=json
+dot status --format=yaml
+dot status --format=table
+
+# List all installed packages
+dot list
+
+# List with sorting
+dot list --sort=links    # Sort by link count
+dot list --sort=date     # Sort by installation date
+dot list --sort=name     # Sort by name (default)
+
+# Verify installation health
 dot doctor
+
+# Doctor with different output formats
+dot doctor --format=json
+dot doctor --format=table
+```
+
+### Global Options
+
+```bash
+# Specify directories
+dot --dir=/path/to/dotfiles --target=$HOME manage vim
+
+# Dry run (preview changes)
+dot --dry-run manage vim
+
+# Verbose output
+dot -v manage vim
+dot -vv manage vim  # More verbose
+dot -vvv manage vim # Maximum verbosity
+
+# Quiet mode (errors only)
+dot --quiet manage vim
+
+# JSON logging
+dot --log-json manage vim
 ```
 
 Detailed documentation will be provided as features are implemented.

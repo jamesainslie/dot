@@ -7,7 +7,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// setupGlobalCfg initializes globalCfg with deterministic test values and registers cleanup.
+func setupGlobalCfg(t *testing.T) {
+	t.Helper()
+
+	// Save previous globalCfg
+	previous := globalCfg
+
+	// Set globalCfg to use temporary directories
+	globalCfg = globalConfig{
+		stowDir:   t.TempDir(),
+		targetDir: t.TempDir(),
+		dryRun:    true, // Always dry-run in tests to avoid side effects
+		verbose:   0,
+		quiet:     false,
+		logJSON:   false,
+	}
+
+	// Restore previous globalCfg on cleanup
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+}
+
 func TestManageCommand_ExecuteStub(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newManageCommand()
 	cmd.SetArgs([]string{"package1"})
 
@@ -20,6 +45,8 @@ func TestManageCommand_ExecuteStub(t *testing.T) {
 }
 
 func TestManageCommand_NoPackages(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newManageCommand()
 	cmd.SetArgs([]string{})
 
@@ -40,6 +67,8 @@ func TestManageCommand_Metadata(t *testing.T) {
 }
 
 func TestUnmanageCommand_ExecuteStub(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newUnmanageCommand()
 	cmd.SetArgs([]string{"package1"})
 
@@ -52,6 +81,8 @@ func TestUnmanageCommand_ExecuteStub(t *testing.T) {
 }
 
 func TestUnmanageCommand_NoPackages(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newUnmanageCommand()
 	cmd.SetArgs([]string{})
 
@@ -72,6 +103,8 @@ func TestUnmanageCommand_Metadata(t *testing.T) {
 }
 
 func TestRemanageCommand_ExecuteStub(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newRemanageCommand()
 	cmd.SetArgs([]string{"package1"})
 
@@ -84,6 +117,8 @@ func TestRemanageCommand_ExecuteStub(t *testing.T) {
 }
 
 func TestRemanageCommand_NoPackages(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newRemanageCommand()
 	cmd.SetArgs([]string{})
 
@@ -104,6 +139,8 @@ func TestRemanageCommand_Metadata(t *testing.T) {
 }
 
 func TestAdoptCommand_ExecuteStub(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newAdoptCommand()
 	cmd.SetArgs([]string{"package1", "file1"})
 
@@ -116,6 +153,8 @@ func TestAdoptCommand_ExecuteStub(t *testing.T) {
 }
 
 func TestAdoptCommand_NotEnoughArgs(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newAdoptCommand()
 	cmd.SetArgs([]string{"package1"})
 
@@ -136,6 +175,8 @@ func TestAdoptCommand_Metadata(t *testing.T) {
 }
 
 func TestAdoptCommand_MultipleFiles(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newAdoptCommand()
 	cmd.SetArgs([]string{"package1", "file1", "file2", "file3"})
 
@@ -148,6 +189,8 @@ func TestAdoptCommand_MultipleFiles(t *testing.T) {
 }
 
 func TestManageCommand_MultiplePackages(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newManageCommand()
 	cmd.SetArgs([]string{"package1", "package2", "package3"})
 
@@ -160,6 +203,8 @@ func TestManageCommand_MultiplePackages(t *testing.T) {
 }
 
 func TestUnmanageCommand_MultiplePackages(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newUnmanageCommand()
 	cmd.SetArgs([]string{"package1", "package2", "package3"})
 
@@ -172,6 +217,8 @@ func TestUnmanageCommand_MultiplePackages(t *testing.T) {
 }
 
 func TestRemanageCommand_MultiplePackages(t *testing.T) {
+	setupGlobalCfg(t)
+
 	cmd := newRemanageCommand()
 	cmd.SetArgs([]string{"package1", "package2", "package3"})
 
@@ -244,8 +291,10 @@ func TestRootCommand_WithAdoptCommand(t *testing.T) {
 }
 
 func TestRootCommand_GlobalFlagsWithCommand(t *testing.T) {
+	tmpDir := t.TempDir()
+
 	rootCmd := NewRootCommand("dev", "none", "unknown")
-	rootCmd.SetArgs([]string{"--dir", ".", "--target", ".", "manage", "package1"})
+	rootCmd.SetArgs([]string{"--dir", tmpDir, "--target", tmpDir, "--dry-run", "manage", "package1"})
 
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)
@@ -256,8 +305,10 @@ func TestRootCommand_GlobalFlagsWithCommand(t *testing.T) {
 }
 
 func TestRootCommand_DryRunFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+
 	rootCmd := NewRootCommand("dev", "none", "unknown")
-	rootCmd.SetArgs([]string{"--dry-run", "manage", "package1"})
+	rootCmd.SetArgs([]string{"--target", tmpDir, "--dry-run", "manage", "package1"})
 
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)
@@ -268,8 +319,10 @@ func TestRootCommand_DryRunFlag(t *testing.T) {
 }
 
 func TestRootCommand_VerboseFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+
 	rootCmd := NewRootCommand("dev", "none", "unknown")
-	rootCmd.SetArgs([]string{"-vvv", "manage", "package1"})
+	rootCmd.SetArgs([]string{"--target", tmpDir, "--dry-run", "-vvv", "manage", "package1"})
 
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)
@@ -280,8 +333,10 @@ func TestRootCommand_VerboseFlag(t *testing.T) {
 }
 
 func TestRootCommand_QuietFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+
 	rootCmd := NewRootCommand("dev", "none", "unknown")
-	rootCmd.SetArgs([]string{"--quiet", "manage", "package1"})
+	rootCmd.SetArgs([]string{"--target", tmpDir, "--dry-run", "--quiet", "manage", "package1"})
 
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)
@@ -292,8 +347,10 @@ func TestRootCommand_QuietFlag(t *testing.T) {
 }
 
 func TestRootCommand_LogJSONFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+
 	rootCmd := NewRootCommand("dev", "none", "unknown")
-	rootCmd.SetArgs([]string{"--log-json", "manage", "package1"})
+	rootCmd.SetArgs([]string{"--target", tmpDir, "--dry-run", "--log-json", "manage", "package1"})
 
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)

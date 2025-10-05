@@ -9,6 +9,12 @@ import (
 )
 
 func TestBuildConfig_ValidPaths(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	// Set global config
 	globalCfg = globalConfig{
 		stowDir:   ".",
@@ -32,6 +38,12 @@ func TestBuildConfig_ValidPaths(t *testing.T) {
 }
 
 func TestBuildConfig_DryRunEnabled(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	globalCfg = globalConfig{
 		stowDir:   ".",
 		targetDir: ".",
@@ -47,6 +59,12 @@ func TestBuildConfig_DryRunEnabled(t *testing.T) {
 }
 
 func TestBuildConfig_VerbositySet(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	globalCfg = globalConfig{
 		stowDir:   ".",
 		targetDir: ".",
@@ -80,6 +98,12 @@ func TestBuildConfig_MultipleCombinations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Save previous globalCfg
+			previous := globalCfg
+			t.Cleanup(func() {
+				globalCfg = previous
+			})
+
 			globalCfg = globalConfig{
 				stowDir:   ".",
 				targetDir: ".",
@@ -100,6 +124,12 @@ func TestBuildConfig_MultipleCombinations(t *testing.T) {
 }
 
 func TestCreateLogger_Quiet(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	globalCfg = globalConfig{
 		quiet: true,
 	}
@@ -109,6 +139,12 @@ func TestCreateLogger_Quiet(t *testing.T) {
 }
 
 func TestCreateLogger_JSONFormat(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	globalCfg = globalConfig{
 		quiet:   false,
 		logJSON: true,
@@ -120,6 +156,12 @@ func TestCreateLogger_JSONFormat(t *testing.T) {
 }
 
 func TestCreateLogger_TextFormat(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	globalCfg = globalConfig{
 		quiet:   false,
 		logJSON: false,
@@ -143,6 +185,12 @@ func TestCreateLogger_VerboseLevels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Save previous globalCfg
+			previous := globalCfg
+			t.Cleanup(func() {
+				globalCfg = previous
+			})
+
 			globalCfg = globalConfig{
 				quiet:   false,
 				logJSON: false,
@@ -197,6 +245,12 @@ func TestVerbosityToLevel(t *testing.T) {
 }
 
 func TestBuildConfig_AbsolutePaths(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	tmpDir := t.TempDir()
 	stowDir := filepath.Join(tmpDir, "stow")
 	targetDir := filepath.Join(tmpDir, "target")
@@ -220,6 +274,12 @@ func TestBuildConfig_AbsolutePaths(t *testing.T) {
 }
 
 func TestBuildConfig_RelativePaths(t *testing.T) {
+	// Save previous globalCfg
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
 	// Start with relative paths
 	globalCfg = globalConfig{
 		stowDir:   "./test/stow",

@@ -1,12 +1,12 @@
 package planner
 
 import (
+	"context"
 	"testing"
 
+	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/jamesainslie/dot/pkg/dot"
 )
 
 func TestBuildGraph_Empty(t *testing.T) {
@@ -21,7 +21,7 @@ func TestBuildGraph_Empty(t *testing.T) {
 func TestBuildGraph_SingleOperation(t *testing.T) {
 	source := mustParsePath("/stow/package/file")
 	target := mustParsePath("/home/user/.config/file")
-	op := dot.NewLinkCreate(source, target)
+	op := dot.NewLinkCreate("link1", source, target)
 
 	ops := []dot.Operation{op}
 	graph := BuildGraph(ops)
@@ -33,10 +33,12 @@ func TestBuildGraph_SingleOperation(t *testing.T) {
 
 func TestBuildGraph_IndependentOperations(t *testing.T) {
 	op1 := dot.NewLinkCreate(
+		"link1",
 		mustParsePath("/stow/pkg/file1"),
 		mustParsePath("/home/user/file1"),
 	)
 	op2 := dot.NewLinkCreate(
+		"link2",
 		mustParsePath("/stow/pkg/file2"),
 		mustParsePath("/home/user/file2"),
 	)
@@ -59,9 +61,10 @@ func TestBuildGraph_IndependentOperations(t *testing.T) {
 func TestBuildGraph_LinearDependencies(t *testing.T) {
 	// Create a linear dependency chain: dirCreate -> linkCreate
 	dirPath := mustParsePath("/home/user/.config")
-	dirOp := dot.NewDirCreate(dirPath)
+	dirOp := dot.NewDirCreate("dir1", dirPath)
 
 	linkOp := dot.NewLinkCreate(
+		"link1",
 		mustParsePath("/stow/pkg/config"),
 		mustParsePath("/home/user/.config/app.conf"),
 	)
@@ -90,10 +93,11 @@ func TestBuildGraph_LinearDependencies(t *testing.T) {
 
 func TestBuildGraph_DiamondPattern(t *testing.T) {
 	// Diamond dependency: A -> B, A -> C, B -> D, C -> D
-	opA := dot.NewDirCreate(mustParsePath("/home/user/.config"))
-	opB := dot.NewDirCreate(mustParsePath("/home/user/.config/app1"))
-	opC := dot.NewDirCreate(mustParsePath("/home/user/.config/app2"))
+	opA := dot.NewDirCreate("dir1", mustParsePath("/home/user/.config"))
+	opB := dot.NewDirCreate("dir2", mustParsePath("/home/user/.config/app1"))
+	opC := dot.NewDirCreate("dir3", mustParsePath("/home/user/.config/app2"))
 	opD := dot.NewLinkCreate(
+		"link1",
 		mustParsePath("/stow/pkg/file"),
 		mustParsePath("/home/user/.config/file"),
 	)
@@ -130,16 +134,16 @@ func TestGraph_Size(t *testing.T) {
 		{
 			name: "single operation",
 			ops: []dot.Operation{
-				dot.NewLinkCreate(mustParsePath("/a"), mustParsePath("/b")),
+				dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
 			},
 			expected: 1,
 		},
 		{
 			name: "multiple operations",
 			ops: []dot.Operation{
-				dot.NewLinkCreate(mustParsePath("/a"), mustParsePath("/b")),
-				dot.NewLinkCreate(mustParsePath("/c"), mustParsePath("/d")),
-				dot.NewDirCreate(mustParsePath("/e")),
+				dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
+				dot.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d")),
+				dot.NewDirCreate("dir1", mustParsePath("/e")),
 			},
 			expected: 3,
 		},
@@ -154,9 +158,9 @@ func TestGraph_Size(t *testing.T) {
 }
 
 func TestGraph_HasOperation(t *testing.T) {
-	op1 := dot.NewLinkCreate(mustParsePath("/a"), mustParsePath("/b"))
-	op2 := dot.NewLinkCreate(mustParsePath("/c"), mustParsePath("/d"))
-	op3 := dot.NewDirCreate(mustParsePath("/e"))
+	op1 := dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
+	op2 := dot.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
+	op3 := dot.NewDirCreate("dir1", mustParsePath("/e"))
 
 	graph := BuildGraph([]dot.Operation{op1, op2})
 
@@ -171,6 +175,10 @@ type mockOperation struct {
 	deps []dot.Operation
 }
 
+func (m *mockOperation) ID() dot.OperationID {
+	return m.op.ID()
+}
+
 func (m *mockOperation) Kind() dot.OperationKind {
 	return m.op.Kind()
 }
@@ -181,6 +189,14 @@ func (m *mockOperation) Validate() error {
 
 func (m *mockOperation) Dependencies() []dot.Operation {
 	return m.deps
+}
+
+func (m *mockOperation) Execute(ctx context.Context, fs dot.FS) error {
+	return m.op.Execute(ctx, fs)
+}
+
+func (m *mockOperation) Rollback(ctx context.Context, fs dot.FS) error {
+	return m.op.Rollback(ctx, fs)
 }
 
 func (m *mockOperation) String() string {

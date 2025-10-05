@@ -53,7 +53,7 @@ dot remanage vim
 # Adopt existing files into a package
 dot adopt ~/.vimrc --package vim
 
-# Check status of managed packages
+# Check status of packages
 dot status
 
 # Verify configuration health
@@ -120,7 +120,5 @@ This project adheres to strict development standards:
 - Semantic versioning
 - Keep a Changelog format
 
-For detailed standards, see:
-- `constitution.md` - Core principles
-- `.cursor/rules/` - Development rules
-
+---
+Made with ❤️ by James Ainslie

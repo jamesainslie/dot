@@ -121,7 +121,7 @@ func TestSortStage_ContextCancellation(t *testing.T) {
 
 		input := SortInput{
 			Operations: []dot.Operation{
-				dot.NewLinkCreate(source, target),
+				dot.NewLinkCreate("link1", source, target),
 			},
 		}
 

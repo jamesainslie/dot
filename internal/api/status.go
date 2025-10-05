@@ -23,7 +23,7 @@ func (c *client) Status(ctx context.Context, packages ...string) (dot.Status, er
 	m := manifestResult.Unwrap()
 
 	// Filter to requested packages if specified
-	var pkgInfos []dot.PackageInfo
+	pkgInfos := make([]dot.PackageInfo, 0)
 	if len(packages) == 0 {
 		// Return all packages
 		for _, info := range m.Packages {

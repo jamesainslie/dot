@@ -80,7 +80,7 @@ func TestPolicySkip(t *testing.T) {
 	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
-	op := dot.NewLinkCreate(sourcePath, targetPath)
+	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
 
 	conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
 

@@ -23,4 +23,3 @@ func mustPackagePath(t *testing.T, path string) dot.PackagePath {
 	}
 	return result.Unwrap()
 }
-

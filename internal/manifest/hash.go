@@ -93,4 +93,3 @@ func (h *ContentHasher) walkPackage(ctx context.Context, root, current string, f
 
 	return nil
 }
-

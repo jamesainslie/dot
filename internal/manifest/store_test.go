@@ -24,4 +24,3 @@ func (m *mockManifestStore) Load(ctx context.Context, target dot.TargetPath) dot
 func (m *mockManifestStore) Save(ctx context.Context, target dot.TargetPath, manifest Manifest) error {
 	return m.saveFn(ctx, target, manifest)
 }
-

@@ -159,4 +159,3 @@ func TestContentHasher_HashPackage_OrderIndependent(t *testing.T) {
 	// Hash should be deterministic regardless of filesystem order
 	assert.Len(t, hash, 64)
 }
-

@@ -71,4 +71,3 @@ func (m *Manifest) PackageList() []PackageInfo {
 	}
 	return packages
 }
-

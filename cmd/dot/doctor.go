@@ -1,0 +1,105 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+
+	"github.com/jamesainslie/dot/internal/cli/renderer"
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
+// newDoctorCommand creates the doctor command with configuration from global flags.
+func newDoctorCommand() *cobra.Command {
+	cmd := NewDoctorCommand(&dot.Config{})
+
+	// Override RunE to build config from global flags
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		cfg, err := buildConfig()
+		if err != nil {
+			return err
+		}
+
+		// Get flags
+		format, _ := cmd.Flags().GetString("format")
+		color, _ := cmd.Flags().GetString("color")
+
+		// Create client
+		client, err := dot.NewClient(cfg)
+		if err != nil {
+			return formatError(err)
+		}
+
+		// Run diagnostics
+		report, err := client.Doctor(cmd.Context())
+		if err != nil {
+			return formatError(err)
+		}
+
+		// Determine colorization
+		colorize := shouldColorize(color)
+
+		// Create renderer
+		r, err := renderer.NewRenderer(format, colorize)
+		if err != nil {
+			return fmt.Errorf("invalid format: %w", err)
+		}
+
+		// Render diagnostics
+		if err := r.RenderDiagnostics(cmd.OutOrStdout(), report); err != nil {
+			return fmt.Errorf("render failed: %w", err)
+		}
+
+		// Set exit code based on health status
+		if report.OverallHealth == dot.HealthErrors {
+			os.Exit(2)
+		} else if report.OverallHealth == dot.HealthWarnings {
+			os.Exit(1)
+		}
+
+		return nil
+	}
+
+	return cmd
+}
+
+// NewDoctorCommand creates the doctor command.
+func NewDoctorCommand(cfg *dot.Config) *cobra.Command {
+	var format string
+	var color string
+
+	cmd := &cobra.Command{
+		Use:   "doctor",
+		Short: "Perform health checks on the installation",
+		Long: `Run comprehensive health checks on the dot installation.
+
+Checks for:
+  - Broken symlinks (links pointing to non-existent targets)
+  - Orphaned links (links not managed by dot)
+  - Permission issues
+  - Manifest inconsistencies
+
+Exit codes:
+  0 - Healthy (no issues found)
+  1 - Warnings detected
+  2 - Errors detected`,
+		Example: `  # Run health check
+  dot doctor
+
+  # Run health check with JSON output
+  dot doctor --format=json
+
+  # Run health check without colors
+  dot doctor --color=never`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Placeholder - will be overridden by newDoctorCommand
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&format, "format", "f", "text", "Output format (text, json, yaml, table)")
+	cmd.Flags().StringVar(&color, "color", "auto", "Colorize output (auto, always, never)")
+
+	return cmd
+}

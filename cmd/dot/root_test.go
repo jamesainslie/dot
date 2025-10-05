@@ -32,7 +32,7 @@ func TestRootCommand_Help(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, out.String(), "dot")
 	require.Contains(t, out.String(), "manage")
-	require.Contains(t, out.String(), "GNU Stow replacement")
+	require.Contains(t, out.String(), "dotfile manager")
 }
 
 func TestRootCommand_GlobalFlags(t *testing.T) {

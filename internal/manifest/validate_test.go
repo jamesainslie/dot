@@ -181,3 +181,82 @@ func TestValidator_Validate_MultipleIssues(t *testing.T) {
 	assert.False(t, result.IsValid)
 	assert.GreaterOrEqual(t, len(result.Issues), 2) // At least missing and broken
 }
+
+func TestValidator_Validate_RejectsAbsoluteLinkPath(t *testing.T) {
+	fs := adapters.NewMemFS()
+	targetDir := mustTargetPath(t, "/home/user")
+	require.NoError(t, fs.MkdirAll(context.Background(), targetDir.String(), 0755))
+
+	// Create manifest with absolute path in links (security issue)
+	m := New()
+	m.AddPackage(PackageInfo{
+		Name:  "malicious",
+		Links: []string{"/etc/passwd"},
+	})
+
+	validator := NewValidator(fs)
+	result := validator.Validate(context.Background(), targetDir, m)
+
+	assert.False(t, result.IsValid)
+	require.Len(t, result.Issues, 1)
+	assert.Contains(t, result.Issues[0].Description, "absolute")
+	assert.Equal(t, "/etc/passwd", result.Issues[0].Path)
+}
+
+func TestValidator_Validate_RelativeSymlinkTarget(t *testing.T) {
+	fs := adapters.NewMemFS()
+	targetDir := mustTargetPath(t, "/home/user")
+	require.NoError(t, fs.MkdirAll(context.Background(), targetDir.String(), 0755))
+
+	// Create symlink with relative target
+	srcDir := filepath.Join(targetDir.String(), "src")
+	srcFile := filepath.Join(srcDir, "file.txt")
+	require.NoError(t, fs.MkdirAll(context.Background(), srcDir, 0755))
+	require.NoError(t, fs.WriteFile(context.Background(), srcFile, []byte("content"), 0644))
+
+	linkPath := filepath.Join(targetDir.String(), ".config", "link")
+	linkDir := filepath.Dir(linkPath)
+	require.NoError(t, fs.MkdirAll(context.Background(), linkDir, 0755))
+
+	// Create relative symlink from .config/link -> ../src/file.txt
+	require.NoError(t, fs.Symlink(context.Background(), "../src/file.txt", linkPath))
+
+	m := New()
+	m.AddPackage(PackageInfo{
+		Name:  "pkg",
+		Links: []string{".config/link"},
+	})
+
+	validator := NewValidator(fs)
+	result := validator.Validate(context.Background(), targetDir, m)
+
+	assert.True(t, result.IsValid, "relative symlink target should be resolved correctly")
+	assert.Empty(t, result.Issues)
+}
+
+func TestValidator_Validate_BrokenRelativeSymlink(t *testing.T) {
+	fs := adapters.NewMemFS()
+	targetDir := mustTargetPath(t, "/home/user")
+	require.NoError(t, fs.MkdirAll(context.Background(), targetDir.String(), 0755))
+
+	// Create broken symlink with relative target
+	linkPath := filepath.Join(targetDir.String(), ".config", "link")
+	linkDir := filepath.Dir(linkPath)
+	require.NoError(t, fs.MkdirAll(context.Background(), linkDir, 0755))
+
+	// Create relative symlink to nonexistent file
+	require.NoError(t, fs.Symlink(context.Background(), "../nonexistent", linkPath))
+
+	m := New()
+	m.AddPackage(PackageInfo{
+		Name:  "pkg",
+		Links: []string{".config/link"},
+	})
+
+	validator := NewValidator(fs)
+	result := validator.Validate(context.Background(), targetDir, m)
+
+	assert.False(t, result.IsValid)
+	require.Len(t, result.Issues, 1)
+	assert.Equal(t, IssueBrokenLink, result.Issues[0].Type)
+}

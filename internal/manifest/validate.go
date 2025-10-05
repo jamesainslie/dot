@@ -57,8 +57,20 @@ func (v *Validator) Validate(ctx context.Context, targetDir dot.TargetPath, mani
 				break
 			}
 
+			// Reject absolute paths - links should be relative to target directory
+			if filepath.IsAbs(linkPath) {
+				result.IsValid = false
+				result.Issues = append(result.Issues, ValidationIssue{
+					Type:        IssueMissingLink,
+					Path:        linkPath,
+					Package:     pkg.Name,
+					Description: "Link path must be relative, not absolute",
+				})
+				continue
+			}
+
 			fullPath := filepath.Join(targetDir.String(), linkPath)
-			issue := v.validateLink(ctx, fullPath, pkg.Name)
+			issue := v.validateLink(ctx, fullPath, linkPath, pkg.Name)
 			if issue != nil {
 				result.IsValid = false
 				result.Issues = append(result.Issues, *issue)
@@ -70,9 +82,11 @@ func (v *Validator) Validate(ctx context.Context, targetDir dot.TargetPath, mani
 }
 
 // validateLink checks if a specific link is valid
-func (v *Validator) validateLink(ctx context.Context, linkPath, pkgName string) *ValidationIssue {
+// fullPath is the absolute path to the link (targetDir + linkPath)
+// linkPath is the relative path from manifest (for display purposes)
+func (v *Validator) validateLink(ctx context.Context, fullPath, linkPath, pkgName string) *ValidationIssue {
 	// Check if link exists
-	exists := v.fs.Exists(ctx, linkPath)
+	exists := v.fs.Exists(ctx, fullPath)
 	if !exists {
 		return &ValidationIssue{
 			Type:        IssueMissingLink,
@@ -83,7 +97,7 @@ func (v *Validator) validateLink(ctx context.Context, linkPath, pkgName string) 
 	}
 
 	// Check if it's a symlink
-	isSymlink, err := v.fs.IsSymlink(ctx, linkPath)
+	isSymlink, err := v.fs.IsSymlink(ctx, fullPath)
 	if err != nil {
 		return &ValidationIssue{
 			Type:        IssueBrokenLink,
@@ -102,7 +116,7 @@ func (v *Validator) validateLink(ctx context.Context, linkPath, pkgName string) 
 	}
 
 	// Check if link target exists
-	target, err := v.fs.ReadLink(ctx, linkPath)
+	target, err := v.fs.ReadLink(ctx, fullPath)
 	if err != nil {
 		return &ValidationIssue{
 			Type:        IssueBrokenLink,
@@ -112,8 +126,16 @@ func (v *Validator) validateLink(ctx context.Context, linkPath, pkgName string) 
 		}
 	}
 
-	// Check if target exists
-	targetExists := v.fs.Exists(ctx, target)
+	// Resolve relative targets against the symlink's directory
+	resolvedTarget := target
+	if !filepath.IsAbs(target) {
+		// Relative target - resolve against symlink's directory
+		linkDir := filepath.Dir(fullPath)
+		resolvedTarget = filepath.Clean(filepath.Join(linkDir, target))
+	}
+
+	// Check if resolved target exists
+	targetExists := v.fs.Exists(ctx, resolvedTarget)
 	if !targetExists {
 		return &ValidationIssue{
 			Type:        IssueBrokenLink,

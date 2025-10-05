@@ -165,31 +165,40 @@ func (f *MemFS) MkdirAll(ctx context.Context, name string, perm fs.FileMode) err
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	// Create all parent directories
-	current := ""
+	// Clean the path
+	cleanPath := filepath.Clean(name)
 
-	for i, part := range filepath.SplitList(filepath.ToSlash(name)) {
-		if i == 0 && part == "" {
-			current = "/"
-			continue
+	// Ensure root exists
+	if _, exists := f.files["/"]; !exists {
+		f.files["/"] = &memFile{
+			mode:    0755 | fs.ModeDir,
+			modTime: time.Now(),
+			isDir:   true,
 		}
-		current = filepath.Join(current, part)
+	}
 
-		if _, exists := f.files[current]; !exists {
-			f.files[current] = &memFile{
+	// If requesting root, we're done
+	if cleanPath == "/" || cleanPath == "." {
+		return nil
+	}
+
+	// Create all ancestor directories by walking up the path
+	ancestors := []string{}
+	current := cleanPath
+	for current != "/" && current != "." {
+		ancestors = append(ancestors, current)
+		current = filepath.Dir(current)
+	}
+
+	// Create directories from root to leaf
+	for i := len(ancestors) - 1; i >= 0; i-- {
+		path := ancestors[i]
+		if _, exists := f.files[path]; !exists {
+			f.files[path] = &memFile{
 				mode:    perm | fs.ModeDir,
 				modTime: time.Now(),
 				isDir:   true,
 			}
-		}
-	}
-
-	// Ensure final directory exists
-	if _, exists := f.files[name]; !exists {
-		f.files[name] = &memFile{
-			mode:    perm | fs.ModeDir,
-			modTime: time.Now(),
-			isDir:   true,
 		}
 	}
 

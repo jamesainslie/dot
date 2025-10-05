@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,15 +17,20 @@ type Checkpoint struct {
 	ID         CheckpointID
 	CreatedAt  time.Time
 	Operations map[dot.OperationID]dot.Operation
+	mu         sync.RWMutex
 }
 
 // Record stores an executed operation in the checkpoint.
 func (c *Checkpoint) Record(id dot.OperationID, op dot.Operation) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.Operations[id] = op
 }
 
 // Lookup retrieves an operation from the checkpoint.
 func (c *Checkpoint) Lookup(id dot.OperationID) dot.Operation {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.Operations[id]
 }
 

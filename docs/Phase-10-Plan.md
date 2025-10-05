@@ -28,7 +28,7 @@ Phase 10 implements the imperative shell that executes plans with side effects. 
 
 The Executor sits at the boundary between pure planning and side-effecting execution:
 
-```
+```text
 Pure Functional Core → Plan (validated, sorted) → Executor → Filesystem Changes
                                                    ↓
                                               Checkpoint

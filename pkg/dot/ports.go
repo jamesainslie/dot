@@ -2,145 +2,157 @@ package dot
 
 import (
 	"context"
-	"io/fs"
+	"os"
 )
 
-// Filesystem Port
-
-// FS defines the interface for filesystem operations.
-// Implementations must handle context cancellation appropriately.
+// FS defines the filesystem abstraction interface.
 type FS interface {
 	// Read operations
-	Stat(ctx context.Context, name string) (FileInfo, error)
-	ReadDir(ctx context.Context, name string) ([]DirEntry, error)
-	ReadLink(ctx context.Context, name string) (string, error)
-	ReadFile(ctx context.Context, name string) ([]byte, error)
+	Stat(ctx context.Context, path string) (FileInfo, error)
+	ReadDir(ctx context.Context, path string) ([]DirEntry, error)
+	ReadLink(ctx context.Context, path string) (string, error)
+	ReadFile(ctx context.Context, path string) ([]byte, error)
 
 	// Write operations
-	WriteFile(ctx context.Context, name string, data []byte, perm fs.FileMode) error
-	Mkdir(ctx context.Context, name string, perm fs.FileMode) error
-	MkdirAll(ctx context.Context, name string, perm fs.FileMode) error
-	Remove(ctx context.Context, name string) error
-	RemoveAll(ctx context.Context, name string) error
+	WriteFile(ctx context.Context, path string, data []byte, perm os.FileMode) error
+	Mkdir(ctx context.Context, path string, perm os.FileMode) error
+	MkdirAll(ctx context.Context, path string, perm os.FileMode) error
+	Remove(ctx context.Context, path string) error
+	RemoveAll(ctx context.Context, path string) error
 	Symlink(ctx context.Context, oldname, newname string) error
-	Rename(ctx context.Context, oldname, newname string) error
+	Rename(ctx context.Context, oldpath, newpath string) error
 
-	// Query operations
-	Exists(ctx context.Context, name string) bool
-	IsDir(ctx context.Context, name string) (bool, error)
-	IsSymlink(ctx context.Context, name string) (bool, error)
+	// Queries
+	Exists(ctx context.Context, path string) bool
+	IsDir(ctx context.Context, path string) (bool, error)
+	IsSymlink(ctx context.Context, path string) (bool, error)
 }
 
 // FileInfo provides information about a file.
-// Matches fs.FileInfo from standard library for compatibility.
 type FileInfo interface {
 	Name() string
 	Size() int64
-	Mode() fs.FileMode
+	Mode() os.FileMode
 	ModTime() any
 	IsDir() bool
 	Sys() any
 }
 
 // DirEntry provides information about a directory entry.
-// Matches fs.DirEntry from standard library for compatibility.
 type DirEntry interface {
 	Name() string
 	IsDir() bool
-	Type() fs.FileMode
+	Type() os.FileMode
 	Info() (FileInfo, error)
 }
 
-// Logger Port
-
-// Logger defines the interface for structured logging.
-// All methods accept context for correlation and structured key-value pairs.
+// Logger defines the logging abstraction interface.
 type Logger interface {
-	// Debug logs a debug-level message.
-	Debug(ctx context.Context, msg string, args ...any)
-
-	// Info logs an info-level message.
-	Info(ctx context.Context, msg string, args ...any)
-
-	// Warn logs a warning-level message.
-	Warn(ctx context.Context, msg string, args ...any)
-
-	// Error logs an error-level message.
-	Error(ctx context.Context, msg string, args ...any)
-
-	// With returns a new logger with additional context fields.
-	With(args ...any) Logger
+	Debug(ctx context.Context, msg string, fields ...any)
+	Info(ctx context.Context, msg string, fields ...any)
+	Warn(ctx context.Context, msg string, fields ...any)
+	Error(ctx context.Context, msg string, fields ...any)
+	With(fields ...any) Logger
 }
 
-// Tracer Port
-
-// Tracer defines the interface for distributed tracing.
+// Tracer defines the distributed tracing abstraction interface.
 type Tracer interface {
-	// Start begins a new span with the given name and options.
-	// Returns a new context with the span and the span itself.
 	Start(ctx context.Context, name string, opts ...SpanOption) (context.Context, Span)
 }
 
-// Span represents a single unit of work in a trace.
+// Span represents a single span in a trace.
 type Span interface {
-	// End completes the span.
 	End()
-
-	// RecordError records an error on the span.
 	RecordError(err error)
-
-	// SetAttributes adds attributes to the span.
 	SetAttributes(attrs ...Attribute)
 }
 
 // SpanOption configures span creation.
-type SpanOption interface {
-	applySpanOption()
+type SpanOption func(*SpanConfig)
+
+// SpanConfig holds span configuration.
+type SpanConfig struct {
+	Attributes []Attribute
 }
 
-// Attribute represents a key-value attribute for spans.
+// Attribute represents a key-value span attribute.
 type Attribute struct {
 	Key   string
 	Value any
 }
 
-// Metrics Port
-
-// Metrics defines the interface for application metrics.
+// Metrics defines the metrics collection abstraction interface.
 type Metrics interface {
-	// Counter returns a counter metric.
 	Counter(name string, labels ...string) Counter
-
-	// Histogram returns a histogram metric.
 	Histogram(name string, labels ...string) Histogram
-
-	// Gauge returns a gauge metric.
 	Gauge(name string, labels ...string) Gauge
 }
 
-// Counter represents a monotonically increasing counter.
+// Counter represents a monotonically increasing metric.
 type Counter interface {
-	// Inc increments the counter by 1.
 	Inc(labels ...string)
-
-	// Add increments the counter by delta.
-	Add(delta float64, labels ...string)
+	Add(value float64, labels ...string)
 }
 
 // Histogram represents a distribution of values.
 type Histogram interface {
-	// Observe records a value in the histogram.
 	Observe(value float64, labels ...string)
 }
 
 // Gauge represents a value that can go up or down.
 type Gauge interface {
-	// Set sets the gauge to a specific value.
 	Set(value float64, labels ...string)
-
-	// Inc increments the gauge by 1.
 	Inc(labels ...string)
-
-	// Dec decrements the gauge by 1.
 	Dec(labels ...string)
 }
+
+// NewNoopTracer returns a tracer that does nothing.
+func NewNoopTracer() Tracer {
+	return &noopTracer{}
+}
+
+type noopTracer struct{}
+
+func (n *noopTracer) Start(ctx context.Context, name string, opts ...SpanOption) (context.Context, Span) {
+	return ctx, &noopSpan{}
+}
+
+type noopSpan struct{}
+
+func (n *noopSpan) End()                             {}
+func (n *noopSpan) RecordError(err error)            {}
+func (n *noopSpan) SetAttributes(attrs ...Attribute) {}
+
+// NewNoopMetrics returns a metrics implementation that does nothing.
+func NewNoopMetrics() Metrics {
+	return &noopMetrics{}
+}
+
+type noopMetrics struct{}
+
+func (n *noopMetrics) Counter(name string, labels ...string) Counter {
+	return &noopCounter{}
+}
+
+func (n *noopMetrics) Histogram(name string, labels ...string) Histogram {
+	return &noopHistogram{}
+}
+
+func (n *noopMetrics) Gauge(name string, labels ...string) Gauge {
+	return &noopGauge{}
+}
+
+type noopCounter struct{}
+
+func (n *noopCounter) Inc(labels ...string)                {}
+func (n *noopCounter) Add(value float64, labels ...string) {}
+
+type noopHistogram struct{}
+
+func (n *noopHistogram) Observe(value float64, labels ...string) {}
+
+type noopGauge struct{}
+
+func (n *noopGauge) Set(value float64, labels ...string) {}
+func (n *noopGauge) Inc(labels ...string)                {}
+func (n *noopGauge) Dec(labels ...string)                {}

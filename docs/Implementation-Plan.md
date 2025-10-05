@@ -423,36 +423,76 @@ Persistent state tracking for incremental operations.
 
 ---
 
-### Phase 12: Public Library API
+### Phase 12: Public Library API (Interface Pattern)
 
-Clean Go API for embedding in other tools.
+Clean Go API for embedding in other tools using interface-based pattern to avoid import cycles.
 
-#### 12.1: Client Facade
-- [ ] Implement pkg/dot/Client with configuration
-- [ ] Add Stow(), Unstow(), Restow(), Adopt() methods
-- [ ] Implement PlanStow(), PlanUnstow(), etc. for dry-run
-- [ ] Add Status(), Doctor(), List() query methods
-- [ ] Write API tests
+**Architecture**: Client interface in `pkg/dot/`, implementation in `internal/api/`
 
-#### 12.2: Configuration
-- [ ] Define Config struct with all options
-- [ ] Add New() constructor with validation
-- [ ] Implement default configuration
-- [ ] Write configuration tests
+#### 12.1: Client Interface
+- [ ] Define Client interface with all operations in pkg/dot/
+- [ ] Add registration mechanism for implementation
+- [ ] Write interface tests
 
-#### 12.3: Streaming API
-- [ ] Implement StowStream() returning operation channel
-- [ ] Add StreamMap(), StreamFilter() operators
-- [ ] Implement CollectStream() with error handling
-- [ ] Write streaming tests
+#### 12.2: Client Implementation
+- [ ] Implement client struct in internal/api/
+- [ ] Add Manage(), Unmanage(), Remanage(), Adopt() methods
+- [ ] Implement PlanManage(), PlanUnmanage(), etc. for dry-run
+- [ ] Add Status(), List() query methods
+- [ ] Write implementation tests
 
-#### 12.4: Type Exports
-- [ ] Export domain types in pkg/dot/types.go
-- [ ] Re-export Operation, Plan, Package, etc.
-- [ ] Write API documentation
-- [ ] Create examples/
+#### 12.3: Supporting Types
+- [ ] Define Status and PackageInfo types
+- [ ] Move ExecutionResult and Checkpoint to pkg/dot
+- [ ] Write type tests
 
-**Deliverable**: Clean, tested public library API
+#### 12.4: Documentation
+- [ ] Add comprehensive package documentation
+- [ ] Create example tests for godoc
+- [ ] Document interface pattern rationale
+
+**Deliverable**: Clean, tested public library API (interface-based)
+
+**See Also**: [Phase 12 Detailed Plan](./Phase-12-Plan.md)
+
+---
+
+### Phase 12b: Domain Architecture Refactoring (Optional Future Work)
+
+Refactor from interface pattern (Phase 12) to direct Client struct by moving domain types to `internal/domain/`.
+
+**Architecture**: Domain in `internal/domain/`, Client struct in `pkg/dot/`
+
+**Prerequisite**: Phase 12 stable and in production use
+
+#### 12b.1: Domain Type Migration
+- [ ] Create internal/domain/ package
+- [ ] Move all domain types from pkg/dot/ to internal/domain/
+- [ ] Create re-exports in pkg/dot/
+- [ ] Atomic migration per type with testing
+
+#### 12b.2: Internal Package Updates
+- [ ] Update all internal/* imports from pkg/dot to internal/domain
+- [ ] Test each package after update
+- [ ] Verify no breaking changes
+
+#### 12b.3: Client Simplification
+- [ ] Replace Client interface with concrete struct
+- [ ] Move implementation from internal/api to pkg/dot
+- [ ] Remove registration mechanism
+- [ ] Delete internal/api/ package
+
+#### 12b.4: Validation
+- [ ] Verify API compatibility
+- [ ] Run full test suite
+- [ ] Benchmark comparison
+- [ ] Update documentation
+
+**Deliverable**: Cleaner architecture with direct Client struct (no interface indirection)
+
+**Effort**: 12-16 hours of careful refactoring
+
+**See Also**: [Phase 12b Refactoring Plan](./Phase-12b-Refactor-Plan.md)
 
 ---
 

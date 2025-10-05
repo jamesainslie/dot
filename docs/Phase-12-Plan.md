@@ -1,83 +1,116 @@
-# Phase 12: Public Library API - Implementation Plan
+# Phase 12: Public Library API - Implementation Plan (Option 4: Interface Pattern)
 
 ## Overview
 
-Phase 12 delivers a clean, embeddable Go API for the dot library. This phase creates the public interface in `pkg/dot/` that wraps the internal functional core, providing a simple facade for library consumers using manage/unmanage/remanage terminology.
+Phase 12 delivers a clean, embeddable Go API for the dot library using an interface-based pattern to avoid import cycles. The Client interface lives in `pkg/dot/` while the implementation resides in `internal/api/`, allowing the implementation to import all necessary internal packages without creating circular dependencies.
+
+**Architecture Strategy**: Interface in public package, implementation in internal package.
 
 **Dependencies**: Phases 1-11 must be complete (domain model, ports, adapters, scanner, planner, resolver, sorter, pipeline orchestration, executor, manifest management).
 
 **Deliverable**: Clean, tested public library API suitable for embedding in other tools.
 
-## Design Principles
+## Architectural Pattern
 
-- **Library First**: Core has zero CLI dependencies, fully embeddable
-- **Type Safety**: Leverage domain types with compile-time guarantees
-- **Context-Aware**: All operations accept context.Context for cancellation
-- **Immutability**: Configuration objects are immutable
-- **Explicit Dependencies**: Dependency injection for all infrastructure
-- **No Global State**: Thread-safe by design
-- **Streaming Support**: Memory-efficient APIs for large operations
+### Import Cycle Resolution
 
-## Package Structure
+**The Problem**: Domain types in `pkg/dot/` are imported by `internal/*` packages, preventing `pkg/dot/` from importing those internal packages.
+
+**The Solution**: Interface segregation pattern
+```
+pkg/dot/client.go           # Client interface definition
+    ↓ depends on
+internal/api/client.go      # Client implementation
+    ↓ imports (no cycle!)
+internal/executor           # Can import pkg/dot for domain types
+internal/pipeline           # Can import pkg/dot for domain types
+```
+
+**Key Insight**: Interfaces can be defined without importing implementations. The constructor returns the interface, hiding the concrete type.
+
+### Package Structure
 
 ```
 pkg/dot/
-├── client.go          # Client facade with main API
-├── client_test.go     # Client tests
-├── config.go          # Configuration types and validation
-├── config_test.go     # Configuration tests
-├── streaming.go       # Streaming API and operators
-├── streaming_test.go  # Streaming tests
-├── types.go           # Re-exported domain types
-├── types_test.go      # Type export tests
+├── client.go          # Client interface + constructor
+├── client_test.go     # Client interface tests
+├── config.go          # Configuration (existing)
+├── config_test.go     # Configuration tests (existing)
+├── ports.go           # Port interfaces (existing)
+├── execution.go       # ExecutionResult (existing)
+├── checkpoint.go      # Checkpoint types (existing)
+├── types.go           # Domain type exports (existing)
 ├── doc.go             # Package documentation
 └── examples_test.go   # Example tests for godoc
 
-examples/
-├── basic/
-│   └── main.go        # Basic usage example
-├── streaming/
-│   └── main.go        # Streaming API example
-├── custom-fs/
-│   └── main.go        # Custom filesystem example
-└── embedded/
-    └── main.go        # Embedding in another tool
+internal/api/
+├── client.go          # Client implementation
+├── client_test.go     # Implementation tests
+├── manage.go          # Manage operations
+├── manage_test.go     # Manage tests
+├── status.go          # Status operations  
+└── status_test.go     # Status tests
 ```
+
+## Design Principles
+
+- **Interface Segregation**: Public interface, private implementation
+- **Zero Breaking Changes**: No modifications to Phases 1-11
+- **Type Safety**: Leverage existing domain types
+- **Context-Aware**: All operations accept context.Context
+- **Testability**: Interface enables easy mocking
+- **Future-Proof**: Implementation can evolve without API changes
 
 ---
 
 ## Task Breakdown
 
-### 12.1: Client Facade (Priority: High)
+### 12.1: Client Interface Definition (Priority: Critical)
 
-#### 12.1.1: Core Client Structure
+#### 12.1.1: Core Client Interface
 
 **File**: `pkg/dot/client.go`
 
 **Test-First Approach**:
 ```go
 // pkg/dot/client_test.go
-func TestNew_ValidConfig(t *testing.T) {
-    cfg := Config{
-        StowDir:   "/test/stow",
-        TargetDir: "/test/target",
-        FS:        memfs.New(),
-        Logger:    noop.NewLogger(),
-    }
-    
-    client, err := New(cfg)
-    require.NoError(t, err)
-    require.NotNil(t, client)
+package dot_test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/jamesainslie/dot/internal/adapters"
+	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/stretchr/testify/require"
+)
+
+func testConfig() dot.Config {
+	return dot.Config{
+		StowDir:   "/test/stow",
+		TargetDir: "/test/target",
+		FS:        adapters.NewMemFS(),
+		Logger:    adapters.NewNoopLogger(),
+	}
 }
 
-func TestNew_InvalidConfig(t *testing.T) {
-    cfg := Config{
-        StowDir: "relative/path", // Invalid
-    }
-    
-    client, err := New(cfg)
-    require.Error(t, err)
-    require.Nil(t, client)
+func TestNewClient_ValidConfig(t *testing.T) {
+	cfg := testConfig()
+
+	client, err := dot.NewClient(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+}
+
+func TestNewClient_InvalidConfig(t *testing.T) {
+	cfg := dot.Config{
+		StowDir: "relative/path", // Invalid
+	}
+
+	client, err := dot.NewClient(cfg)
+	require.Error(t, err)
+	require.Nil(t, client)
+	require.Contains(t, err.Error(), "invalid configuration")
 }
 ```
 
@@ -86,154 +119,322 @@ func TestNew_InvalidConfig(t *testing.T) {
 // pkg/dot/client.go
 package dot
 
-import (
-    "context"
-    "fmt"
-    
-    "github.com/yourorg/dot/internal/executor"
-    "github.com/yourorg/dot/internal/pipeline"
-    "github.com/yourorg/dot/pkg/dot/ports"
-)
+import "context"
 
-// Client provides the main API for dot operations.
-type Client struct {
-    config   Config
-    pipeline *pipeline.Engine
-    executor *executor.Executor
+// Client provides the high-level API for dot operations.
+// This interface abstracts the internal pipeline and executor orchestration,
+// providing a simple facade for library consumers.
+type Client interface {
+	// Manage operations
+	Manage(ctx context.Context, packages ...string) error
+	PlanManage(ctx context.Context, packages ...string) (Plan, error)
+
+	// Unmanage operations
+	Unmanage(ctx context.Context, packages ...string) error
+	PlanUnmanage(ctx context.Context, packages ...string) (Plan, error)
+
+	// Remanage operations
+	Remanage(ctx context.Context, packages ...string) error
+	PlanRemanage(ctx context.Context, packages ...string) (Plan, error)
+
+	// Adopt operations
+	Adopt(ctx context.Context, files []string, pkg string) error
+	PlanAdopt(ctx context.Context, files []string, pkg string) (Plan, error)
+
+	// Query operations
+	Status(ctx context.Context, packages ...string) (Status, error)
+	List(ctx context.Context) ([]PackageInfo, error)
+
+	// Configuration
+	Config() Config
 }
 
-// New creates a new Client with the given configuration.
+// NewClient creates a new Client with the given configuration.
 // Returns an error if configuration is invalid.
-func New(cfg Config) (*Client, error) {
-    // Validate configuration
-    if err := cfg.Validate(); err != nil {
-        return nil, fmt.Errorf("invalid configuration: %w", err)
-    }
-    
-    // Apply defaults
-    cfg = cfg.withDefaults()
-    
-    // Build pipeline engine
-    pipe := pipeline.New(pipeline.Opts{
-        FS:       cfg.FS,
-        Logger:   cfg.Logger,
-        Tracer:   cfg.Tracer,
-        Metrics:  cfg.Metrics,
-        LinkMode: cfg.LinkMode,
-        Folding:  cfg.Folding,
-        Ignore:   cfg.Ignore,
-    })
-    
-    // Build executor
-    exec := executor.New(executor.Opts{
-        FS:     cfg.FS,
-        Logger: cfg.Logger,
-        Tracer: cfg.Tracer,
-    })
-    
-    return &Client{
-        config:   cfg,
-        pipeline: pipe,
-        executor: exec,
-    }, nil
+//
+// The returned Client is safe for concurrent use from multiple goroutines.
+func NewClient(cfg Config) (Client, error) {
+	return newClientImpl(cfg)
+}
+
+// newClientImpl is implemented in internal/api to avoid import cycles.
+var newClientImpl func(Config) (Client, error)
+
+// RegisterClientImpl is called by internal/api during initialization.
+// This allows the implementation to be in internal/api while the interface
+// remains in pkg/dot.
+func RegisterClientImpl(fn func(Config) (Client, error)) {
+	newClientImpl = fn
 }
 ```
 
 **Tasks**:
-- [ ] Write Client struct definition
-- [ ] Write New() constructor with validation
-- [ ] Add Config struct (see 12.2)
-- [ ] Write tests for valid configuration
-- [ ] Write tests for invalid configuration
-- [ ] Test default value application
+- [ ] Define Client interface with all operations
+- [ ] Add NewClient constructor function
+- [ ] Add registration mechanism for implementation
+- [ ] Write tests for constructor with valid config
+- [ ] Write tests for constructor with invalid config
+- [ ] Document interface methods
 
-**Commit**: `feat(api): add Client facade with constructor`
+**Commit**: `feat(api): define Client interface for public API`
 
 ---
 
-#### 12.1.2: Manage Operations
+### 12.2: Client Implementation (Priority: Critical)
+
+#### 12.2.1: Implementation Structure
+
+**File**: `internal/api/client.go`
+
+**Implementation**:
+```go
+// Package api provides the internal implementation of the public Client interface.
+// This package is internal to prevent direct use - consumers should use pkg/dot.
+package api
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jamesainslie/dot/internal/executor"
+	"github.com/jamesainslie/dot/internal/manifest"
+	"github.com/jamesainslie/dot/internal/pipeline"
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
+func init() {
+	// Register our implementation with pkg/dot
+	dot.RegisterClientImpl(newClient)
+}
+
+// client implements the dot.Client interface.
+type client struct {
+	config   dot.Config
+	stowPipe *pipeline.StowPipeline
+	executor *executor.Executor
+	manifest manifest.Store
+}
+
+// newClient creates a new client implementation.
+func newClient(cfg dot.Config) (dot.Client, error) {
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	// Apply defaults
+	cfg = cfg.WithDefaults()
+
+	// Create stow pipeline
+	stowPipe := pipeline.NewStowPipeline(pipeline.StowPipelineOpts{
+		FS:     cfg.FS,
+		Logger: cfg.Logger,
+		Tracer: cfg.Tracer,
+	})
+
+	// Create executor
+	exec := executor.New(executor.Opts{
+		FS:     cfg.FS,
+		Logger: cfg.Logger,
+		Tracer: cfg.Tracer,
+	})
+
+	// Create manifest store
+	manifestStore := manifest.NewFSStore(cfg.FS)
+
+	return &client{
+		config:   cfg,
+		stowPipe: stowPipe,
+		executor: exec,
+		manifest: manifestStore,
+	}, nil
+}
+
+// Config returns the client's configuration.
+func (c *client) Config() dot.Config {
+	return c.config
+}
+```
+
+**Tasks**:
+- [ ] Create internal/api package
+- [ ] Implement client struct
+- [ ] Implement newClient constructor
+- [ ] Add init() to register implementation
+- [ ] Implement Config() accessor
+- [ ] Write tests for client creation
+- [ ] Verify registration mechanism works
+
+**Commit**: `feat(api): implement Client interface in internal package`
+
+---
+
+#### 12.2.2: Manage Operations
 
 **Test-First Approach**:
 ```go
+// internal/api/manage_test.go
+package api
+
+import (
+	"context"
+	"path/filepath"
+	"testing"
+
+	"github.com/jamesainslie/dot/internal/adapters"
+	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/stretchr/testify/require"
+)
+
+func setupTestFixtures(t *testing.T, fs dot.FS, packages ...string) {
+	t.Helper()
+	ctx := context.Background()
+
+	// Create stow directory structure
+	for _, pkg := range packages {
+		pkgDir := filepath.Join("/test/stow", pkg)
+		require.NoError(t, fs.MkdirAll(ctx, pkgDir, 0755))
+
+		// Create sample dotfile
+		dotfile := filepath.Join(pkgDir, "dot-config")
+		require.NoError(t, fs.WriteFile(ctx, dotfile, []byte("test content"), 0644))
+	}
+
+	// Create target directory
+	require.NoError(t, fs.MkdirAll(ctx, "/test/target", 0755))
+}
+
 func TestClient_Manage(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    err = client.Manage(ctx, "package1")
-    require.NoError(t, err)
-    
-    // Verify links created
-    assertLinkExists(t, fs, "/test/target/.bashrc")
+	fs := adapters.NewMemFS()
+	setupTestFixtures(t, fs, "package1")
+
+	cfg := dot.Config{
+		StowDir:   "/test/stow",
+		TargetDir: "/test/target",
+		FS:        fs,
+		Logger:    adapters.NewNoopLogger(),
+	}
+
+	client, err := newClient(cfg)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	err = client.Manage(ctx, "package1")
+	require.NoError(t, err)
+
+	// Verify link created
+	isLink, err := fs.IsSymlink(ctx, "/test/target/.config")
+	require.NoError(t, err)
+	require.True(t, isLink)
 }
 
 func TestClient_PlanManage(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    plan, err := client.PlanManage(ctx, "package1")
-    require.NoError(t, err)
-    require.NotEmpty(t, plan.Operations())
+	fs := adapters.NewMemFS()
+	setupTestFixtures(t, fs, "package1")
+
+	cfg := dot.Config{
+		StowDir:   "/test/stow",
+		TargetDir: "/test/target",
+		FS:        fs,
+		Logger:    adapters.NewNoopLogger(),
+	}
+
+	client, err := newClient(cfg)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	plan, err := client.PlanManage(ctx, "package1")
+	require.NoError(t, err)
+	require.NotEmpty(t, plan.Operations)
 }
 
 func TestClient_Manage_DryRun(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    cfg.DryRun = true
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    err = client.Manage(ctx, "package1")
-    require.NoError(t, err)
-    
-    // Verify no changes made
-    assertLinkNotExists(t, fs, "/test/target/.bashrc")
+	fs := adapters.NewMemFS()
+	setupTestFixtures(t, fs, "package1")
+
+	cfg := dot.Config{
+		StowDir:   "/test/stow",
+		TargetDir: "/test/target",
+		FS:        fs,
+		Logger:    adapters.NewNoopLogger(),
+		DryRun:    true,
+	}
+
+	client, err := newClient(cfg)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	err = client.Manage(ctx, "package1")
+	require.NoError(t, err)
+
+	// Verify no links created (dry-run)
+	exists := fs.Exists(ctx, "/test/target/.config")
+	require.False(t, exists)
 }
 ```
 
 **Implementation**:
 ```go
+// internal/api/manage.go
+package api
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jamesainslie/dot/internal/pipeline"
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
 // Manage installs the specified packages by creating symlinks.
-// If DryRun is enabled, returns the plan without executing.
-func (c *Client) Manage(ctx context.Context, packages ...string) error {
-    plan, err := c.PlanManage(ctx, packages...)
-    if err != nil {
-        return err
-    }
-    
-    if c.config.DryRun {
-        return c.renderPlan(plan)
-    }
-    
-    result := c.executor.Execute(ctx, plan)
-    _, err = result.Unwrap()
-    return err
+func (c *client) Manage(ctx context.Context, packages ...string) error {
+	plan, err := c.PlanManage(ctx, packages...)
+	if err != nil {
+		return err
+	}
+
+	if c.config.DryRun {
+		c.config.Logger.Info(ctx, "dry_run_mode", "operations", len(plan.Operations))
+		return nil
+	}
+
+	result := c.executor.Execute(ctx, plan)
+	if !result.IsOk() {
+		return result.UnwrapErr()
+	}
+
+	execResult := result.Unwrap()
+	if !execResult.Success() {
+		return fmt.Errorf("execution failed: %d operations failed", len(execResult.Failed))
+	}
+
+	return nil
 }
 
-// PlanManage computes the execution plan for managing packages
-// without applying changes.
-func (c *Client) PlanManage(ctx context.Context, packages ...string) (Plan, error) {
-    input := scanner.ScanInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-        Packages:  packages,
-        Ignore:    c.config.Ignore,
-    }
-    
-    result := c.pipeline.Manage(ctx, input)
-    return result.Unwrap()
+// PlanManage computes the execution plan for managing packages without applying changes.
+func (c *client) PlanManage(ctx context.Context, packages ...string) (dot.Plan, error) {
+	pkgPath, err := dot.NewPackagePath(c.config.StowDir)
+	if err != nil {
+		return dot.Plan{}, fmt.Errorf("invalid stow directory: %w", err)
+	}
+
+	targetPath, err := dot.NewTargetPath(c.config.TargetDir)
+	if err != nil {
+		return dot.Plan{}, fmt.Errorf("invalid target directory: %w", err)
+	}
+
+	input := pipeline.StowInput{
+		StowDir:  pkgPath,
+		TargetDir: targetPath,
+		Packages: packages,
+	}
+
+	planResult := c.stowPipe.Execute(ctx, input)
+	if !planResult.IsOk() {
+		return dot.Plan{}, planResult.UnwrapErr()
+	}
+
+	return planResult.Unwrap(), nil
 }
 ```
 
@@ -247,80 +448,84 @@ func (c *Client) PlanManage(ctx context.Context, packages ...string) (Plan, erro
 - [ ] Write tests for non-existent package
 - [ ] Test context cancellation
 
-**Commit**: `feat(api): implement Manage and PlanManage methods`
+**Commit**: `feat(api): implement Manage and PlanManage operations`
 
 ---
 
-#### 12.1.3: Unmanage Operations
-
-**Test-First Approach**:
-```go
-func TestClient_Unmanage(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    
-    // Manage first
-    err = client.Manage(ctx, "package1")
-    require.NoError(t, err)
-    
-    // Then unmanage
-    err = client.Unmanage(ctx, "package1")
-    require.NoError(t, err)
-    
-    // Verify links removed
-    assertLinkNotExists(t, fs, "/test/target/.bashrc")
-}
-
-func TestClient_PlanUnmanage(t *testing.T) {
-    fs := memfs.New()
-    setupInstalledPackage(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    plan, err := client.PlanUnmanage(ctx, "package1")
-    require.NoError(t, err)
-    require.NotEmpty(t, plan.Operations())
-}
-```
+#### 12.2.3: Unmanage Operations
 
 **Implementation**:
 ```go
+// internal/api/unmanage.go
+package api
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
 // Unmanage removes the specified packages by deleting symlinks.
-func (c *Client) Unmanage(ctx context.Context, packages ...string) error {
-    plan, err := c.PlanUnmanage(ctx, packages...)
-    if err != nil {
-        return err
-    }
-    
-    if c.config.DryRun {
-        return c.renderPlan(plan)
-    }
-    
-    result := c.executor.Execute(ctx, plan)
-    _, err = result.Unwrap()
-    return err
+func (c *client) Unmanage(ctx context.Context, packages ...string) error {
+	plan, err := c.PlanUnmanage(ctx, packages...)
+	if err != nil {
+		return err
+	}
+
+	if c.config.DryRun {
+		c.config.Logger.Info(ctx, "dry_run_mode", "operations", len(plan.Operations))
+		return nil
+	}
+
+	result := c.executor.Execute(ctx, plan)
+	if !result.IsOk() {
+		return result.UnwrapErr()
+	}
+
+	execResult := result.Unwrap()
+	if !execResult.Success() {
+		return fmt.Errorf("execution failed: %d operations failed", len(execResult.Failed))
+	}
+
+	return nil
 }
 
 // PlanUnmanage computes the execution plan for unmanaging packages.
-func (c *Client) PlanUnmanage(ctx context.Context, packages ...string) (Plan, error) {
-    input := scanner.ScanInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-        Packages:  packages,
-        Ignore:    c.config.Ignore,
-    }
-    
-    result := c.pipeline.Unmanage(ctx, input)
-    return result.Unwrap()
+func (c *client) PlanUnmanage(ctx context.Context, packages ...string) (dot.Plan, error) {
+	// Load manifest to find installed packages
+	targetPath, err := dot.NewTargetPath(c.config.TargetDir)
+	if err != nil {
+		return dot.Plan{}, fmt.Errorf("invalid target directory: %w", err)
+	}
+
+	manifestResult := c.manifest.Load(ctx, targetPath)
+	if !manifestResult.IsOk() {
+		return dot.Plan{}, fmt.Errorf("failed to load manifest: %w", manifestResult.UnwrapErr())
+	}
+
+	manifest := manifestResult.Unwrap()
+
+	// Create unmanage operations for specified packages
+	var operations []dot.Operation
+	for _, pkg := range packages {
+		pkgInfo, exists := manifest.Packages[pkg]
+		if !exists {
+			c.config.Logger.Warn(ctx, "package_not_installed", "package", pkg)
+			continue
+		}
+
+		// Create delete operations for all package links
+		for _, link := range pkgInfo.Links {
+			operations = append(operations, dot.LinkDelete{
+				ID:     dot.NewOperationID(),
+				Target: link,
+			})
+		}
+	}
+
+	// Build plan from operations
+	return dot.NewPlan(operations, nil)
 }
 ```
 
@@ -328,1287 +533,437 @@ func (c *Client) PlanUnmanage(ctx context.Context, packages ...string) (Plan, er
 - [ ] Implement Unmanage() method
 - [ ] Implement PlanUnmanage() method
 - [ ] Write tests for successful unmanage
-- [ ] Write tests for unmanage of non-installed package
+- [ ] Write tests for unmanage non-installed package
 - [ ] Write tests for dry-run mode
-- [ ] Write tests for partial unmanage
 - [ ] Test context cancellation
 
-**Commit**: `feat(api): implement Unmanage and PlanUnmanage methods`
+**Commit**: `feat(api): implement Unmanage and PlanUnmanage operations`
 
 ---
 
-#### 12.1.4: Remanage Operations
-
-**Test-First Approach**:
-```go
-func TestClient_Remanage(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    
-    // Initial manage
-    err = client.Manage(ctx, "package1")
-    require.NoError(t, err)
-    
-    // Modify package
-    modifyPackage(fs, "package1")
-    
-    // Remanage
-    err = client.Remanage(ctx, "package1")
-    require.NoError(t, err)
-    
-    // Verify updated links
-    assertLinkPointsTo(t, fs, "/test/target/.bashrc", "/test/stow/package1/dot-bashrc")
-}
-
-func TestClient_Remanage_Incremental(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1", "package2")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    
-    // Initial manage
-    err = client.Manage(ctx, "package1", "package2")
-    require.NoError(t, err)
-    
-    // Modify only package1
-    modifyPackage(fs, "package1")
-    
-    // Remanage - should only process package1
-    err = client.Remanage(ctx, "package1", "package2")
-    require.NoError(t, err)
-    
-    // Verify incremental behavior via logs/metrics
-}
-```
+#### 12.2.4: Remanage Operations
 
 **Implementation**:
 ```go
+// internal/api/remanage.go
+package api
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jamesainslie/dot/internal/pipeline"
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
 // Remanage reinstalls packages by unmanaging then managing.
-// Uses incremental planning to skip unchanged packages.
-func (c *Client) Remanage(ctx context.Context, packages ...string) error {
-    plan, err := c.PlanRemanage(ctx, packages...)
-    if err != nil {
-        return err
-    }
-    
-    if c.config.DryRun {
-        return c.renderPlan(plan)
-    }
-    
-    result := c.executor.Execute(ctx, plan)
-    _, err = result.Unwrap()
-    return err
+// Uses incremental planning to skip unchanged packages when possible.
+func (c *client) Remanage(ctx context.Context, packages ...string) error {
+	plan, err := c.PlanRemanage(ctx, packages...)
+	if err != nil {
+		return err
+	}
+
+	if c.config.DryRun {
+		c.config.Logger.Info(ctx, "dry_run_mode", "operations", len(plan.Operations))
+		return nil
+	}
+
+	result := c.executor.Execute(ctx, plan)
+	if !result.IsOk() {
+		return result.UnwrapErr()
+	}
+
+	execResult := result.Unwrap()
+	if !execResult.Success() {
+		return fmt.Errorf("execution failed: %d operations failed", len(execResult.Failed))
+	}
+
+	return nil
 }
 
 // PlanRemanage computes an incremental remanage plan.
 // Only processes packages that changed since last operation.
-func (c *Client) PlanRemanage(ctx context.Context, packages ...string) (Plan, error) {
-    input := scanner.ScanInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-        Packages:  packages,
-        Ignore:    c.config.Ignore,
-    }
-    
-    result := c.pipeline.Remanage(ctx, input)
-    return result.Unwrap()
+func (c *client) PlanRemanage(ctx context.Context, packages ...string) (dot.Plan, error) {
+	// For now, remanage is implemented as unmanage + manage
+	// Future: Add incremental planning using content hashes
+
+	// Get current plan
+	managePlan, err := c.PlanManage(ctx, packages...)
+	if err != nil {
+		return dot.Plan{}, err
+	}
+
+	// For remanage, we want to remove existing then reinstall
+	// This is a simplified implementation
+	// Full incremental planning would check hashes and skip unchanged packages
+
+	return managePlan, nil
 }
 ```
 
 **Tasks**:
 - [ ] Implement Remanage() method
-- [ ] Implement PlanRemanage() method
+- [ ] Implement PlanRemanage() method  
 - [ ] Write tests for successful remanage
-- [ ] Write tests for incremental remanage
-- [ ] Write tests for remanage with no changes
+- [ ] Write tests for remanage with changes
 - [ ] Write tests for dry-run mode
 - [ ] Test context cancellation
 
-**Commit**: `feat(api): implement Remanage and PlanRemanage methods`
+**Commit**: `feat(api): implement Remanage and PlanRemanage operations`
 
 ---
 
-#### 12.1.5: Adopt Operations
-
-**Test-First Approach**:
-```go
-func TestClient_Adopt(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    // Create existing file in target
-    writeFile(t, fs, "/test/target/.bashrc", "content")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    err = client.Adopt(ctx, []string{".bashrc"}, "package1")
-    require.NoError(t, err)
-    
-    // Verify file moved and link created
-    assertFileExists(t, fs, "/test/stow/package1/dot-bashrc")
-    assertLinkExists(t, fs, "/test/target/.bashrc")
-    assertFileContent(t, fs, "/test/stow/package1/dot-bashrc", "content")
-}
-
-func TestClient_PlanAdopt(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    writeFile(t, fs, "/test/target/.bashrc", "content")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    plan, err := client.PlanAdopt(ctx, []string{".bashrc"}, "package1")
-    require.NoError(t, err)
-    require.NotEmpty(t, plan.Operations())
-}
-```
+#### 12.2.5: Adopt Operations
 
 **Implementation**:
 ```go
+// internal/api/adopt.go
+package api
+
+import (
+	"context"
+	"fmt"
+	"path/filepath"
+
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
 // Adopt moves existing files from target into package then creates symlinks.
-func (c *Client) Adopt(ctx context.Context, files []string, pkg string) error {
-    plan, err := c.PlanAdopt(ctx, files, pkg)
-    if err != nil {
-        return err
-    }
-    
-    if c.config.DryRun {
-        return c.renderPlan(plan)
-    }
-    
-    result := c.executor.Execute(ctx, plan)
-    _, err = result.Unwrap()
-    return err
+func (c *client) Adopt(ctx context.Context, files []string, pkg string) error {
+	plan, err := c.PlanAdopt(ctx, files, pkg)
+	if err != nil {
+		return err
+	}
+
+	if c.config.DryRun {
+		c.config.Logger.Info(ctx, "dry_run_mode", "operations", len(plan.Operations))
+		return nil
+	}
+
+	result := c.executor.Execute(ctx, plan)
+	if !result.IsOk() {
+		return result.UnwrapErr()
+	}
+
+	execResult := result.Unwrap()
+	if !execResult.Success() {
+		return fmt.Errorf("execution failed: %d operations failed", len(execResult.Failed))
+	}
+
+	return nil
 }
 
 // PlanAdopt computes the execution plan for adopting files.
-func (c *Client) PlanAdopt(ctx context.Context, files []string, pkg string) (Plan, error) {
-    input := adopt.AdoptInput{
-        Package:   pkg,
-        Files:     files,
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-    }
-    
-    result := c.pipeline.Adopt(ctx, input)
-    return result.Unwrap()
+func (c *client) PlanAdopt(ctx context.Context, files []string, pkg string) (dot.Plan, error) {
+	var operations []dot.Operation
+
+	for _, file := range files {
+		// Build paths
+		targetFile := filepath.Join(c.config.TargetDir, file)
+		
+		// Determine package destination (with dot- prefix translation)
+		pkgFile := translateToDotfile(file)
+		pkgPath := filepath.Join(c.config.StowDir, pkg, pkgFile)
+
+		// Create operations: move file, then create link
+		operations = append(operations,
+			dot.FileMove{
+				ID:   dot.NewOperationID(),
+				From: targetFile,
+				To:   pkgPath,
+			},
+			dot.LinkCreate{
+				ID:     dot.NewOperationID(),
+				Source: pkgPath,
+				Target: targetFile,
+				Mode:   c.config.LinkMode,
+			},
+		)
+	}
+
+	return dot.NewPlan(operations, nil)
+}
+
+// translateToDotfile converts a filename to its package representation.
+// Example: ".bashrc" -> "dot-bashrc"
+func translateToDotfile(name string) string {
+	if len(name) > 0 && name[0] == '.' {
+		return "dot-" + name[1:]
+	}
+	return name
 }
 ```
 
 **Tasks**:
-- [ ] Implement Adopt() method with files-first signature
-- [ ] Implement PlanAdopt() method with files-first signature
+- [ ] Implement Adopt() method
+- [ ] Implement PlanAdopt() method
+- [ ] Implement translateToDotfile() helper
 - [ ] Write tests for successful adoption
-- [ ] Write tests for adopting non-existent file
-- [ ] Write tests for adopting multiple files
+- [ ] Write tests for multiple files
 - [ ] Write tests for dry-run mode
 - [ ] Test content preservation
-- [ ] Test context cancellation
 
-**Commit**: `feat(api): implement Adopt and PlanAdopt methods`
+**Commit**: `feat(api): implement Adopt and PlanAdopt operations`
 
 ---
 
-#### 12.1.6: Query Methods
-
-**Test-First Approach**:
-```go
-func TestClient_Status(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    
-    // Manage package
-    err = client.Manage(ctx, "package1")
-    require.NoError(t, err)
-    
-    // Get status
-    status, err := client.Status(ctx, "package1")
-    require.NoError(t, err)
-    require.Len(t, status.Packages, 1)
-    require.Equal(t, "package1", status.Packages[0].Name)
-}
-
-func TestClient_Doctor(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    
-    // Create broken link
-    createBrokenLink(fs, "/test/target/.vimrc")
-    
-    // Run doctor
-    report, err := client.Doctor(ctx)
-    require.NoError(t, err)
-    require.NotEmpty(t, report.BrokenLinks)
-}
-
-func TestClient_List(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1", "package2")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    
-    // Manage packages
-    err = client.Manage(ctx, "package1", "package2")
-    require.NoError(t, err)
-    
-    // List installed
-    packages, err := client.List(ctx)
-    require.NoError(t, err)
-    require.Len(t, packages, 2)
-}
-```
+#### 12.2.6: Query Operations
 
 **Implementation**:
 ```go
-// Status reports the current installation state for packages.
-func (c *Client) Status(ctx context.Context, packages ...string) (Status, error) {
-    input := scanner.ScanInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-        Packages:  packages,
-        Ignore:    c.config.Ignore,
-    }
-    
-    result := c.pipeline.Status(ctx, input)
-    return result.Unwrap()
-}
+// internal/api/status.go
+package api
 
-// Doctor validates installation consistency and detects issues.
-func (c *Client) Doctor(ctx context.Context) (DiagnosticReport, error) {
-    input := doctor.DoctorInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-    }
-    
-    result := c.pipeline.Doctor(ctx, input)
-    return result.Unwrap()
+import (
+	"context"
+
+	"github.com/jamesainslie/dot/pkg/dot"
+)
+
+// Status reports the current installation state for packages.
+func (c *client) Status(ctx context.Context, packages ...string) (dot.Status, error) {
+	targetPath, err := dot.NewTargetPath(c.config.TargetDir)
+	if err != nil {
+		return dot.Status{}, fmt.Errorf("invalid target directory: %w", err)
+	}
+
+	manifestResult := c.manifest.Load(ctx, targetPath)
+	if !manifestResult.IsOk() {
+		return dot.Status{}, fmt.Errorf("failed to load manifest: %w", manifestResult.UnwrapErr())
+	}
+
+	manifest := manifestResult.Unwrap()
+
+	// Filter to requested packages if specified
+	var pkgInfos []dot.PackageInfo
+	if len(packages) == 0 {
+		// Return all packages
+		for _, info := range manifest.Packages {
+			pkgInfos = append(pkgInfos, info)
+		}
+	} else {
+		// Return only specified packages
+		for _, pkg := range packages {
+			if info, exists := manifest.Packages[pkg]; exists {
+				pkgInfos = append(pkgInfos, info)
+			}
+		}
+	}
+
+	return dot.Status{
+		Packages: pkgInfos,
+	}, nil
 }
 
 // List returns all installed packages from the manifest.
-func (c *Client) List(ctx context.Context) ([]PackageInfo, error) {
-    manifest, err := c.loadManifest(ctx)
-    if err != nil {
-        return nil, err
-    }
-    
-    packages := make([]PackageInfo, 0, len(manifest.Packages))
-    for _, pkg := range manifest.Packages {
-        packages = append(packages, pkg)
-    }
-    
-    return packages, nil
+func (c *client) List(ctx context.Context) ([]dot.PackageInfo, error) {
+	return c.Status(ctx)
 }
 ```
 
 **Tasks**:
 - [ ] Implement Status() method
-- [ ] Implement Doctor() method
 - [ ] Implement List() method
-- [ ] Write tests for Status with installed packages
-- [ ] Write tests for Status with no packages
-- [ ] Write tests for Doctor with issues
-- [ ] Write tests for Doctor with healthy state
+- [ ] Write tests for Status with packages
+- [ ] Write tests for Status all packages
 - [ ] Write tests for List
-- [ ] Test context cancellation
+- [ ] Test with no manifest
 
-**Commit**: `feat(api): implement Status, Doctor, and List query methods`
+**Commit**: `feat(api): implement Status and List query operations`
 
 ---
 
-### 12.2: Configuration (Priority: High)
+### 12.3: Status Types (Priority: High)
 
-#### 12.2.1: Config Structure
+Since Status and PackageInfo are referenced by the Client interface, we need to define them:
 
-**Test-First Approach**:
-```go
-// pkg/dot/config_test.go
-func TestConfig_Validate_Valid(t *testing.T) {
-    cfg := Config{
-        StowDir:   "/test/stow",
-        TargetDir: "/test/target",
-        FS:        memfs.New(),
-        Logger:    noop.NewLogger(),
-    }
-    
-    err := cfg.Validate()
-    require.NoError(t, err)
-}
-
-func TestConfig_Validate_RelativeStowDir(t *testing.T) {
-    cfg := Config{
-        StowDir:   "relative/path",
-        TargetDir: "/test/target",
-    }
-    
-    err := cfg.Validate()
-    require.Error(t, err)
-    require.Contains(t, err.Error(), "stowDir")
-}
-
-func TestConfig_Validate_RelativeTargetDir(t *testing.T) {
-    cfg := Config{
-        StowDir:   "/test/stow",
-        TargetDir: "relative/path",
-    }
-    
-    err := cfg.Validate()
-    require.Error(t, err)
-    require.Contains(t, err.Error(), "targetDir")
-}
-```
+**File**: `pkg/dot/status.go`
 
 **Implementation**:
 ```go
-// pkg/dot/config.go
 package dot
 
-import (
-    "fmt"
-    "path/filepath"
-    
-    "github.com/yourorg/dot/internal/ignore"
-    "github.com/yourorg/dot/pkg/dot/ports"
-)
+import "time"
 
-// Config holds configuration for the dot Client.
-type Config struct {
-    // StowDir is the source directory containing packages.
-    // Must be an absolute path.
-    StowDir string
-    
-    // TargetDir is the destination directory for symlinks.
-    // Must be an absolute path.
-    TargetDir string
-    
-    // LinkMode specifies whether to create relative or absolute symlinks.
-    LinkMode LinkMode
-    
-    // Folding enables directory-level linking when all contents
-    // belong to a single package.
-    Folding bool
-    
-    // DryRun enables preview mode without applying changes.
-    DryRun bool
-    
-    // Verbosity controls logging detail (0=quiet, 1=info, 2=debug, 3=trace).
-    Verbosity int
-    
-    // Ignore contains patterns for excluding files from operations.
-    Ignore ignore.IgnoreSet
-    
-    // BackupDir specifies where to store backup files.
-    // If empty, backups go to <TargetDir>/.dot-backup/
-    BackupDir string
-    
-    // Concurrency limits parallel operation execution.
-    // If zero, defaults to runtime.NumCPU().
-    Concurrency int
-    
-    // Infrastructure dependencies (required)
-    FS      ports.FS
-    Logger  ports.Logger
-    Tracer  ports.Tracer
-    Metrics ports.Metrics
+// Status represents the installation state of packages.
+type Status struct {
+	Packages []PackageInfo
 }
-
-// LinkMode specifies symlink creation strategy.
-type LinkMode int
-
-const (
-    // LinkRelative creates relative symlinks (default).
-    LinkRelative LinkMode = iota
-    // LinkAbsolute creates absolute symlinks.
-    LinkAbsolute
-)
-
-// Validate checks that the configuration is valid.
-func (c Config) Validate() error {
-    if c.StowDir == "" {
-        return fmt.Errorf("stowDir is required")
-    }
-    if !filepath.IsAbs(c.StowDir) {
-        return fmt.Errorf("stowDir must be absolute path: %s", c.StowDir)
-    }
-    
-    if c.TargetDir == "" {
-        return fmt.Errorf("targetDir is required")
-    }
-    if !filepath.IsAbs(c.TargetDir) {
-        return fmt.Errorf("targetDir must be absolute path: %s", c.TargetDir)
-    }
-    
-    if c.FS == nil {
-        return fmt.Errorf("FS is required")
-    }
-    
-    if c.Logger == nil {
-        return fmt.Errorf("Logger is required")
-    }
-    
-    if c.Verbosity < 0 {
-        return fmt.Errorf("verbosity cannot be negative")
-    }
-    
-    if c.Concurrency < 0 {
-        return fmt.Errorf("concurrency cannot be negative")
-    }
-    
-    return nil
-}
-
-// withDefaults returns a copy of the config with defaults applied.
-func (c Config) withDefaults() Config {
-    cfg := c
-    
-    if cfg.Tracer == nil {
-        cfg.Tracer = noop.NewTracer()
-    }
-    
-    if cfg.Metrics == nil {
-        cfg.Metrics = noop.NewMetrics()
-    }
-    
-    if cfg.BackupDir == "" {
-        cfg.BackupDir = filepath.Join(cfg.TargetDir, ".dot-backup")
-    }
-    
-    if cfg.Concurrency == 0 {
-        cfg.Concurrency = runtime.NumCPU()
-    }
-    
-    // Folding enabled by default
-    // (caller can explicitly set to false)
-    
-    return cfg
-}
-```
-
-**Tasks**:
-- [ ] Define Config struct with all fields
-- [ ] Define LinkMode enum
-- [ ] Implement Validate() method
-- [ ] Implement withDefaults() method
-- [ ] Write tests for valid configuration
-- [ ] Write tests for each validation error
-- [ ] Write tests for default application
-- [ ] Document all configuration fields
-
-**Commit**: `feat(config): define Config struct with validation`
-
----
-
-#### 12.2.2: Configuration Builder
-
-**Test-First Approach**:
-```go
-func TestConfigBuilder(t *testing.T) {
-    cfg := NewConfig().
-        WithStowDir("/test/stow").
-        WithTargetDir("/test/target").
-        WithFS(memfs.New()).
-        WithLogger(noop.NewLogger()).
-        WithLinkMode(LinkAbsolute).
-        WithFolding(false).
-        Build()
-    
-    require.NoError(t, cfg.Validate())
-    require.Equal(t, "/test/stow", cfg.StowDir)
-    require.Equal(t, "/test/target", cfg.TargetDir)
-    require.Equal(t, LinkAbsolute, cfg.LinkMode)
-    require.False(t, cfg.Folding)
-}
-
-func TestConfigBuilder_Defaults(t *testing.T) {
-    cfg := NewConfig().
-        WithStowDir("/test/stow").
-        WithTargetDir("/test/target").
-        WithFS(memfs.New()).
-        WithLogger(noop.NewLogger()).
-        Build()
-    
-    require.NoError(t, cfg.Validate())
-    require.Equal(t, LinkRelative, cfg.LinkMode)
-    require.True(t, cfg.Folding)
-    require.NotNil(t, cfg.Tracer)
-    require.NotNil(t, cfg.Metrics)
-}
-```
-
-**Implementation**:
-```go
-// ConfigBuilder provides a fluent interface for building Config.
-type ConfigBuilder struct {
-    config Config
-}
-
-// NewConfig creates a new ConfigBuilder with defaults.
-func NewConfig() *ConfigBuilder {
-    return &ConfigBuilder{
-        config: Config{
-            LinkMode:    LinkRelative,
-            Folding:     true,
-            Verbosity:   0,
-            Concurrency: 0, // Will default to NumCPU
-        },
-    }
-}
-
-// WithStowDir sets the stow directory.
-func (b *ConfigBuilder) WithStowDir(dir string) *ConfigBuilder {
-    b.config.StowDir = dir
-    return b
-}
-
-// WithTargetDir sets the target directory.
-func (b *ConfigBuilder) WithTargetDir(dir string) *ConfigBuilder {
-    b.config.TargetDir = dir
-    return b
-}
-
-// WithFS sets the filesystem implementation.
-func (b *ConfigBuilder) WithFS(fs ports.FS) *ConfigBuilder {
-    b.config.FS = fs
-    return b
-}
-
-// WithLogger sets the logger implementation.
-func (b *ConfigBuilder) WithLogger(logger ports.Logger) *ConfigBuilder {
-    b.config.Logger = logger
-    return b
-}
-
-// WithTracer sets the tracer implementation.
-func (b *ConfigBuilder) WithTracer(tracer ports.Tracer) *ConfigBuilder {
-    b.config.Tracer = tracer
-    return b
-}
-
-// WithMetrics sets the metrics implementation.
-func (b *ConfigBuilder) WithMetrics(metrics ports.Metrics) *ConfigBuilder {
-    b.config.Metrics = metrics
-    return b
-}
-
-// WithLinkMode sets the symlink creation mode.
-func (b *ConfigBuilder) WithLinkMode(mode LinkMode) *ConfigBuilder {
-    b.config.LinkMode = mode
-    return b
-}
-
-// WithFolding enables or disables directory folding.
-func (b *ConfigBuilder) WithFolding(enabled bool) *ConfigBuilder {
-    b.config.Folding = enabled
-    return b
-}
-
-// WithDryRun enables or disables dry-run mode.
-func (b *ConfigBuilder) WithDryRun(enabled bool) *ConfigBuilder {
-    b.config.DryRun = enabled
-    return b
-}
-
-// WithVerbosity sets the logging verbosity level.
-func (b *ConfigBuilder) WithVerbosity(level int) *ConfigBuilder {
-    b.config.Verbosity = level
-    return b
-}
-
-// WithIgnore sets the ignore pattern set.
-func (b *ConfigBuilder) WithIgnore(ignore ignore.IgnoreSet) *ConfigBuilder {
-    b.config.Ignore = ignore
-    return b
-}
-
-// WithBackupDir sets the backup directory.
-func (b *ConfigBuilder) WithBackupDir(dir string) *ConfigBuilder {
-    b.config.BackupDir = dir
-    return b
-}
-
-// WithConcurrency sets the concurrency limit.
-func (b *ConfigBuilder) WithConcurrency(limit int) *ConfigBuilder {
-    b.config.Concurrency = limit
-    return b
-}
-
-// Build returns the built Config.
-func (b *ConfigBuilder) Build() Config {
-    return b.config
-}
-```
-
-**Tasks**:
-- [ ] Implement ConfigBuilder struct
-- [ ] Implement NewConfig() constructor
-- [ ] Implement all With*() methods
-- [ ] Implement Build() method
-- [ ] Write tests for builder pattern
-- [ ] Write tests for method chaining
-- [ ] Write tests for default values
-- [ ] Document builder usage
-
-**Commit**: `feat(config): add ConfigBuilder for fluent API`
-
----
-
-### 12.3: Streaming API (Priority: Medium)
-
-#### 12.3.1: Streaming Operations
-
-**Test-First Approach**:
-```go
-// pkg/dot/streaming_test.go
-func TestClient_ManageStream(t *testing.T) {
-    fs := memfs.New()
-    setupStowFixtures(fs, "package1")
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx := context.Background()
-    stream := client.ManageStream(ctx, "package1")
-    
-    var ops []Operation
-    for result := range stream {
-        require.True(t, result.IsOk())
-        ops = append(ops, result.Value())
-    }
-    
-    require.NotEmpty(t, ops)
-}
-
-func TestClient_ManageStream_Cancellation(t *testing.T) {
-    fs := memfs.New()
-    setupLargeFixtures(fs, "package1") // Many files
-    
-    cfg := testConfig(fs)
-    client, err := New(cfg)
-    require.NoError(t, err)
-    
-    ctx, cancel := context.WithCancel(context.Background())
-    stream := client.ManageStream(ctx, "package1")
-    
-    // Read a few operations then cancel
-    count := 0
-    for result := range stream {
-        count++
-        if count >= 5 {
-            cancel()
-            break
-        }
-    }
-    
-    // Drain remaining (should complete quickly)
-    for range stream {
-    }
-    
-    require.GreaterOrEqual(t, count, 5)
-}
-```
-
-**Implementation**:
-```go
-// pkg/dot/streaming.go
-package dot
-
-import (
-    "context"
-    
-    "github.com/yourorg/dot/internal/domain"
-    "github.com/yourorg/dot/internal/scanner"
-)
-
-// ManageStream returns a stream of operations for managing packages.
-// Operations are emitted as they are computed, enabling memory-efficient
-// processing of large package sets.
-func (c *Client) ManageStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
-    input := scanner.ScanInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-        Packages:  packages,
-        Ignore:    c.config.Ignore,
-    }
-    
-    return c.pipeline.ManageStream(ctx, input)
-}
-
-// UnmanageStream returns a stream of operations for unmanaging packages.
-func (c *Client) UnmanageStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
-    input := scanner.ScanInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-        Packages:  packages,
-        Ignore:    c.config.Ignore,
-    }
-    
-    return c.pipeline.UnmanageStream(ctx, input)
-}
-
-// RemanageStream returns a stream of operations for remanaging packages.
-func (c *Client) RemanageStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
-    input := scanner.ScanInput{
-        StowDir:   c.mustParsePath(c.config.StowDir),
-        TargetDir: c.mustParsePath(c.config.TargetDir),
-        Packages:  packages,
-        Ignore:    c.config.Ignore,
-    }
-    
-    return c.pipeline.RemanageStream(ctx, input)
-}
-```
-
-**Tasks**:
-- [ ] Implement ManageStream() method
-- [ ] Implement UnmanageStream() method
-- [ ] Implement RemanageStream() method
-- [ ] Write tests for successful streaming
-- [ ] Write tests for stream cancellation
-- [ ] Write tests for error propagation
-- [ ] Write tests for backpressure
-- [ ] Document memory characteristics
-
-**Commit**: `feat(streaming): add streaming operation methods`
-
----
-
-#### 12.3.2: Stream Operators
-
-**Test-First Approach**:
-```go
-func TestStreamMap(t *testing.T) {
-    ctx := context.Background()
-    
-    input := make(chan Result[int])
-    go func() {
-        defer close(input)
-        input <- Ok(1)
-        input <- Ok(2)
-        input <- Ok(3)
-    }()
-    
-    output := StreamMap(ctx, input, func(x int) int {
-        return x * 2
-    })
-    
-    var results []int
-    for result := range output {
-        require.True(t, result.IsOk())
-        results = append(results, result.Value())
-    }
-    
-    require.Equal(t, []int{2, 4, 6}, results)
-}
-
-func TestStreamFilter(t *testing.T) {
-    ctx := context.Background()
-    
-    input := make(chan Result[int])
-    go func() {
-        defer close(input)
-        input <- Ok(1)
-        input <- Ok(2)
-        input <- Ok(3)
-        input <- Ok(4)
-    }()
-    
-    output := StreamFilter(ctx, input, func(x int) bool {
-        return x%2 == 0
-    })
-    
-    var results []int
-    for result := range output {
-        require.True(t, result.IsOk())
-        results = append(results, result.Value())
-    }
-    
-    require.Equal(t, []int{2, 4}, results)
-}
-
-func TestCollectStream(t *testing.T) {
-    ctx := context.Background()
-    
-    input := make(chan Result[int])
-    go func() {
-        defer close(input)
-        input <- Ok(1)
-        input <- Ok(2)
-        input <- Ok(3)
-    }()
-    
-    result := CollectStream(ctx, input)
-    require.True(t, result.IsOk())
-    require.Equal(t, []int{1, 2, 3}, result.Value())
-}
-
-func TestCollectStream_WithError(t *testing.T) {
-    ctx := context.Background()
-    
-    input := make(chan Result[int])
-    go func() {
-        defer close(input)
-        input <- Ok(1)
-        input <- Err[int](errors.New("test error"))
-        input <- Ok(3)
-    }()
-    
-    result := CollectStream(ctx, input)
-    require.False(t, result.IsOk())
-}
-```
-
-**Implementation**:
-```go
-// StreamMap transforms values in a stream using the provided function.
-func StreamMap[A, B any](ctx context.Context, stream <-chan Result[A], f func(A) B) <-chan Result[B] {
-    out := make(chan Result[B])
-    
-    go func() {
-        defer close(out)
-        
-        for result := range stream {
-            select {
-            case out <- Map(result, f):
-            case <-ctx.Done():
-                return
-            }
-        }
-    }()
-    
-    return out
-}
-
-// StreamFilter filters values in a stream using the provided predicate.
-func StreamFilter[T any](ctx context.Context, stream <-chan Result[T], pred func(T) bool) <-chan Result[T] {
-    out := make(chan Result[T])
-    
-    go func() {
-        defer close(out)
-        
-        for result := range stream {
-            if result.IsOk() && !pred(result.Value()) {
-                continue
-            }
-            
-            select {
-            case out <- result:
-            case <-ctx.Done():
-                return
-            }
-        }
-    }()
-    
-    return out
-}
-
-// CollectStream collects all values from a stream into a slice.
-// Returns an error if any stream value is an error.
-func CollectStream[T any](ctx context.Context, stream <-chan Result[T]) Result[[]T] {
-    var values []T
-    var errs []error
-    
-    for result := range stream {
-        select {
-        case <-ctx.Done():
-            return Err[[]T](ctx.Err())
-        default:
-            if result.IsOk() {
-                values = append(values, result.Value())
-            } else {
-                errs = append(errs, result.Error())
-            }
-        }
-    }
-    
-    if len(errs) > 0 {
-        return Err[[]T](domain.ErrMultiple{Errors: errs})
-    }
-    
-    return Ok(values)
-}
-
-// StreamTake takes the first n values from a stream.
-func StreamTake[T any](ctx context.Context, stream <-chan Result[T], n int) <-chan Result[T] {
-    out := make(chan Result[T])
-    
-    go func() {
-        defer close(out)
-        
-        count := 0
-        for result := range stream {
-            if count >= n {
-                return
-            }
-            
-            select {
-            case out <- result:
-                count++
-            case <-ctx.Done():
-                return
-            }
-        }
-    }()
-    
-    return out
-}
-
-// StreamReduce reduces a stream to a single value using the provided function.
-func StreamReduce[T, A any](ctx context.Context, stream <-chan Result[T], init A, f func(A, T) A) Result[A] {
-    acc := init
-    
-    for result := range stream {
-        select {
-        case <-ctx.Done():
-            return Err[A](ctx.Err())
-        default:
-            if !result.IsOk() {
-                return Err[A](result.Error())
-            }
-            acc = f(acc, result.Value())
-        }
-    }
-    
-    return Ok(acc)
-}
-```
-
-**Tasks**:
-- [ ] Implement StreamMap() operator
-- [ ] Implement StreamFilter() operator
-- [ ] Implement CollectStream() collector
-- [ ] Implement StreamTake() operator
-- [ ] Implement StreamReduce() operator
-- [ ] Write tests for each operator
-- [ ] Write tests for context cancellation
-- [ ] Write tests for error propagation
-- [ ] Document operator semantics
-
-**Commit**: `feat(streaming): add stream operator functions`
-
----
-
-### 12.4: Type Exports (Priority: Medium)
-
-#### 12.4.1: Domain Type Re-exports
-
-**Test-First Approach**:
-```go
-// pkg/dot/types_test.go
-func TestTypeExports(t *testing.T) {
-    // Verify all required types are exported
-    var _ Operation
-    var _ Plan
-    var _ Package
-    var _ LinkCreate
-    var _ LinkDelete
-    var _ DirCreate
-    var _ DirDelete
-    var _ FileMove
-    var _ FileBackup
-    var _ Result[string]
-    var _ Status
-    var _ DiagnosticReport
-    var _ PackageInfo
-    var _ Conflict
-    var _ Warning
-}
-
-func TestOperation_Interface(t *testing.T) {
-    // Verify Operation interface is usable
-    var op Operation = &LinkCreate{
-        ID:     "test-op",
-        Source: "/test/source",
-        Target: "/test/target",
-    }
-    
-    require.Equal(t, OperationKindLinkCreate, op.Kind())
-    require.NoError(t, op.Validate())
-}
-```
-
-**Implementation**:
-```go
-// pkg/dot/types.go
-package dot
-
-import (
-    "github.com/yourorg/dot/internal/domain"
-    "github.com/yourorg/dot/internal/planner"
-    "github.com/yourorg/dot/internal/resolver"
-)
-
-// Operation represents a single operation in an execution plan.
-type Operation = domain.Operation
-
-// Operation types
-type (
-    LinkCreate = domain.LinkCreate
-    LinkDelete = domain.LinkDelete
-    DirCreate  = domain.DirCreate
-    DirDelete  = domain.DirDelete
-    FileMove   = domain.FileMove
-    FileBackup = domain.FileBackup
-)
-
-// OperationKind identifies the type of operation.
-type OperationKind = domain.OperationKind
-
-// Operation kinds
-const (
-    OperationKindLinkCreate = domain.OperationKindLinkCreate
-    OperationKindLinkDelete = domain.OperationKindLinkDelete
-    OperationKindDirCreate  = domain.OperationKindDirCreate
-    OperationKindDirDelete  = domain.OperationKindDirDelete
-    OperationKindFileMove   = domain.OperationKindFileMove
-    OperationKindFileBackup = domain.OperationKindFileBackup
-)
-
-// Plan represents a validated, executable plan.
-type Plan = domain.Plan
-
-// Package represents a package with its files and metadata.
-type Package = domain.Package
-
-// Result represents a value or an error.
-type Result[T any] = domain.Result[T]
-
-// Result constructors
-var (
-    Ok  = domain.Ok
-    Err = domain.Err
-)
-
-// Map transforms a Result value.
-var Map = domain.Map
-
-// FlatMap chains Result operations.
-var FlatMap = domain.FlatMap
-
-// Status represents installation status information.
-type Status = planner.Status
-
-// DiagnosticReport contains health check results.
-type DiagnosticReport = resolver.DiagnosticReport
 
 // PackageInfo contains metadata about an installed package.
-type PackageInfo = domain.PackageInfo
+type PackageInfo struct {
+	Name        string
+	InstalledAt time.Time
+	LinkCount   int
+	Links       []string
+}
+```
 
-// Conflict represents a detected conflict.
-type Conflict = resolver.Conflict
+**Test**:
+```go
+// pkg/dot/status_test.go
+package dot_test
 
-// ConflictType identifies the type of conflict.
-type ConflictType = resolver.ConflictType
+import (
+	"testing"
+	"time"
 
-// Conflict types
-const (
-    ConflictFileExists   = resolver.ConflictFileExists
-    ConflictWrongLink    = resolver.ConflictWrongLink
-    ConflictPermission   = resolver.ConflictPermission
-    ConflictCircular     = resolver.ConflictCircular
+	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/stretchr/testify/require"
 )
 
-// Warning represents a non-fatal issue.
-type Warning = resolver.Warning
+func TestStatus(t *testing.T) {
+	status := dot.Status{
+		Packages: []dot.PackageInfo{
+			{
+				Name:        "vim",
+				InstalledAt: time.Now(),
+				LinkCount:   3,
+				Links:       []string{".vimrc", ".vim/"},
+			},
+		},
+	}
+
+	require.Len(t, status.Packages, 1)
+	require.Equal(t, "vim", status.Packages[0].Name)
+}
 ```
 
 **Tasks**:
-- [ ] Re-export Operation interface and types
-- [ ] Re-export Plan type
-- [ ] Re-export Package type
-- [ ] Re-export Result type and functions
-- [ ] Re-export Status and diagnostic types
-- [ ] Re-export Conflict and Warning types
-- [ ] Write tests verifying exports
-- [ ] Document all exported types
+- [ ] Define Status struct
+- [ ] Define PackageInfo struct
+- [ ] Write tests for types
+- [ ] Document fields
 
-**Commit**: `feat(types): re-export domain types for public API`
+**Commit**: `feat(types): add Status and PackageInfo types`
 
 ---
 
-#### 12.4.2: Package Documentation
+### 12.4: Package Documentation (Priority: Medium)
+
+**File**: `pkg/dot/doc.go`
 
 **Implementation**:
 ```go
-// pkg/dot/doc.go
-/*
-Package dot provides a modern, type-safe symlink manager for dotfiles.
-
-dot is a feature-complete GNU Stow replacement written in Go 1.25.1.
-It follows strict constitutional principles: test-driven development,
-atomic operations, functional programming, and comprehensive error handling.
-
-# Basic Usage
-
-Create a client and manage packages:
-
-    cfg := dot.NewConfig().
-        WithStowDir("/home/user/dotfiles").
-        WithTargetDir("/home/user").
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        Build()
-
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    ctx := context.Background()
-    if err := client.Manage(ctx, "vim", "zsh", "git"); err != nil {
-        log.Fatal(err)
-    }
-
-# Dry Run Mode
-
-Preview operations without applying changes:
-
-    cfg := dot.NewConfig().
-        WithStowDir("/home/user/dotfiles").
-        WithTargetDir("/home/user").
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        WithDryRun(true).
-        Build()
-
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Shows plan without executing
-    if err := client.Manage(ctx, "vim"); err != nil {
-        log.Fatal(err)
-    }
-
-# Streaming API
-
-For memory-efficient processing of large package sets:
-
-    stream := client.ManageStream(ctx, "large-package")
-
-    for result := range stream {
-        if !result.IsOk() {
-            log.Printf("error: %v", result.Error())
-            continue
-        }
-        
-        op := result.Value()
-        log.Printf("operation: %v", op)
-    }
-
-# Query Operations
-
-Check installation status:
-
-    status, err := client.Status(ctx, "vim")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, pkg := range status.Packages {
-        fmt.Printf("%s: %d links\n", pkg.Name, pkg.LinkCount)
-    }
-
-Validate installation health:
-
-    report, err := client.Doctor(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    if len(report.BrokenLinks) > 0 {
-        fmt.Printf("Found %d broken links\n", len(report.BrokenLinks))
-    }
-
-List installed packages:
-
-    packages, err := client.List(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, pkg := range packages {
-        fmt.Printf("%s (installed %s)\n", pkg.Name, pkg.InstalledAt)
-    }
-
-# Architecture
-
-The library follows a functional core, imperative shell architecture:
-
-  - Pure planning functions with no side effects
-  - Explicit dependency injection for all infrastructure
-  - Result monad for composable error handling
-  - Phantom types for compile-time path safety
-  - Transaction safety with two-phase commit and rollback
-
-# Observability
-
-The library provides first-class observability through injected ports:
-
-  - Structured logging via ports.Logger interface
-  - Distributed tracing via ports.Tracer interface (OpenTelemetry)
-  - Metrics collection via ports.Metrics interface (Prometheus)
-
-# Testing
-
-The library is designed for testability:
-
-  - All operations accept context.Context for cancellation
-  - Filesystem abstraction enables testing without disk I/O
-  - Pure functional core enables property-based testing
-  - Comprehensive test coverage (>80%)
-
-For more examples and detailed documentation, see the examples/ directory
-and https://github.com/yourorg/dot/docs
-*/
+// Package dot provides a modern, type-safe symlink manager for dotfiles.
+//
+// dot is a GNU Stow replacement written in Go 1.25.1, following strict
+// constitutional principles: test-driven development, atomic operations,
+// functional programming, and comprehensive error handling.
+//
+// # Architecture
+//
+// The library uses an interface-based Client pattern to provide a clean
+// public API while keeping internal implementation details hidden:
+//
+//   - Client interface in pkg/dot (stable public API)
+//   - Implementation in internal/api (can evolve freely)
+//   - Domain types in pkg/dot (shared between public and internal)
+//
+// # Basic Usage
+//
+// Create a client and manage packages:
+//
+//	cfg := dot.Config{
+//		StowDir:   "/home/user/dotfiles",
+//		TargetDir: "/home/user",
+//		FS:        osfs.New(),
+//		Logger:    slogger.New(),
+//	}
+//
+//	client, err := dot.NewClient(cfg)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	ctx := context.Background()
+//	if err := client.Manage(ctx, "vim", "zsh", "git"); err != nil {
+//		log.Fatal(err)
+//	}
+//
+// # Dry Run Mode
+//
+// Preview operations without applying changes:
+//
+//	cfg.DryRun = true
+//	client, _ := dot.NewClient(cfg)
+//
+//	// Shows what would be done without executing
+//	if err := client.Manage(ctx, "vim"); err != nil {
+//		log.Fatal(err)
+//	}
+//
+// # Query Operations
+//
+// Check installation status:
+//
+//	status, err := client.Status(ctx, "vim")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	for _, pkg := range status.Packages {
+//		fmt.Printf("%s: %d links\n", pkg.Name, pkg.LinkCount)
+//	}
+//
+// List all installed packages:
+//
+//	packages, err := client.List(ctx)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+// # Configuration
+//
+// The Config struct controls all dot behavior:
+//
+//   - StowDir: Source directory containing packages (required, absolute)
+//   - TargetDir: Destination directory for symlinks (required, absolute)
+//   - FS: Filesystem implementation (required)
+//   - Logger: Logger implementation (required)
+//   - Tracer: Distributed tracing (optional, defaults to noop)
+//   - Metrics: Metrics collection (optional, defaults to noop)
+//   - LinkMode: Relative or absolute symlinks (default: relative)
+//   - Folding: Enable directory folding (default: true)
+//   - DryRun: Preview mode (default: false)
+//   - Verbosity: Logging level (default: 0)
+//
+// # Observability
+//
+// The library provides first-class observability through injected ports:
+//
+//   - Structured logging via Logger interface
+//   - Distributed tracing via Tracer interface (OpenTelemetry compatible)
+//   - Metrics collection via Metrics interface (Prometheus compatible)
+//
+// # Testing
+//
+// The library is designed for testability:
+//
+//   - All operations accept context.Context for cancellation
+//   - Filesystem abstraction enables testing without disk I/O
+//   - Pure functional core enables property-based testing
+//   - Interface-based Client enables mocking
+//
+// For examples, see the examples_test.go file and the examples/ directory.
 package dot
 ```
 
 **Tasks**:
 - [ ] Write comprehensive package documentation
-- [ ] Add usage examples in doc.go
-- [ ] Document architecture principles
-- [ ] Document observability features
-- [ ] Document testing approach
-- [ ] Add links to detailed documentation
+- [ ] Add usage examples
+- [ ] Document architecture pattern
+- [ ] Document configuration options
+- [ ] Add links to detailed docs
 
 **Commit**: `docs(api): add comprehensive package documentation`
 
 ---
 
-#### 12.4.3: Example Tests
+### 12.5: Example Tests (Priority: Medium)
+
+**File**: `pkg/dot/examples_test.go`
 
 **Implementation**:
 ```go
@@ -1616,507 +971,102 @@ package dot
 package dot_test
 
 import (
-    "context"
-    "fmt"
-    "log"
-    
-    "github.com/yourorg/dot/internal/adapters/osfs"
-    "github.com/yourorg/dot/internal/adapters/slogger"
-    "github.com/yourorg/dot/pkg/dot"
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/jamesainslie/dot/internal/adapters"
+	"github.com/jamesainslie/dot/pkg/dot"
 )
 
+func ExampleNewClient() {
+	cfg := dot.Config{
+		StowDir:   "/home/user/dotfiles",
+		TargetDir: "/home/user",
+		FS:        adapters.NewOSFilesystem(),
+		Logger:    adapters.NewNoopLogger(),
+	}
+
+	client, err := dot.NewClient(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Client created: %v\n", client != nil)
+	// Output: Client created: true
+}
+
 func ExampleClient_Manage() {
-    cfg := dot.NewConfig().
-        WithStowDir("/home/user/dotfiles").
-        WithTargetDir("/home/user").
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        Build()
-    
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    ctx := context.Background()
-    if err := client.Manage(ctx, "vim", "zsh"); err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Println("Packages installed successfully")
-    // Output: Packages installed successfully
+	cfg := dot.Config{
+		StowDir:   "/home/user/dotfiles",
+		TargetDir: "/home/user",
+		FS:        adapters.NewOSFilesystem(),
+		Logger:    adapters.NewNoopLogger(),
+	}
+
+	client, err := dot.NewClient(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx := context.Background()
+	if err := client.Manage(ctx, "vim", "zsh"); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Packages installed successfully")
+	// Output: Packages installed successfully
 }
 
 func ExampleClient_PlanManage() {
-    cfg := dot.NewConfig().
-        WithStowDir("/home/user/dotfiles").
-        WithTargetDir("/home/user").
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        Build()
-    
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    ctx := context.Background()
-    plan, err := client.PlanManage(ctx, "vim")
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Printf("Plan contains %d operations\n", len(plan.Operations()))
-    // Output: Plan contains 3 operations
+	cfg := dot.Config{
+		StowDir:   "/home/user/dotfiles",
+		TargetDir: "/home/user",
+		FS:        adapters.NewOSFilesystem(),
+		Logger:    adapters.NewNoopLogger(),
+	}
+
+	client, err := dot.NewClient(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx := context.Background()
+	plan, err := client.PlanManage(ctx, "vim")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Plan contains %d operations\n", len(plan.Operations))
+	// Output: Plan contains 3 operations
 }
 
-func ExampleClient_ManageStream() {
-    cfg := dot.NewConfig().
-        WithStowDir("/home/user/dotfiles").
-        WithTargetDir("/home/user").
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        Build()
-    
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    ctx := context.Background()
-    stream := client.ManageStream(ctx, "vim")
-    
-    count := 0
-    for result := range stream {
-        if !result.IsOk() {
-            log.Printf("error: %v", result.Error())
-            continue
-        }
-        count++
-    }
-    
-    fmt.Printf("Processed %d operations\n", count)
-    // Output: Processed 3 operations
-}
+func ExampleConfig_validation() {
+	cfg := dot.Config{
+		StowDir:   "/home/user/dotfiles",
+		TargetDir: "/home/user",
+		FS:        adapters.NewOSFilesystem(),
+		Logger:    adapters.NewNoopLogger(),
+	}
 
-func ExampleClient_Status() {
-    cfg := dot.NewConfig().
-        WithStowDir("/home/user/dotfiles").
-        WithTargetDir("/home/user").
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        Build()
-    
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    ctx := context.Background()
-    status, err := client.Status(ctx, "vim")
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    for _, pkg := range status.Packages {
-        fmt.Printf("%s: %d links\n", pkg.Name, pkg.LinkCount)
-    }
-    // Output: vim: 5 links
-}
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 
-func ExampleConfigBuilder() {
-    cfg := dot.NewConfig().
-        WithStowDir("/home/user/dotfiles").
-        WithTargetDir("/home/user").
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        WithLinkMode(dot.LinkAbsolute).
-        WithFolding(false).
-        WithDryRun(true).
-        Build()
-    
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Printf("Client configured with dry-run: %v\n", client.Config().DryRun)
-    // Output: Client configured with dry-run: true
-}
-
-func ExampleStreamMap() {
-    ctx := context.Background()
-    
-    // Create input stream
-    input := make(chan dot.Result[int])
-    go func() {
-        defer close(input)
-        for i := 1; i <= 3; i++ {
-            input <- dot.Ok(i)
-        }
-    }()
-    
-    // Map values
-    output := dot.StreamMap(ctx, input, func(x int) int {
-        return x * 2
-    })
-    
-    // Collect results
-    for result := range output {
-        if result.IsOk() {
-            fmt.Printf("%d ", result.Value())
-        }
-    }
-    // Output: 2 4 6
-}
-
-func ExampleCollectStream() {
-    ctx := context.Background()
-    
-    // Create input stream
-    input := make(chan dot.Result[int])
-    go func() {
-        defer close(input)
-        for i := 1; i <= 3; i++ {
-            input <- dot.Ok(i)
-        }
-    }()
-    
-    // Collect all values
-    result := dot.CollectStream(ctx, input)
-    if result.IsOk() {
-        fmt.Printf("Collected: %v\n", result.Value())
-    }
-    // Output: Collected: [1 2 3]
+	fmt.Println("Configuration is valid")
+	// Output: Configuration is valid
 }
 ```
 
 **Tasks**:
-- [ ] Write Example_Manage test
-- [ ] Write Example_PlanManage test
-- [ ] Write Example_ManageStream test
-- [ ] Write Example_Status test
-- [ ] Write Example_ConfigBuilder test
-- [ ] Write Example_StreamMap test
-- [ ] Write Example_CollectStream test
+- [ ] Write ExampleNewClient
+- [ ] Write ExampleClient_Manage
+- [ ] Write ExampleClient_PlanManage
+- [ ] Write ExampleClient_Status
+- [ ] Write ExampleConfig_validation
 - [ ] Verify examples appear in godoc
 
 **Commit**: `docs(api): add example tests for godoc`
-
----
-
-### 12.5: Standalone Examples (Priority: Low)
-
-#### 12.5.1: Basic Usage Example
-
-**File**: `examples/basic/main.go`
-
-**Implementation**:
-```go
-// examples/basic/main.go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    
-    "github.com/yourorg/dot/internal/adapters/osfs"
-    "github.com/yourorg/dot/internal/adapters/slogger"
-    "github.com/yourorg/dot/pkg/dot"
-)
-
-func main() {
-    // Get directories from environment or use defaults
-    stowDir := getEnv("STOW_DIR", "./dotfiles")
-    targetDir := getEnv("TARGET_DIR", os.Getenv("HOME"))
-    
-    // Create configuration
-    cfg := dot.NewConfig().
-        WithStowDir(stowDir).
-        WithTargetDir(targetDir).
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        WithFolding(true).
-        Build()
-    
-    // Create client
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatalf("Failed to create client: %v", err)
-    }
-    
-    ctx := context.Background()
-    
-    // Get packages from command line args
-    packages := os.Args[1:]
-    if len(packages) == 0 {
-        packages = []string{"vim", "zsh", "git"}
-    }
-    
-    // Manage packages
-    fmt.Printf("Installing packages: %v\n", packages)
-    if err := client.Manage(ctx, packages...); err != nil {
-        log.Fatalf("Failed to manage packages: %v", err)
-    }
-    
-    fmt.Println("Packages installed successfully")
-    
-    // Show status
-    status, err := client.Status(ctx, packages...)
-    if err != nil {
-        log.Fatalf("Failed to get status: %v", err)
-    }
-    
-    fmt.Println("\nInstalled packages:")
-    for _, pkg := range status.Packages {
-        fmt.Printf("  %s: %d links\n", pkg.Name, pkg.LinkCount)
-    }
-}
-
-func getEnv(key, fallback string) string {
-    if value := os.Getenv(key); value != "" {
-        return value
-    }
-    return fallback
-}
-```
-
-**Tasks**:
-- [ ] Create examples/basic/main.go
-- [ ] Add README explaining usage
-- [ ] Test example compiles
-- [ ] Test example runs
-- [ ] Add to CI verification
-
-**Commit**: `docs(examples): add basic usage example`
-
----
-
-#### 12.5.2: Streaming Example
-
-**File**: `examples/streaming/main.go`
-
-**Implementation**:
-```go
-// examples/streaming/main.go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    
-    "github.com/yourorg/dot/internal/adapters/osfs"
-    "github.com/yourorg/dot/internal/adapters/slogger"
-    "github.com/yourorg/dot/pkg/dot"
-)
-
-func main() {
-    stowDir := getEnv("STOW_DIR", "./dotfiles")
-    targetDir := getEnv("TARGET_DIR", os.Getenv("HOME"))
-    
-    cfg := dot.NewConfig().
-        WithStowDir(stowDir).
-        WithTargetDir(targetDir).
-        WithFS(osfs.New()).
-        WithLogger(slogger.New()).
-        Build()
-    
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatalf("Failed to create client: %v", err)
-    }
-    
-    packages := os.Args[1:]
-    if len(packages) == 0 {
-        log.Fatal("Usage: streaming PACKAGE...")
-    }
-    
-    ctx := context.Background()
-    
-    fmt.Printf("Streaming operations for packages: %v\n", packages)
-    
-    // Get operation stream
-    stream := client.ManageStream(ctx, packages...)
-    
-    // Process operations as they arrive
-    var (
-        totalOps   int
-        linkOps    int
-        dirOps     int
-        errors     int
-    )
-    
-    for result := range stream {
-        totalOps++
-        
-        if !result.IsOk() {
-            errors++
-            fmt.Printf("ERROR: %v\n", result.Error())
-            continue
-        }
-        
-        op := result.Value()
-        switch op.Kind() {
-        case dot.OperationKindLinkCreate, dot.OperationKindLinkDelete:
-            linkOps++
-        case dot.OperationKindDirCreate, dot.OperationKindDirDelete:
-            dirOps++
-        }
-        
-        if totalOps%10 == 0 {
-            fmt.Printf("  Processed %d operations...\n", totalOps)
-        }
-    }
-    
-    fmt.Printf("\nCompleted: %d operations (%d links, %d dirs, %d errors)\n",
-        totalOps, linkOps, dirOps, errors)
-}
-
-func getEnv(key, fallback string) string {
-    if value := os.Getenv(key); value != "" {
-        return value
-    }
-    return fallback
-}
-```
-
-**Tasks**:
-- [ ] Create examples/streaming/main.go
-- [ ] Add README explaining streaming benefits
-- [ ] Test example compiles
-- [ ] Test example runs
-- [ ] Add to CI verification
-
-**Commit**: `docs(examples): add streaming API example`
-
----
-
-#### 12.5.3: Custom Filesystem Example
-
-**File**: `examples/custom-fs/main.go`
-
-**Implementation**:
-```go
-// examples/custom-fs/main.go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    
-    "github.com/yourorg/dot/internal/adapters/memfs"
-    "github.com/yourorg/dot/internal/adapters/slogger"
-    "github.com/yourorg/dot/pkg/dot"
-)
-
-func main() {
-    // Use in-memory filesystem for testing
-    fs := memfs.New()
-    
-    // Set up test fixtures
-    setupFixtures(fs)
-    
-    // Create configuration with custom filesystem
-    cfg := dot.NewConfig().
-        WithStowDir("/test/stow").
-        WithTargetDir("/test/target").
-        WithFS(fs). // Custom filesystem
-        WithLogger(slogger.New()).
-        Build()
-    
-    client, err := dot.New(cfg)
-    if err != nil {
-        log.Fatalf("Failed to create client: %v", err)
-    }
-    
-    ctx := context.Background()
-    
-    // Manage packages
-    if err := client.Manage(ctx, "vim", "git"); err != nil {
-        log.Fatalf("Failed to manage: %v", err)
-    }
-    
-    fmt.Println("Managed packages successfully")
-    
-    // Verify links created
-    verifyLinks(fs)
-}
-
-func setupFixtures(fs dot.FS) {
-    // Create stow directory structure
-    fs.MkdirAll(context.Background(), "/test/stow/vim", 0755)
-    fs.MkdirAll(context.Background(), "/test/stow/git", 0755)
-    fs.MkdirAll(context.Background(), "/test/target", 0755)
-    
-    // Create package files
-    fs.WriteFile(context.Background(), "/test/stow/vim/dot-vimrc", []byte("vim config"), 0644)
-    fs.WriteFile(context.Background(), "/test/stow/git/dot-gitconfig", []byte("git config"), 0644)
-    
-    fmt.Println("Created test fixtures")
-}
-
-func verifyLinks(fs dot.FS) {
-    ctx := context.Background()
-    
-    links := []string{
-        "/test/target/.vimrc",
-        "/test/target/.gitconfig",
-    }
-    
-    for _, link := range links {
-        if fs.IsSymlink(ctx, link) {
-            target, _ := fs.ReadLink(ctx, link)
-            fmt.Printf("✓ %s -> %s\n", link, target)
-        } else {
-            fmt.Printf("✗ %s (not a symlink)\n", link)
-        }
-    }
-}
-```
-
-**Tasks**:
-- [ ] Create examples/custom-fs/main.go
-- [ ] Add README explaining custom filesystem usage
-- [ ] Test example compiles
-- [ ] Test example runs
-- [ ] Add to CI verification
-
-**Commit**: `docs(examples): add custom filesystem example`
-
----
-
-## Testing Strategy
-
-### Unit Tests
-- Test each public method with valid inputs
-- Test each public method with invalid inputs
-- Test configuration validation
-- Test default value application
-- Test context cancellation
-- Test error propagation
-
-### Integration Tests
-- Test complete stow workflow
-- Test complete unstow workflow
-- Test complete restow workflow
-- Test complete adopt workflow
-- Test query operations
-- Test streaming API end-to-end
-
-### Property Tests
-- Verify configuration validation laws
-- Verify Result monad laws
-- Verify stream operator laws
-
-### Example Tests
-- Verify all examples compile
-- Verify all examples appear in godoc
-- Verify examples in CI
 
 ---
 
@@ -2129,24 +1079,23 @@ Each task is complete when:
 - [ ] All tests pass
 - [ ] Test coverage ≥ 80% for new code
 - [ ] All linters pass (golangci-lint)
-- [ ] Code reviewed against constitution
+- [ ] No changes to Phases 1-11 code
 - [ ] Documentation updated
-- [ ] Examples updated if needed
 - [ ] Atomic commit created
 
 ### Phase Completion Criteria
 
 Phase 12 is complete when:
-- [ ] All 12.1-12.5 tasks completed
-- [ ] Client facade fully functional
-- [ ] Configuration system complete
-- [ ] Streaming API operational
-- [ ] Types properly exported
-- [ ] All examples working
+- [ ] Client interface fully defined in pkg/dot
+- [ ] Client implementation complete in internal/api
+- [ ] All operations functional (Manage, Unmanage, Remanage, Adopt)
+- [ ] Query operations working (Status, List)
+- [ ] Registration mechanism working
 - [ ] Documentation comprehensive
+- [ ] Examples demonstrate usage
 - [ ] Test coverage ≥ 80%
 - [ ] All linters pass
-- [ ] Integration tests pass
+- [ ] No import cycles
 - [ ] API suitable for library embedding
 
 ---
@@ -2155,133 +1104,132 @@ Phase 12 is complete when:
 
 ### For Each Task
 
-1. **Read Test**: Review test specifications
-2. **Write Test**: Implement failing tests (red)
+1. **Write Test**: Create failing test in appropriate package
+2. **Run Test**: Verify test fails (red)
 3. **Implement**: Write minimum code to pass (green)
 4. **Refactor**: Improve while maintaining green
 5. **Lint**: Run `make check`
 6. **Commit**: Create atomic commit
 
-### Commit Message Format
+### Testing Strategy
 
-```
-<type>(scope): <description>
+```bash
+# Test specific package
+go test ./pkg/dot -v
+go test ./internal/api -v
 
-[optional body]
+# Test with race detector
+go test ./pkg/dot -race
+go test ./internal/api -race
 
-[optional footer]
-```
+# Run all tests
+make test
 
-Examples:
-```
-feat(api): add Client facade with constructor
-feat(api): implement Stow and PlanStow methods
-feat(config): define Config struct with validation
-feat(streaming): add streaming operation methods
-docs(api): add comprehensive package documentation
+# Check coverage
+go test ./pkg/dot -coverprofile=coverage.out
+go tool cover -func=coverage.out
 ```
 
 ---
 
-## Dependencies
+## Import Cycle Resolution Summary
 
-### Internal Dependencies (Must Exist)
-- `internal/domain/*` - Domain model (Phase 1)
-- `internal/ports/*` - Infrastructure ports (Phase 2)
-- `internal/adapters/*` - Port implementations (Phase 3)
-- `internal/scanner/*` - Scanner (Phase 4)
-- `internal/ignore/*` - Ignore system (Phase 5)
-- `internal/planner/*` - Planner (Phase 6)
-- `internal/resolver/*` - Resolver (Phase 7)
-- `internal/planner/graph.go` - Topological sorter (Phase 8)
-- `internal/pipeline/*` - Pipeline orchestration (Phase 9)
-- `internal/executor/*` - Executor (Phase 10)
-- `internal/manifest/*` - Manifest management (Phase 11)
+### The Pattern
 
-### External Dependencies
-- Standard library only for core
-- `github.com/stretchr/testify` for tests
+```
+pkg/dot/
+  client.go          ← Interface definition (no imports of internal/*)
+  config.go          ← Config struct
+  <domain types>     ← Operation, Plan, Result, etc.
 
----
+internal/api/
+  client.go          ← Implementation (imports pkg/dot + internal/*)
+  manage.go          ← Can import internal/pipeline
+  status.go          ← Can import internal/manifest
 
-## Risk Mitigation
+internal/executor/   ← Imports pkg/dot for domain types (NO CYCLE)
+internal/pipeline/   ← Imports pkg/dot for domain types (NO CYCLE)
+```
 
-### Technical Risks
+### Key Insight
 
-1. **API Surface Too Large**
-   - Mitigation: Start minimal, add based on need
-   - Mitigation: Keep internal complexity hidden
+**Interface definitions don't create dependencies on implementations.**
 
-2. **Backward Compatibility**
-   - Mitigation: Semantic versioning
-   - Mitigation: Deprecation warnings before removal
+- `pkg/dot/client.go` defines `type Client interface { ... }`
+- `internal/api/client.go` implements it
+- `pkg/dot` never imports `internal/api`
+- `internal/api` imports both `pkg/dot` (for interface) and `internal/*` (for implementation)
+- **Result**: No cycle!
 
-3. **Performance of Streaming API**
-   - Mitigation: Benchmark early
-   - Mitigation: Profile memory usage
-   - Mitigation: Add backpressure handling
+### Registration Mechanism
 
-### Process Risks
+```go
+// pkg/dot/client.go
+var newClientImpl func(Config) (Client, error)
 
-1. **Documentation Drift**
-   - Mitigation: Example tests in godoc
-   - Mitigation: CI verification of examples
-   - Mitigation: Regular documentation review
+func NewClient(cfg Config) (Client, error) {
+    return newClientImpl(cfg)
+}
 
-2. **API Complexity**
-   - Mitigation: Simple primary API (Stow, Unstow, etc.)
-   - Mitigation: Advanced features optional
-   - Mitigation: Builder pattern for configuration
+// internal/api/client.go
+func init() {
+    dot.RegisterClientImpl(newClient)
+}
+```
+
+This allows the constructor to live in `pkg/dot` while implementation is in `internal/api`.
 
 ---
 
 ## Success Metrics
 
-- [ ] All core operations accessible via public API
+- [ ] Client interface accessible via `import "pkg/dot"`
+- [ ] All management operations work (Manage, Unmanage, Remanage, Adopt)
+- [ ] Query operations work (Status, List)
 - [ ] Configuration system flexible and type-safe
-- [ ] Streaming API memory-efficient for large operations
-- [ ] Documentation comprehensive and accurate
+- [ ] Documentation comprehensive
 - [ ] Examples demonstrate common use cases
 - [ ] Test coverage ≥ 80%
 - [ ] No linter warnings
+- [ ] No changes to Phases 1-11
 - [ ] Library embeddable in other tools
-- [ ] Zero CLI dependencies in pkg/dot/
+- [ ] No import cycles
 
 ---
 
 ## Timeline Estimate
 
-**Total Effort**: 8-12 hours
+**Total Effort**: 6-8 hours (reduced from original 8-12 due to simpler initial implementation)
 
-- 12.1 Client Facade: 4-5 hours
-- 12.2 Configuration: 2-3 hours
-- 12.3 Streaming API: 2-3 hours
-- 12.4 Type Exports: 1-2 hours
-- 12.5 Examples: 1-2 hours
+- 12.1 Client Interface: 1 hour
+- 12.2 Client Implementation: 3-4 hours
+- 12.3 Status Types: 30 minutes
+- 12.4 Documentation: 1-1.5 hours
+- 12.5 Examples: 1 hour
 
-**Assumptions**:
-- Phases 1-11 complete and tested
-- All internal dependencies available
-- No major design changes required
-- Single developer, focused work
+**Note**: This implements core functionality. Advanced features (streaming API, etc.) deferred to future phases or Phase 12b refactoring.
+
+---
+
+## What's Deferred
+
+These features from the original Phase 12 plan are deferred pending Phase 12b refactoring:
+
+- **Streaming API**: Requires more complex pipeline integration
+- **ConfigBuilder**: Can be added incrementally
+- **Doctor command**: Requires additional pipeline support
+- **Advanced query operations**: Build on basic Status/List
+
+These can be added incrementally once the basic Client interface is working.
 
 ---
 
 ## Next Steps After Phase 12
 
-After completing the public library API:
-
-1. **Phase 13**: CLI Layer - Core Commands
-   - Cobra integration
-   - Flag binding to Config
-   - Command implementations using Client API
-
-2. **Phase 14**: CLI Layer - Query Commands
-   - Output formatting
-   - Table rendering
-   - JSON/YAML output
-
-3. **Integration Testing**: End-to-end testing with public API
+1. **Verify Integration**: Test Client with actual use cases
+2. **Document Patterns**: Add examples of embedding in other tools
+3. **Phase 13**: CLI Layer can now use Client interface
+4. **Phase 12b** (optional): Refactor to Option 1 for cleaner architecture
 
 ---
 
@@ -2290,6 +1238,5 @@ After completing the public library API:
 - [Implementation Plan](./Implementation-Plan.md)
 - [Architecture Documentation](./Architecture.md)
 - [Features Specification](./Features.md)
-- [Project Constitution](../.cursor/rules/*.mdc)
-- [Go Module Documentation](https://go.dev/blog/v2-go-modules)
-
+- [Phase 12b Refactoring Plan](./Phase-12b-Refactor-Plan.md) (for future work)
+- [Go Interfaces Design](https://go.dev/doc/effective_go#interfaces)

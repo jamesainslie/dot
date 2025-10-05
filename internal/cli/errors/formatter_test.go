@@ -150,6 +150,30 @@ func TestFormatter_Format_ParentNotFound(t *testing.T) {
 	assert.Contains(t, result, "/home/user/.config/nvim/init.vim")
 }
 
+func TestFormatter_Format_CheckpointNotFound(t *testing.T) {
+	f := NewFormatter(false, 0)
+	err := dot.ErrCheckpointNotFound{
+		ID: "checkpoint-123",
+	}
+
+	result := f.Format(err)
+	assert.Contains(t, result, "Checkpoint Not Found")
+	assert.Contains(t, result, "checkpoint-123")
+	assert.Contains(t, result, "Verify checkpoint ID or list available checkpoints")
+}
+
+func TestFormatter_Format_NotImplemented(t *testing.T) {
+	f := NewFormatter(false, 0)
+	err := dot.ErrNotImplemented{
+		Feature: "parallel execution",
+	}
+
+	result := f.Format(err)
+	assert.Contains(t, result, "Not Implemented")
+	assert.Contains(t, result, "parallel execution")
+	assert.Contains(t, result, "Use an alternative supported operation or file an issue")
+}
+
 func TestFormatter_Format_MultipleErrors(t *testing.T) {
 	f := NewFormatter(false, 0)
 	err := dot.ErrMultiple{

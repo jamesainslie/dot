@@ -198,6 +198,24 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
+	var checkpointNotFound dot.ErrCheckpointNotFound
+	if errors.As(err, &checkpointNotFound) {
+		return &Template{
+			Title:       "Checkpoint Not Found",
+			Description: fmt.Sprintf("Checkpoint %q does not exist", checkpointNotFound.ID),
+			Suggestions: []string{"Verify checkpoint ID or list available checkpoints"},
+		}
+	}
+
+	var notImpl dot.ErrNotImplemented
+	if errors.As(err, &notImpl) {
+		return &Template{
+			Title:       "Not Implemented",
+			Description: fmt.Sprintf("%s is not implemented", notImpl.Feature),
+			Suggestions: []string{"Use an alternative supported operation or file an issue"},
+		}
+	}
+
 	return nil
 }
 

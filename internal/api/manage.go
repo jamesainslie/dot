@@ -88,25 +88,32 @@ func (c *client) updateManifest(ctx context.Context, packages []string, plan dot
 	}
 
 	// Update package entries
+	// Note: This is a simplified implementation that records the operation happened
+	// but doesn't track which specific links belong to which package.
+	// Full implementation would need package-to-operation mapping from the planner.
 	for _, pkg := range packages {
-		// Count links created for this package
-		linkCount := 0
-		var links []string
-		for _, op := range plan.Operations {
-			if linkCreate, ok := op.(dot.LinkCreate); ok {
-				// Check if this link belongs to this package
-				// (simplified - full implementation would track this better)
-				linkCount++
-				links = append(links, linkCreate.Target.String())
-			}
-		}
+		// Get existing package info to preserve data if it exists
+		existingInfo, hasExisting := m.GetPackage(pkg)
 
-		m.AddPackage(manifest.PackageInfo{
-			Name:        pkg,
-			InstalledAt: time.Now(),
-			LinkCount:   linkCount,
-			Links:       links,
-		})
+		if hasExisting {
+			// Update timestamp but preserve existing link data
+			// (we don't have per-package link tracking yet)
+			m.AddPackage(manifest.PackageInfo{
+				Name:        pkg,
+				InstalledAt: time.Now(),
+				LinkCount:   existingInfo.LinkCount,
+				Links:       existingInfo.Links,
+			})
+		} else {
+			// New package - record with minimal info
+			// TODO: Track links per package in planner/pipeline
+			m.AddPackage(manifest.PackageInfo{
+				Name:        pkg,
+				InstalledAt: time.Now(),
+				LinkCount:   0, // Will be updated when per-package tracking is implemented
+				Links:       []string{},
+			})
+		}
 	}
 
 	// Save manifest

@@ -137,4 +137,3 @@ func TestManifest_UpdatesTimestamp_OnSetHash(t *testing.T) {
 
 	assert.True(t, m.UpdatedAt.After(originalTime))
 }
-

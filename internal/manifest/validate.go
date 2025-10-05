@@ -125,4 +125,3 @@ func (v *Validator) validateLink(ctx context.Context, linkPath, pkgName string) 
 
 	return nil
 }
-

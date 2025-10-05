@@ -83,4 +83,3 @@ func (s *FSManifestStore) Save(ctx context.Context, targetDir dot.TargetPath, ma
 
 	return nil
 }
-

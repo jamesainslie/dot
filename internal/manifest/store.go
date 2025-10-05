@@ -16,4 +16,3 @@ type ManifestStore interface {
 	// Write is atomic via temp file and rename
 	Save(ctx context.Context, targetDir dot.TargetPath, manifest Manifest) error
 }
-

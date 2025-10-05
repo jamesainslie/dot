@@ -563,40 +563,85 @@ Cobra-based CLI with core operations using new verb terminology.
 
 ### Phase 14: CLI Layer - Query Commands
 
-Status, diagnostic, and listing commands.
+Status, diagnostic, and listing commands with multiple output formats.
 
-#### 14.1: Status Command
-- [ ] Implement status command
-- [ ] Add output format flag (text, json, yaml)
-- [ ] Implement text renderer with tables
-- [ ] Implement JSON renderer
-- [ ] Implement YAML renderer
-- [ ] Write command tests
+#### 14.1: Output Renderer Infrastructure
+- [ ] Define Renderer interface for multiple formats
+- [ ] Implement renderer factory
+- [ ] Create color scheme definitions
+- [ ] Implement base renderer utilities
+- [ ] Write renderer infrastructure tests
 
-#### 14.2: Doctor Command
-- [ ] Implement doctor command for health checks
-- [ ] Add broken symlink detection
-- [ ] Add orphaned link detection
-- [ ] Add permission issue detection
-- [ ] Generate diagnostic report with suggestions
-- [ ] Write command tests
+#### 14.2: Text Renderer
+- [ ] Implement TextRenderer structure
+- [ ] Implement status rendering with colorization
+- [ ] Implement diagnostics rendering with suggestions
+- [ ] Implement package list rendering
+- [ ] Add text formatting helpers
+- [ ] Write text renderer tests
 
-#### 14.3: List Command
-- [ ] Implement list command
-- [ ] Add sorting options (name, size, date)
-- [ ] Add filtering options
-- [ ] Implement tabular output
-- [ ] Write command tests
+#### 14.3: JSON Renderer
+- [ ] Implement JSONRenderer structure
+- [ ] Implement status rendering to JSON
+- [ ] Implement diagnostics rendering to JSON
+- [ ] Implement package list rendering to JSON
+- [ ] Add JSON utilities and validation
+- [ ] Write JSON renderer tests
 
-#### 14.4: Output Renderers
-- [ ] Create internal/cli/renderer package
-- [ ] Implement TextRenderer with colorization
-- [ ] Implement JSONRenderer
-- [ ] Implement YAMLRenderer
-- [ ] Implement TableRenderer using lipgloss
-- [ ] Write renderer tests
+#### 14.4: YAML Renderer
+- [ ] Implement YAMLRenderer structure
+- [ ] Implement status rendering to YAML
+- [ ] Implement diagnostics rendering to YAML
+- [ ] Implement package list rendering to YAML
+- [ ] Add YAML struct tags
+- [ ] Write YAML renderer tests
 
-**Deliverable**: Complete query command suite
+#### 14.5: Table Renderer
+- [ ] Implement TableRenderer structure with lipgloss
+- [ ] Create table builder with dynamic column widths
+- [ ] Implement status rendering as table
+- [ ] Implement diagnostics rendering as table
+- [ ] Implement package list rendering as table
+- [ ] Add table utilities
+- [ ] Write table renderer tests
+
+#### 14.6: Status Command
+- [ ] Create status command structure
+- [ ] Implement command handler with format selection
+- [ ] Add status query logic in Client API
+- [ ] Define Status and PackageStatus types
+- [ ] Add help text with examples
+- [ ] Write status command tests
+
+#### 14.7: Doctor Command
+- [ ] Create doctor command structure
+- [ ] Implement command handler with exit codes
+- [ ] Add doctor logic in Client API
+- [ ] Define DiagnosticReport and Issue types
+- [ ] Implement issue detection (broken links, orphaned, permissions)
+- [ ] Generate actionable suggestions
+- [ ] Add help text with examples
+- [ ] Write doctor command tests
+
+#### 14.8: List Command
+- [ ] Create list command structure
+- [ ] Implement command handler with sorting
+- [ ] Add list logic in Client API
+- [ ] Implement package sorting by multiple fields
+- [ ] Add help text with examples
+- [ ] Write list command tests
+
+#### 14.9: Integration and Polish
+- [ ] Ensure command consistency across all query commands
+- [ ] Standardize error handling
+- [ ] Verify output consistency across all formats
+- [ ] Performance profiling and optimization
+- [ ] Add documentation and examples
+- [ ] Write integration tests
+
+**Deliverable**: Complete query command suite with rich output formatting
+
+**See Also**: [Phase 14 Detailed Plan](./Phase-14-Plan.md)
 
 ---
 
@@ -631,28 +676,54 @@ User-friendly error messages and help system.
 
 ### Phase 16: Property-Based Testing
 
-Verify algebraic laws and invariants.
+Verify algebraic laws, invariants, and mathematical properties using gopter.
 
-#### 16.1: Test Infrastructure
-- [ ] Set up gopter for property-based testing
-- [ ] Create test/properties/ package
-- [ ] Implement data generators for paths, packages, operations
-- [ ] Write generator tests
+#### 16.1: Test Infrastructure Setup
+- [ ] Integrate gopter framework with project conventions
+- [ ] Configure test parameters and CI integration
+- [ ] Create test/properties/ package structure
+- [ ] Set up test harness and runners
 
-#### 16.2: Core Properties
-- [ ] Verify stow-unstow identity (stow then unstow = no-op)
-- [ ] Verify restow idempotence (restow twice = restow once)
-- [ ] Verify stow commutativity (package order doesn't matter)
-- [ ] Verify adopt content preservation (content unchanged after adopt)
-- [ ] Write property tests
+#### 16.2: Data Generators
+- [ ] Implement path generators (absolute, relative, typed)
+- [ ] Implement package structure generators
+- [ ] Implement operation generators with dependencies
+- [ ] Implement filesystem state generators
+- [ ] Create generator composition utilities
 
-#### 16.3: Invariant Testing
-- [ ] Verify plan validity (no cycles, valid dependencies)
-- [ ] Verify manifest consistency (matches filesystem)
-- [ ] Verify operation reversibility (rollback works)
-- [ ] Write invariant tests
+#### 16.3: Algebraic Law Verification
+- [ ] Test idempotence (operations can repeat safely)
+- [ ] Test reversibility (operations can be undone)
+- [ ] Test commutativity (order independence)
+- [ ] Test associativity (grouping independence)
+- [ ] Test conservation (data preservation)
 
-**Deliverable**: Comprehensive property-based test suite
+#### 16.4: Domain Invariant Verification
+- [ ] Verify path invariants (type safety, containment)
+- [ ] Verify graph invariants (acyclicity, reachability)
+- [ ] Verify manifest invariants (consistency, completeness)
+- [ ] Verify operation invariants (validity, atomicity)
+- [ ] Verify conflict invariants (detection completeness)
+
+#### 16.5: Performance Properties
+- [ ] Test algorithmic complexity bounds
+- [ ] Verify incremental operation performance
+- [ ] Test parallelization correctness and speedup
+
+#### 16.6: Error Handling Properties
+- [ ] Test error propagation completeness
+- [ ] Verify rollback correctness
+- [ ] Test validation exhaustiveness
+
+#### 16.7: Integration and Documentation
+- [ ] Integrate property tests into CI/CD
+- [ ] Write comprehensive property testing guide
+- [ ] Create example property tests
+- [ ] Document maintenance procedures
+
+**Deliverable**: Comprehensive property-based test suite verifying mathematical correctness
+
+**See Also**: [Phase 16 Detailed Plan](./Phase-16-Plan.md)
 
 ---
 

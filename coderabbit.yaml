@@ -37,6 +37,7 @@ reviews:
     ignore_title_keywords: []
     labels: []
     drafts: false
+    base_branches: []
     ignore_usernames: []
   finishing_touches:
     docstrings:

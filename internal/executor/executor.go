@@ -93,7 +93,11 @@ func (e *Executor) Execute(ctx context.Context, plan dot.Plan) dot.Result[Execut
 	}
 
 	// Success - delete checkpoint
-	e.checkpoint.Delete(ctx, checkpoint.ID)
+	if err := e.checkpoint.Delete(ctx, checkpoint.ID); err != nil {
+		e.log.Error(ctx, "checkpoint_delete_failed", "checkpoint_id", checkpoint.ID, "error", err)
+		return dot.Err[ExecutionResult](fmt.Errorf("checkpoint cleanup failed: %w", err))
+	}
+
 	e.log.Info(ctx, "execution_complete", "operations", len(result.Executed))
 
 	return dot.Ok(result)

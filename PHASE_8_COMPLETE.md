@@ -144,7 +144,7 @@ Plus 1 cleanup commit:
 
 ## Architecture
 
-```
+```text
 internal/planner/
 ├── graph.go         # Dependency graph construction ← NEW
 ├── graph_test.go    # Graph tests (7 tests) ← NEW
@@ -302,7 +302,7 @@ Phase 8 provides operation ordering. **Phase 9: Pipeline Orchestration** compose
 
 ## Functional Core Progress
 
-```
+```text
 [✅] Phase 1: Domain Model and Core Types
 [✅] Phase 2: Infrastructure Ports
 [✅] Phase 3: Adapters

@@ -30,10 +30,10 @@ func NewRootCommand(version, commit, date string) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "dot",
 		Short: "Modern symlink manager for dotfiles",
-		Long: `dot is a type-safe GNU Stow replacement written in Go.
+		Long: `dot is a type-safe dotfile manager written in Go.
 
 dot manages dotfiles by creating symlinks from a source directory 
-(stow directory) to a target directory. It provides atomic operations,
+(package directory) to a target directory. It provides atomic operations,
 comprehensive conflict detection, and incremental updates.`,
 		Version:       fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date),
 		SilenceUsage:  true,
@@ -42,7 +42,7 @@ comprehensive conflict detection, and incremental updates.`,
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVarP(&globalCfg.stowDir, "dir", "d", ".",
-		"Stow directory containing packages")
+		"Source directory containing packages")
 
 	// Compute cross-platform home directory default
 	defaultTarget, err := os.UserHomeDir()

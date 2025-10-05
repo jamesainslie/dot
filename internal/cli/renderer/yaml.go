@@ -20,3 +20,11 @@ func (r *YAMLRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 	defer encoder.Close()
 	return encoder.Encode(status)
 }
+
+// RenderDiagnostics renders diagnostic report as YAML.
+func (r *YAMLRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
+	encoder := yaml.NewEncoder(w)
+	encoder.SetIndent(r.indent)
+	defer encoder.Close()
+	return encoder.Encode(report)
+}

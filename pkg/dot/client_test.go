@@ -52,6 +52,10 @@ func (m *mockClient) List(ctx context.Context) ([]dot.PackageInfo, error) {
 	return nil, nil
 }
 
+func (m *mockClient) Doctor(ctx context.Context) (dot.DiagnosticReport, error) {
+	return dot.DiagnosticReport{}, nil
+}
+
 func (m *mockClient) Config() dot.Config {
 	return m.config
 }

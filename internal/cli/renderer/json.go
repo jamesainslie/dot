@@ -20,3 +20,12 @@ func (r *JSONRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 	}
 	return encoder.Encode(status)
 }
+
+// RenderDiagnostics renders diagnostic report as JSON.
+func (r *JSONRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
+	encoder := json.NewEncoder(w)
+	if r.pretty {
+		encoder.SetIndent("", "  ")
+	}
+	return encoder.Encode(report)
+}

@@ -1,4 +1,4 @@
-.PHONY: build test lint clean install check help version version-major version-minor version-patch release
+.PHONY: build test test-tparse lint clean install check qa help version version-major version-minor version-patch release
 
 # Build variables
 BINARY_NAME := dot
@@ -65,8 +65,16 @@ clean:
 install: build
 	go install $(LDFLAGS) ./cmd/$(BINARY_NAME)
 
-## check: Run tests and linting
+## check: Run tests and linting (machine-readable output for CI/AI agents)
 check: test lint vet
+
+## qa: Run tests with tparse, linting, and vetting (human-friendly output)
+qa: test-tparse lint vet
+
+## test-tparse: Run tests with tparse for formatted output
+test-tparse:
+	@command -v tparse >/dev/null 2>&1 || { echo "Installing tparse..."; go install github.com/mfridman/tparse@latest; }
+	@set -o pipefail && go test -json -race -cover -coverprofile=coverage.out ./... | tparse -all -progress -slow 10
 
 ## coverage: Generate coverage report
 coverage:

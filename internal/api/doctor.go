@@ -75,6 +75,45 @@ func (c *client) Doctor(ctx context.Context, scanCfg dot.ScanConfig) (dot.Diagno
 	}, nil
 }
 
+// extractManagedDirectories returns unique directories containing managed links.
+func extractManagedDirectories(m *manifest.Manifest) []string {
+	dirSet := make(map[string]bool)
+	
+	for _, pkgInfo := range m.Packages {
+		for _, link := range pkgInfo.Links {
+			// Extract all parent directories
+			dir := filepath.Dir(link)
+			for dir != "." && dir != "/" && dir != "" {
+				dirSet[dir] = true
+				dir = filepath.Dir(dir)
+			}
+			// Always include root
+			dirSet["."] = true
+		}
+	}
+	
+	// Convert set to slice
+	dirs := make([]string, 0, len(dirSet))
+	for dir := range dirSet {
+		dirs = append(dirs, dir)
+	}
+	
+	return dirs
+}
+
+// buildManagedLinkSet creates a set for O(1) link lookup.
+func buildManagedLinkSet(m *manifest.Manifest) map[string]bool {
+	linkSet := make(map[string]bool)
+	
+	for _, pkgInfo := range m.Packages {
+		for _, link := range pkgInfo.Links {
+			linkSet[link] = true
+		}
+	}
+	
+	return linkSet
+}
+
 // scanForOrphanedLinks recursively scans for symlinks not in the manifest.
 func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manifest.Manifest, issues *[]dot.Issue, stats *dot.DiagnosticStats) error {
 	entries, err := c.config.FS.ReadDir(ctx, dir)

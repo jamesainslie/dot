@@ -25,19 +25,20 @@ func NewLoader(appName string, configPath string) *Loader {
 // Load loads configuration from file with proper precedence.
 // Precedence: file > defaults
 func (l *Loader) Load() (*ExtendedConfig, error) {
-	// Start with defaults
-	cfg := DefaultExtended()
-
 	// Load from config file if it exists
 	if fileExists(l.configPath) {
 		fileCfg, err := LoadExtendedFromFile(l.configPath)
 		if err != nil {
 			return nil, fmt.Errorf("load config file: %w", err)
 		}
-		cfg = mergeConfigs(cfg, fileCfg)
+		// Use file config directly to preserve explicit false values
+		return fileCfg, nil
 	}
 
-	// Validate merged configuration
+	// No file - return defaults
+	cfg := DefaultExtended()
+
+	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
@@ -91,66 +92,167 @@ func (l *Loader) LoadWithFlags(flags map[string]interface{}) (*ExtendedConfig, e
 // loadFromEnv loads configuration from environment variables.
 // Returns a sparse config with only explicitly set environment values.
 func (l *Loader) loadFromEnv() *ExtendedConfig {
-	cfg := &ExtendedConfig{
-		Directories:  DirectoriesConfig{},
-		Logging:      LoggingConfig{},
-		Symlinks:     SymlinksConfig{},
-		Ignore:       IgnoreConfig{},
-		Dotfile:      DotfileConfig{},
-		Output:       OutputConfig{},
-		Operations:   OperationsConfig{},
-		Packages:     PackagesConfig{},
-		Doctor:       DoctorConfig{},
-		Experimental: ExperimentalConfig{},
-	}
+	v := viper.New()
 
-	// Only set values that have corresponding environment variables
-	prefix := strings.ToUpper(l.appName) + "_"
+	// Set up environment variable handling
+	v.SetEnvPrefix(strings.ToUpper(l.appName))
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
 
-	// Directories
-	if val := getEnvWithPrefix(prefix, "DIRECTORIES_STOW"); val != "" {
-		cfg.Directories.Stow = val
-	}
-	if val := getEnvWithPrefix(prefix, "DIRECTORIES_TARGET"); val != "" {
-		cfg.Directories.Target = val
-	}
-	if val := getEnvWithPrefix(prefix, "DIRECTORIES_MANIFEST"); val != "" {
-		cfg.Directories.Manifest = val
-	}
+	// Bind all configuration keys
+	l.bindEnvKeys(v)
 
-	// Logging
-	if val := getEnvWithPrefix(prefix, "LOGGING_LEVEL"); val != "" {
-		cfg.Logging.Level = val
-	}
-	if val := getEnvWithPrefix(prefix, "LOGGING_FORMAT"); val != "" {
-		cfg.Logging.Format = val
-	}
-	if val := getEnvWithPrefix(prefix, "LOGGING_DESTINATION"); val != "" {
-		cfg.Logging.Destination = val
-	}
-	if val := getEnvWithPrefix(prefix, "LOGGING_FILE"); val != "" {
-		cfg.Logging.File = val
-	}
+	// Create sparse config
+	cfg := createSparseConfig()
 
-	// Symlinks
-	if val := getEnvWithPrefix(prefix, "SYMLINKS_MODE"); val != "" {
-		cfg.Symlinks.Mode = val
-	}
-
-	// Output
-	if val := getEnvWithPrefix(prefix, "OUTPUT_FORMAT"); val != "" {
-		cfg.Output.Format = val
-	}
-	if val := getEnvWithPrefix(prefix, "OUTPUT_COLOR"); val != "" {
-		cfg.Output.Color = val
-	}
-
-	// Packages
-	if val := getEnvWithPrefix(prefix, "PACKAGES_SORT_BY"); val != "" {
-		cfg.Packages.SortBy = val
-	}
+	// Load each section
+	loadDirectoriesFromEnv(v, &cfg.Directories)
+	loadLoggingFromEnv(v, &cfg.Logging)
+	loadSymlinksFromEnv(v, &cfg.Symlinks)
+	loadIgnoreFromEnv(v, &cfg.Ignore)
+	loadDotfileFromEnv(v, &cfg.Dotfile)
+	loadOutputFromEnv(v, &cfg.Output)
+	loadOperationsFromEnv(v, &cfg.Operations)
+	loadPackagesFromEnv(v, &cfg.Packages)
+	loadDoctorFromEnv(v, &cfg.Doctor)
+	loadExperimentalFromEnv(v, &cfg.Experimental)
 
 	return cfg
+}
+
+func loadDirectoriesFromEnv(v *viper.Viper, cfg *DirectoriesConfig) {
+	if v.IsSet("directories.stow") {
+		cfg.Stow = v.GetString("directories.stow")
+	}
+	if v.IsSet("directories.target") {
+		cfg.Target = v.GetString("directories.target")
+	}
+	if v.IsSet("directories.manifest") {
+		cfg.Manifest = v.GetString("directories.manifest")
+	}
+}
+
+func loadLoggingFromEnv(v *viper.Viper, cfg *LoggingConfig) {
+	if v.IsSet("logging.level") {
+		cfg.Level = v.GetString("logging.level")
+	}
+	if v.IsSet("logging.format") {
+		cfg.Format = v.GetString("logging.format")
+	}
+	if v.IsSet("logging.destination") {
+		cfg.Destination = v.GetString("logging.destination")
+	}
+	if v.IsSet("logging.file") {
+		cfg.File = v.GetString("logging.file")
+	}
+}
+
+func loadSymlinksFromEnv(v *viper.Viper, cfg *SymlinksConfig) {
+	if v.IsSet("symlinks.mode") {
+		cfg.Mode = v.GetString("symlinks.mode")
+	}
+	if v.IsSet("symlinks.folding") {
+		cfg.Folding = v.GetBool("symlinks.folding")
+	}
+	if v.IsSet("symlinks.overwrite") {
+		cfg.Overwrite = v.GetBool("symlinks.overwrite")
+	}
+	if v.IsSet("symlinks.backup") {
+		cfg.Backup = v.GetBool("symlinks.backup")
+	}
+	if v.IsSet("symlinks.backup_suffix") {
+		cfg.BackupSuffix = v.GetString("symlinks.backup_suffix")
+	}
+}
+
+func loadIgnoreFromEnv(v *viper.Viper, cfg *IgnoreConfig) {
+	if v.IsSet("ignore.use_defaults") {
+		cfg.UseDefaults = v.GetBool("ignore.use_defaults")
+	}
+	if v.IsSet("ignore.patterns") {
+		cfg.Patterns = v.GetStringSlice("ignore.patterns")
+	}
+	if v.IsSet("ignore.overrides") {
+		cfg.Overrides = v.GetStringSlice("ignore.overrides")
+	}
+}
+
+func loadDotfileFromEnv(v *viper.Viper, cfg *DotfileConfig) {
+	if v.IsSet("dotfile.translate") {
+		cfg.Translate = v.GetBool("dotfile.translate")
+	}
+	if v.IsSet("dotfile.prefix") {
+		cfg.Prefix = v.GetString("dotfile.prefix")
+	}
+}
+
+func loadOutputFromEnv(v *viper.Viper, cfg *OutputConfig) {
+	if v.IsSet("output.format") {
+		cfg.Format = v.GetString("output.format")
+	}
+	if v.IsSet("output.color") {
+		cfg.Color = v.GetString("output.color")
+	}
+	if v.IsSet("output.progress") {
+		cfg.Progress = v.GetBool("output.progress")
+	}
+	if v.IsSet("output.verbosity") {
+		cfg.Verbosity = v.GetInt("output.verbosity")
+	}
+	if v.IsSet("output.width") {
+		cfg.Width = v.GetInt("output.width")
+	}
+}
+
+func loadOperationsFromEnv(v *viper.Viper, cfg *OperationsConfig) {
+	if v.IsSet("operations.dry_run") {
+		cfg.DryRun = v.GetBool("operations.dry_run")
+	}
+	if v.IsSet("operations.atomic") {
+		cfg.Atomic = v.GetBool("operations.atomic")
+	}
+	if v.IsSet("operations.max_parallel") {
+		cfg.MaxParallel = v.GetInt("operations.max_parallel")
+	}
+}
+
+func loadPackagesFromEnv(v *viper.Viper, cfg *PackagesConfig) {
+	if v.IsSet("packages.sort_by") {
+		cfg.SortBy = v.GetString("packages.sort_by")
+	}
+	if v.IsSet("packages.auto_discover") {
+		cfg.AutoDiscover = v.GetBool("packages.auto_discover")
+	}
+	if v.IsSet("packages.validate_names") {
+		cfg.ValidateNames = v.GetBool("packages.validate_names")
+	}
+}
+
+func loadDoctorFromEnv(v *viper.Viper, cfg *DoctorConfig) {
+	if v.IsSet("doctor.auto_fix") {
+		cfg.AutoFix = v.GetBool("doctor.auto_fix")
+	}
+	if v.IsSet("doctor.check_manifest") {
+		cfg.CheckManifest = v.GetBool("doctor.check_manifest")
+	}
+	if v.IsSet("doctor.check_broken_links") {
+		cfg.CheckBrokenLinks = v.GetBool("doctor.check_broken_links")
+	}
+	if v.IsSet("doctor.check_orphaned") {
+		cfg.CheckOrphaned = v.GetBool("doctor.check_orphaned")
+	}
+	if v.IsSet("doctor.check_permissions") {
+		cfg.CheckPermissions = v.GetBool("doctor.check_permissions")
+	}
+}
+
+func loadExperimentalFromEnv(v *viper.Viper, cfg *ExperimentalConfig) {
+	if v.IsSet("experimental.parallel") {
+		cfg.Parallel = v.GetBool("experimental.parallel")
+	}
+	if v.IsSet("experimental.profiling") {
+		cfg.Profiling = v.GetBool("experimental.profiling")
+	}
 }
 
 // getEnvWithPrefix gets an environment variable with the given prefix.

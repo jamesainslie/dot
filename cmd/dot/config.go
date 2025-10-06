@@ -109,7 +109,13 @@ func runConfigInit(force bool, format string) error {
 	// Override extension if format specified
 	if format != "yaml" {
 		dir := filepath.Dir(configPath)
-		configPath = filepath.Join(dir, "config."+format)
+		base := filepath.Base(configPath)
+		// Strip existing extension and add new one
+		ext := filepath.Ext(base)
+		if ext != "" {
+			base = base[:len(base)-len(ext)]
+		}
+		configPath = filepath.Join(dir, base+"."+format)
 	}
 
 	// Check if exists
@@ -127,7 +133,11 @@ func runConfigInit(force bool, format string) error {
 	}
 
 	fmt.Printf("Configuration file created: %s\n", configPath)
-	fmt.Printf("Edit with: dot config edit\n")
+	if editor := os.Getenv("EDITOR"); editor != "" {
+		fmt.Printf("Edit with: %s %s\n", editor, configPath)
+	} else {
+		fmt.Printf("Edit with your preferred editor\n")
+	}
 
 	return nil
 }

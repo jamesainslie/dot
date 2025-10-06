@@ -102,7 +102,13 @@ func (p *Printer) PrintSummary(summary ExecutionSummary) {
 	}
 
 	if summary.DryRun {
-		p.PrintInfo("Dry-run: No changes applied")
+		if !p.quiet {
+			if p.colorEnabled {
+				fmt.Println(render.InfoStyle("Dry-run: No changes applied"))
+			} else {
+				fmt.Println("Dry-run: No changes applied")
+			}
+		}
 		return
 	}
 

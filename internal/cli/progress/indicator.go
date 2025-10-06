@@ -1,6 +1,8 @@
 package progress
 
 import (
+	"os"
+
 	"golang.org/x/term"
 )
 
@@ -52,8 +54,14 @@ func NewSpinner(cfg Config) Indicator {
 }
 
 // IsInteractive checks if the terminal is interactive.
+// Checks if stdout or stderr is a terminal (not stdin, which may be piped).
 func IsInteractive() bool {
-	return term.IsTerminal(0)
+	// Check stdout first
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		return true
+	}
+	// Fallback to stderr
+	return term.IsTerminal(int(os.Stderr.Fd()))
 }
 
 // NoOpIndicator does nothing (for non-interactive terminals).

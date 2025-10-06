@@ -17,12 +17,18 @@ type Stage struct {
 }
 
 // NewTracker creates a new progress tracker.
-func NewTracker(stages []Stage, indicator Indicator) *Tracker {
+func NewTracker(stages []Stage, indicator Indicator) (*Tracker, error) {
+	if stages == nil {
+		return nil, fmt.Errorf("stages cannot be nil")
+	}
+	if indicator == nil {
+		return nil, fmt.Errorf("indicator cannot be nil")
+	}
 	return &Tracker{
 		stages:    stages,
 		current:   0,
 		indicator: indicator,
-	}
+	}, nil
 }
 
 // Start begins tracking.

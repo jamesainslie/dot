@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jamesainslie/dot/internal/manifest"
 	"github.com/jamesainslie/dot/pkg/dot"
@@ -112,6 +113,58 @@ func buildManagedLinkSet(m *manifest.Manifest) map[string]bool {
 	}
 	
 	return linkSet
+}
+
+// calculateDepth returns the directory depth relative to target directory.
+func calculateDepth(path, targetDir string) int {
+	// Clean both paths
+	path = filepath.Clean(path)
+	targetDir = filepath.Clean(targetDir)
+	
+	// If same directory, depth is 0
+	if path == targetDir {
+		return 0
+	}
+	
+	// Get relative path
+	rel, err := filepath.Rel(targetDir, path)
+	if err != nil || rel == "." {
+		return 0
+	}
+	
+	// Count separators in relative path
+	depth := 0
+	for _, c := range rel {
+		if c == filepath.Separator {
+			depth++
+		}
+	}
+	
+	// If path doesn't end with separator, add 1
+	if rel != "" && rel != "." {
+		depth++
+	}
+	
+	return depth
+}
+
+// shouldSkipDirectory checks if a directory should be skipped based on patterns.
+func shouldSkipDirectory(path string, skipPatterns []string) bool {
+	// Get basename for matching
+	base := filepath.Base(path)
+	
+	for _, pattern := range skipPatterns {
+		if base == pattern {
+			return true
+		}
+		// Also check if any component in path matches
+		if strings.Contains(path, string(filepath.Separator)+pattern+string(filepath.Separator)) ||
+			strings.HasSuffix(path, string(filepath.Separator)+pattern) {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // scanForOrphanedLinks recursively scans for symlinks not in the manifest.

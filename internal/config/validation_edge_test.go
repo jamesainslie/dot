@@ -12,7 +12,7 @@ func TestValidateDotfile_AllCases(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Dotfile.Translate = false
 		cfg.Dotfile.Prefix = "" // Should be ok when translate is false
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err)
 	})
@@ -21,7 +21,7 @@ func TestValidateDotfile_AllCases(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Dotfile.Translate = true
 		cfg.Dotfile.Prefix = ""
-		
+
 		err := cfg.Validate()
 		assert.Error(t, err)
 	})
@@ -30,7 +30,7 @@ func TestValidateDotfile_AllCases(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Dotfile.Translate = true
 		cfg.Dotfile.Prefix = "" // Empty prefix should error
-		
+
 		err := cfg.Validate()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "prefix")
@@ -40,7 +40,7 @@ func TestValidateDotfile_AllCases(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Dotfile.Translate = true
 		cfg.Dotfile.Prefix = "dot-"
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err)
 	})
@@ -61,7 +61,7 @@ func TestValidateSymlinks_AllModes(t *testing.T) {
 		t.Run(tt.mode, func(t *testing.T) {
 			cfg := config.DefaultExtended()
 			cfg.Symlinks.Mode = tt.mode
-			
+
 			err := cfg.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -88,7 +88,7 @@ func TestValidateLogging_AllDestinations(t *testing.T) {
 		t.Run(tt.dest, func(t *testing.T) {
 			cfg := config.DefaultExtended()
 			cfg.Logging.Destination = tt.dest
-			
+
 			err := cfg.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -104,7 +104,7 @@ func TestValidateIgnore_UseDefaultsCombinations(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Ignore.UseDefaults = true
 		cfg.Ignore.Patterns = []string{}
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err)
 	})
@@ -113,7 +113,7 @@ func TestValidateIgnore_UseDefaultsCombinations(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Ignore.UseDefaults = false
 		cfg.Ignore.Patterns = []string{".git", ".svn"}
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err)
 	})
@@ -122,9 +122,8 @@ func TestValidateIgnore_UseDefaultsCombinations(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Ignore.UseDefaults = false
 		cfg.Ignore.Patterns = []string{}
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err)
 	})
 }
-

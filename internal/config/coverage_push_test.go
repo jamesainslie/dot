@@ -21,10 +21,10 @@ func TestLoadFromFile_NonexistentFile(t *testing.T) {
 func TestLoadFromFile_InvalidYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 	badFile := filepath.Join(tmpDir, "bad.yaml")
-	
+
 	err := os.WriteFile(badFile, []byte("invalid: yaml: [[["), 0600)
 	require.NoError(t, err)
-	
+
 	_, err = config.LoadFromFile(badFile)
 	assert.Error(t, err)
 }
@@ -32,7 +32,7 @@ func TestLoadFromFile_InvalidYAML(t *testing.T) {
 func TestLoadWithEnv_AllVariables(t *testing.T) {
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "config.yaml")
-	
+
 	// Minimal config
 	err := os.WriteFile(configFile, []byte(""), 0600)
 	require.NoError(t, err)
@@ -72,11 +72,11 @@ func TestDefaultExtended_ValidationPasses(t *testing.T) {
 
 func TestValidateOutputFormats(t *testing.T) {
 	formats := []string{"text", "json", "yaml", "table"}
-	
+
 	for _, format := range formats {
 		cfg := config.DefaultExtended()
 		cfg.Output.Format = format
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err, "format %s should be valid", format)
 	}
@@ -84,11 +84,11 @@ func TestValidateOutputFormats(t *testing.T) {
 
 func TestValidateOutputColors(t *testing.T) {
 	colors := []string{"auto", "always", "never"}
-	
+
 	for _, color := range colors {
 		cfg := config.DefaultExtended()
 		cfg.Output.Color = color
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err, "color %s should be valid", color)
 	}
@@ -96,11 +96,11 @@ func TestValidateOutputColors(t *testing.T) {
 
 func TestValidateLoggingLevels(t *testing.T) {
 	levels := []string{"DEBUG", "INFO", "WARN", "ERROR"}
-	
+
 	for _, level := range levels {
 		cfg := config.DefaultExtended()
 		cfg.Logging.Level = level
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err, "level %s should be valid", level)
 	}
@@ -108,11 +108,11 @@ func TestValidateLoggingLevels(t *testing.T) {
 
 func TestValidateLoggingFormats(t *testing.T) {
 	formats := []string{"text", "json"}
-	
+
 	for _, format := range formats {
 		cfg := config.DefaultExtended()
 		cfg.Logging.Format = format
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err, "format %s should be valid", format)
 	}
@@ -120,11 +120,11 @@ func TestValidateLoggingFormats(t *testing.T) {
 
 func TestValidateSymlinkModes(t *testing.T) {
 	modes := []string{"relative", "absolute"}
-	
+
 	for _, mode := range modes {
 		cfg := config.DefaultExtended()
 		cfg.Symlinks.Mode = mode
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err, "mode %s should be valid", mode)
 	}
@@ -132,7 +132,7 @@ func TestValidateSymlinkModes(t *testing.T) {
 
 func TestValidateWithAllBooleanCombinations(t *testing.T) {
 	cfg := config.DefaultExtended()
-	
+
 	// Test all boolean flag combinations
 	boolCombos := []struct {
 		folding   bool
@@ -153,9 +153,8 @@ func TestValidateWithAllBooleanCombinations(t *testing.T) {
 		cfg.Symlinks.Folding = combo.folding
 		cfg.Symlinks.Overwrite = combo.overwrite
 		cfg.Symlinks.Backup = combo.backup
-		
+
 		err := cfg.Validate()
 		assert.NoError(t, err)
 	}
 }
-

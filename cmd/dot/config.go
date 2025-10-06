@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jamesainslie/dot/internal/config"
 	"github.com/spf13/cobra"
@@ -106,8 +107,23 @@ Use --force to overwrite existing configuration.`,
 func runConfigInit(force bool, format string) error {
 	configPath := getConfigFilePath()
 
-	// Override extension if format specified
-	if format != "yaml" {
+	// If format was not explicitly specified (still default "yaml"),
+	// detect format from configPath extension
+	if format == "yaml" {
+		ext := filepath.Ext(configPath)
+		if ext != "" {
+			// Normalize extension
+			ext = strings.TrimPrefix(ext, ".")
+			if ext == "yml" {
+				ext = "yaml"
+			}
+			// Use detected format if recognized
+			if ext == "json" || ext == "toml" {
+				format = ext
+			}
+		}
+	} else {
+		// Format explicitly specified - adjust path extension
 		dir := filepath.Dir(configPath)
 		base := filepath.Base(configPath)
 		// Strip existing extension and add new one

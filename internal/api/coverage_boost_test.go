@@ -115,7 +115,7 @@ func TestDoctor_ChecksAllLinksInPackage(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// All 5 links missing

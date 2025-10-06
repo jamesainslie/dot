@@ -163,7 +163,9 @@ type ScanConfig struct {
 	// Mode determines the scanning strategy.
 	Mode ScanMode
 
-	// MaxDepth limits directory recursion depth (0 = unlimited, default: 10).
+	// MaxDepth limits directory recursion depth.
+	// Values <= 0 are normalized to 10 by constructor helpers.
+	// Default: 10
 	MaxDepth int
 
 	// ScopeToDirs limits scanning to specific directories.
@@ -171,7 +173,7 @@ type ScanConfig struct {
 	ScopeToDirs []string
 
 	// SkipPatterns are directory names/patterns to skip during scanning.
-	// Default: [".git", "node_modules", ".cache", ".npm"]
+	// Default constructors include: [".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"]
 	SkipPatterns []string
 }
 

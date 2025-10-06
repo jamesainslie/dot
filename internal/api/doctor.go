@@ -132,12 +132,15 @@ func extractManagedDirectories(m *manifest.Manifest) []string {
 }
 
 // buildManagedLinkSet creates a set for O(1) link lookup.
+// Normalizes paths to forward slashes for cross-platform compatibility.
 func buildManagedLinkSet(m *manifest.Manifest) map[string]bool {
 	linkSet := make(map[string]bool)
 
 	for _, pkgInfo := range m.Packages {
 		for _, link := range pkgInfo.Links {
-			linkSet[link] = true
+			// Normalize to forward slashes for consistent lookup on all platforms
+			normalized := filepath.ToSlash(link)
+			linkSet[normalized] = true
 		}
 	}
 
@@ -261,7 +264,10 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manife
 
 			if isLink {
 				// It's a symlink - check if it's managed using O(1) set lookup
-				managed := linkSet[relPath] || linkSet[fullPath]
+				// Normalize paths to forward slashes for cross-platform compatibility
+				normalizedRel := filepath.ToSlash(relPath)
+				normalizedFull := filepath.ToSlash(fullPath)
+				managed := linkSet[normalizedRel] || linkSet[normalizedFull]
 
 				if !managed {
 					stats.OrphanedLinks++

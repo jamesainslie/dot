@@ -127,7 +127,7 @@ func (g *Generator) GenerateSeeAlso(cmd *cobra.Command) string {
 	return "  " + strings.Join(related, ", ")
 }
 
-// wrap wraps text to terminal width.
+// wrap wraps text to terminal width, preserving paragraph breaks and indentation.
 func (g *Generator) wrap(text string, indent int) string {
 	effectiveWidth := g.width - indent
 	if effectiveWidth < 40 {
@@ -148,28 +148,41 @@ func (g *Generator) wrap(text string, indent int) string {
 			continue
 		}
 
+		// Preserve original leading spaces
+		trimmed := strings.TrimLeft(line, " ")
+		leading := line[:len(line)-len(trimmed)]
+
+		if trimmed == "" {
+			continue
+		}
+
 		// Process this line with word wrapping
-		words := strings.Fields(line)
+		words := strings.Fields(trimmed)
 		if len(words) == 0 {
 			continue
 		}
 
-		currentLen := 0
+		currentLen := len(leading)
 		for i, word := range words {
 			wordLen := len(word)
 
 			if i == 0 {
+				// First word: write indent + original leading spaces
+				b.WriteString(indentStr)
+				b.WriteString(leading)
 				b.WriteString(word)
-				currentLen = wordLen
+				currentLen += wordLen
 			} else if currentLen+1+wordLen <= effectiveWidth {
 				b.WriteString(" ")
 				b.WriteString(word)
 				currentLen += 1 + wordLen
 			} else {
+				// Wrap to new line: preserve indent + leading spaces
 				b.WriteString("\n")
 				b.WriteString(indentStr)
+				b.WriteString(leading)
 				b.WriteString(word)
-				currentLen = wordLen
+				currentLen = len(leading) + wordLen
 			}
 		}
 	}

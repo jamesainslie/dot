@@ -115,7 +115,7 @@ func TestDoctor_HandlesManyPackages(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Should check all 3 packages
@@ -200,7 +200,7 @@ func TestDoctor_WithEmptyManifest(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Empty manifest is healthy

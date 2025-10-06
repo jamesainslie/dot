@@ -10,7 +10,7 @@ import (
 )
 
 // Doctor performs comprehensive health checks on the installation.
-func (c *client) Doctor(ctx context.Context) (dot.DiagnosticReport, error) {
+func (c *client) Doctor(ctx context.Context, scanCfg dot.ScanConfig) (dot.DiagnosticReport, error) {
 	targetPathResult := dot.NewTargetPath(c.config.TargetDir)
 	if !targetPathResult.IsOk() {
 		return dot.DiagnosticReport{}, targetPathResult.UnwrapErr()

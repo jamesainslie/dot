@@ -10,10 +10,10 @@ import (
 func TestCountLinksInPlan(t *testing.T) {
 	source1 := dot.NewFilePath("/stow/vim/.vimrc").Unwrap()
 	dest1 := dot.NewFilePath("/home/.vimrc").Unwrap()
-	
+
 	source2 := dot.NewFilePath("/stow/vim/.vim/vimrc").Unwrap()
 	dest2 := dot.NewFilePath("/home/.vim/vimrc").Unwrap()
-	
+
 	source3 := dot.NewFilePath("/home/.bashrc").Unwrap()
 	dest3 := dot.NewFilePath("/stow/bash/.bashrc").Unwrap()
 
@@ -77,4 +77,3 @@ func TestCountLinksInPlan(t *testing.T) {
 		})
 	}
 }
-

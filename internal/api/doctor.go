@@ -108,7 +108,7 @@ func (c *client) Doctor(ctx context.Context, scanCfg dot.ScanConfig) (dot.Diagno
 // extractManagedDirectories returns unique directories containing managed links.
 func extractManagedDirectories(m *manifest.Manifest) []string {
 	dirSet := make(map[string]bool)
-	
+
 	for _, pkgInfo := range m.Packages {
 		for _, link := range pkgInfo.Links {
 			// Extract all parent directories
@@ -121,26 +121,26 @@ func extractManagedDirectories(m *manifest.Manifest) []string {
 			dirSet["."] = true
 		}
 	}
-	
+
 	// Convert set to slice
 	dirs := make([]string, 0, len(dirSet))
 	for dir := range dirSet {
 		dirs = append(dirs, dir)
 	}
-	
+
 	return dirs
 }
 
 // buildManagedLinkSet creates a set for O(1) link lookup.
 func buildManagedLinkSet(m *manifest.Manifest) map[string]bool {
 	linkSet := make(map[string]bool)
-	
+
 	for _, pkgInfo := range m.Packages {
 		for _, link := range pkgInfo.Links {
 			linkSet[link] = true
 		}
 	}
-	
+
 	return linkSet
 }
 
@@ -149,18 +149,18 @@ func calculateDepth(path, targetDir string) int {
 	// Clean both paths
 	path = filepath.Clean(path)
 	targetDir = filepath.Clean(targetDir)
-	
+
 	// If same directory, depth is 0
 	if path == targetDir {
 		return 0
 	}
-	
+
 	// Get relative path
 	rel, err := filepath.Rel(targetDir, path)
 	if err != nil || rel == "." {
 		return 0
 	}
-	
+
 	// Count separators in relative path
 	depth := 0
 	for _, c := range rel {
@@ -168,12 +168,12 @@ func calculateDepth(path, targetDir string) int {
 			depth++
 		}
 	}
-	
+
 	// If path doesn't end with separator, add 1
 	if rel != "" && rel != "." {
 		depth++
 	}
-	
+
 	return depth
 }
 
@@ -181,7 +181,7 @@ func calculateDepth(path, targetDir string) int {
 func shouldSkipDirectory(path string, skipPatterns []string) bool {
 	// Get basename for matching
 	base := filepath.Base(path)
-	
+
 	for _, pattern := range skipPatterns {
 		if base == pattern {
 			return true
@@ -192,7 +192,7 @@ func shouldSkipDirectory(path string, skipPatterns []string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -251,7 +251,7 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, linkSet m
 			if shouldSkipDirectory(fullPath, []string{".git", "node_modules", ".cache", ".npm"}) {
 				continue
 			}
-			
+
 			// Recurse into subdirectories
 			if err := c.scanForOrphanedLinks(ctx, fullPath, linkSet, issues, stats); err != nil {
 				// Continue on error
@@ -264,11 +264,11 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, linkSet m
 				continue
 			}
 
-		if isLink {
-			// It's a symlink - check if it's managed using O(1) set lookup
-			managed := linkSet[relPath] || linkSet[fullPath]
+			if isLink {
+				// It's a symlink - check if it's managed using O(1) set lookup
+				managed := linkSet[relPath] || linkSet[fullPath]
 
-			if !managed {
+				if !managed {
 					stats.OrphanedLinks++
 					*issues = append(*issues, dot.Issue{
 						Severity:   dot.SeverityWarning,

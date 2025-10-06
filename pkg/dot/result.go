@@ -35,7 +35,23 @@ func (r Result[T]) IsErr() bool {
 }
 
 // Unwrap returns the contained value.
-// Panics if the Result contains an error.
+//
+// Panics if the Result contains an error. This is by design to enforce
+// proper error handling. In production code, prefer UnwrapOr() to provide
+// a safe default, or check IsOk() before calling Unwrap().
+//
+// Unwrap is appropriate when you have proven the Result must be Ok,
+// such as in tests or after explicit IsOk() checks.
+//
+// Example:
+//
+//	// Safe - explicit check
+//	if result.IsOk() {
+//	    value := result.Unwrap()
+//	}
+//
+//	// Safer - provides default
+//	value := result.UnwrapOr(defaultValue)
 func (r Result[T]) Unwrap() T {
 	if !r.isOk {
 		panic("called Unwrap on an Err Result")
@@ -44,7 +60,20 @@ func (r Result[T]) Unwrap() T {
 }
 
 // UnwrapErr returns the contained error.
-// Panics if the Result contains a value.
+//
+// Panics if the Result contains a value. Use IsErr() to check before
+// calling, or use pattern matching with IsOk()/IsErr() branches.
+//
+// Appropriate for error handling paths where you've confirmed the
+// Result is Err.
+//
+// Example:
+//
+//	// Safe - explicit check
+//	if result.IsErr() {
+//	    err := result.UnwrapErr()
+//	    // handle error
+//	}
 func (r Result[T]) UnwrapErr() error {
 	if r.isOk {
 		panic("called UnwrapErr on an Ok Result")

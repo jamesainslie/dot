@@ -74,6 +74,7 @@ comprehensive conflict detection, and incremental updates.`,
 		newStatusCommand(),
 		newListCommand(),
 		newDoctorCommand(),
+		newConfigCommand(),
 	)
 
 	return rootCmd

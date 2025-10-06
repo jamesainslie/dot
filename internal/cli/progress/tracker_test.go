@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewTracker(t *testing.T) {
@@ -13,11 +14,30 @@ func TestNewTracker(t *testing.T) {
 	}
 	indicator := &NoOpIndicator{}
 
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	assert.NotNil(t, tracker)
 	assert.Equal(t, 2, len(tracker.stages))
 	assert.Equal(t, 0, tracker.current)
+}
+
+func TestNewTracker_NilStages(t *testing.T) {
+	indicator := &NoOpIndicator{}
+
+	tracker, err := NewTracker(nil, indicator)
+	assert.Error(t, err)
+	assert.Nil(t, tracker)
+	assert.Contains(t, err.Error(), "stages cannot be nil")
+}
+
+func TestNewTracker_NilIndicator(t *testing.T) {
+	stages := []Stage{{Name: "Stage 1", Total: 10}}
+
+	tracker, err := NewTracker(stages, nil)
+	assert.Error(t, err)
+	assert.Nil(t, tracker)
+	assert.Contains(t, err.Error(), "indicator cannot be nil")
 }
 
 func TestTracker_Start(t *testing.T) {
@@ -25,7 +45,8 @@ func TestTracker_Start(t *testing.T) {
 		{Name: "First Stage", Total: 10},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	tracker.Start()
 
@@ -39,7 +60,8 @@ func TestTracker_Advance(t *testing.T) {
 		{Name: "Stage 3", Total: 30},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	tracker.Start()
 	assert.Equal(t, 0, tracker.current)
@@ -63,7 +85,8 @@ func TestTracker_UpdateCurrent(t *testing.T) {
 		{Name: "Stage 1", Total: 10},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	tracker.Start()
 	tracker.UpdateCurrent(5, "Progress update")
@@ -76,7 +99,8 @@ func TestTracker_UpdateCurrent_DefaultMessage(t *testing.T) {
 		{Name: "Stage 1", Total: 10},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	tracker.Start()
 	tracker.UpdateCurrent(5, "")
@@ -89,7 +113,8 @@ func TestTracker_Complete(t *testing.T) {
 		{Name: "Stage 1", Total: 10},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	tracker.Start()
 	tracker.Complete("All done")
@@ -102,7 +127,8 @@ func TestTracker_Fail(t *testing.T) {
 		{Name: "Stage 1", Total: 10},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	tracker.Start()
 	tracker.Fail("Operation failed")
@@ -116,7 +142,8 @@ func TestTracker_CurrentStage(t *testing.T) {
 		{Name: "Stage 2", Total: 20},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	assert.Equal(t, 0, tracker.CurrentStage())
 
@@ -131,7 +158,8 @@ func TestTracker_TotalStages(t *testing.T) {
 		{Name: "Stage 3", Total: 30},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	assert.Equal(t, 3, tracker.TotalStages())
 }
@@ -143,7 +171,8 @@ func TestTracker_MultiStageProgress(t *testing.T) {
 		{Name: "Executing", Total: 30},
 	}
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker(stages, indicator)
+	tracker, err := NewTracker(stages, indicator)
+	require.NoError(t, err)
 
 	tracker.Start()
 
@@ -173,7 +202,8 @@ func TestTracker_MultiStageProgress(t *testing.T) {
 
 func TestTracker_EmptyStages(t *testing.T) {
 	indicator := &NoOpIndicator{}
-	tracker := NewTracker([]Stage{}, indicator)
+	tracker, err := NewTracker([]Stage{}, indicator)
+	require.NoError(t, err)
 
 	assert.Equal(t, 0, tracker.TotalStages())
 	assert.Equal(t, 0, tracker.CurrentStage())

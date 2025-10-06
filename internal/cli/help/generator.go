@@ -134,30 +134,43 @@ func (g *Generator) wrap(text string, indent int) string {
 		effectiveWidth = 40
 	}
 
-	words := strings.Fields(text)
-	if len(words) == 0 {
-		return ""
-	}
-
+	lines := strings.Split(text, "\n")
 	var b strings.Builder
 	indentStr := strings.Repeat(" ", indent)
-	currentLen := 0
 
-	for i, word := range words {
-		wordLen := len(word)
-
-		if i == 0 {
-			b.WriteString(word)
-			currentLen = wordLen
-		} else if currentLen+1+wordLen <= effectiveWidth {
-			b.WriteString(" ")
-			b.WriteString(word)
-			currentLen += 1 + wordLen
-		} else {
+	for lineIdx, line := range lines {
+		if lineIdx > 0 {
 			b.WriteString("\n")
-			b.WriteString(indentStr)
-			b.WriteString(word)
-			currentLen = wordLen
+		}
+
+		// Empty line - preserve it
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		// Process this line with word wrapping
+		words := strings.Fields(line)
+		if len(words) == 0 {
+			continue
+		}
+
+		currentLen := 0
+		for i, word := range words {
+			wordLen := len(word)
+
+			if i == 0 {
+				b.WriteString(word)
+				currentLen = wordLen
+			} else if currentLen+1+wordLen <= effectiveWidth {
+				b.WriteString(" ")
+				b.WriteString(word)
+				currentLen += 1 + wordLen
+			} else {
+				b.WriteString("\n")
+				b.WriteString(indentStr)
+				b.WriteString(word)
+				currentLen = wordLen
+			}
 		}
 	}
 

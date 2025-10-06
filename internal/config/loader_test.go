@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoader_Load(t *testing.T) {
+func TestLoadFromFile_WithYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
@@ -27,14 +27,18 @@ logging:
 	err := os.WriteFile(configPath, []byte(configContent), 0600)
 	require.NoError(t, err)
 
-	loader := config.NewLoader("dot", configPath)
-	cfg, err := loader.Load()
+	cfg, err := config.LoadExtendedFromFile(configPath)
 	require.NoError(t, err)
 
 	assert.Equal(t, "/test/dotfiles", cfg.Directories.Stow)
 	assert.Equal(t, "/test/home", cfg.Directories.Target)
 	assert.Equal(t, "DEBUG", cfg.Logging.Level)
 	assert.Equal(t, "json", cfg.Logging.Format)
+}
+
+func TestNewLoader(t *testing.T) {
+	loader := config.NewLoader("dot", "/path/to/config.yaml")
+	assert.NotNil(t, loader)
 }
 
 func TestLoader_LoadWithMissingFile(t *testing.T) {

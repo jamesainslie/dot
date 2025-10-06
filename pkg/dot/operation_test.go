@@ -225,7 +225,7 @@ func TestLinkCreateOperationID(t *testing.T) {
 	source := dot.NewFilePath("/stow/vim/.vimrc").Unwrap()
 	dest := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 	op := dot.NewLinkCreate("link1", source, dest)
-	
+
 	id := op.ID()
 	assert.NotEmpty(t, id)
 	// ID should be deterministic
@@ -235,7 +235,7 @@ func TestLinkCreateOperationID(t *testing.T) {
 func TestLinkDeleteOperationID(t *testing.T) {
 	link := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 	op := dot.NewLinkDelete("link1", link)
-	
+
 	id := op.ID()
 	assert.NotEmpty(t, id)
 	assert.Equal(t, op.ID(), op.ID())
@@ -244,7 +244,7 @@ func TestLinkDeleteOperationID(t *testing.T) {
 func TestDirCreateOperationID(t *testing.T) {
 	path := dot.NewFilePath("/home/user/.config").Unwrap()
 	op := dot.NewDirCreate("dir1", path)
-	
+
 	id := op.ID()
 	assert.NotEmpty(t, id)
 	assert.Equal(t, op.ID(), op.ID())
@@ -253,7 +253,7 @@ func TestDirCreateOperationID(t *testing.T) {
 func TestDirDeleteOperationID(t *testing.T) {
 	path := dot.NewFilePath("/home/user/.config").Unwrap()
 	op := dot.NewDirDelete("dir1", path)
-	
+
 	id := op.ID()
 	assert.NotEmpty(t, id)
 	assert.Equal(t, op.ID(), op.ID())
@@ -263,7 +263,7 @@ func TestFileMoveOperationID(t *testing.T) {
 	source := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 	dest := dot.NewFilePath("/stow/vim/.vimrc").Unwrap()
 	op := dot.NewFileMove("move1", source, dest)
-	
+
 	id := op.ID()
 	assert.NotEmpty(t, id)
 	assert.Equal(t, op.ID(), op.ID())
@@ -273,7 +273,7 @@ func TestFileBackupOperationID(t *testing.T) {
 	source := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 	dest := dot.NewFilePath("/home/user/.vimrc.backup").Unwrap()
 	op := dot.NewFileBackup("backup1", source, dest)
-	
+
 	id := op.ID()
 	assert.NotEmpty(t, id)
 	assert.Equal(t, op.ID(), op.ID())

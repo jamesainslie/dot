@@ -55,35 +55,7 @@ func (c *client) Doctor(ctx context.Context, scanCfg dot.ScanConfig) (dot.Diagno
 
 	// Orphaned link detection (if enabled)
 	if scanCfg.Mode != dot.ScanOff {
-		// Determine scan directories
-		var scanDirs []string
-		if len(scanCfg.ScopeToDirs) > 0 {
-			// Use explicitly provided directories
-			scanDirs = scanCfg.ScopeToDirs
-		} else if scanCfg.Mode == dot.ScanScoped {
-			// Auto-detect from manifest
-			scanDirs = extractManagedDirectories(&m)
-		} else {
-			// Deep scan - use target directory
-			scanDirs = []string{c.config.TargetDir}
-		}
-
-		// Build link set for O(1) lookup
-		linkSet := buildManagedLinkSet(&m)
-
-		// Scan each directory
-		for _, dir := range scanDirs {
-			// For scoped mode, dir is relative; for deep mode, it's absolute
-			fullPath := dir
-			if scanCfg.Mode == dot.ScanScoped {
-				fullPath = filepath.Join(c.config.TargetDir, dir)
-			}
-			err := c.scanForOrphanedLinksWithLimits(ctx, fullPath, &m, linkSet, scanCfg, &issues, &stats)
-			if err != nil {
-				// Log but continue - orphan detection is best-effort
-				continue
-			}
-		}
+		c.performOrphanScan(ctx, &m, scanCfg, &issues, &stats)
 	}
 
 	// Determine overall health
@@ -103,6 +75,54 @@ func (c *client) Doctor(ctx context.Context, scanCfg dot.ScanConfig) (dot.Diagno
 		Issues:        issues,
 		Statistics:    stats,
 	}, nil
+}
+
+// performOrphanScan executes orphaned link scanning based on configuration.
+func (c *client) performOrphanScan(
+	ctx context.Context,
+	m *manifest.Manifest,
+	scanCfg dot.ScanConfig,
+	issues *[]dot.Issue,
+	stats *dot.DiagnosticStats,
+) {
+	// Determine scan directories
+	var scanDirs []string
+	if len(scanCfg.ScopeToDirs) > 0 {
+		// Use explicitly provided directories
+		scanDirs = scanCfg.ScopeToDirs
+	} else if scanCfg.Mode == dot.ScanScoped {
+		// Auto-detect from manifest
+		scanDirs = extractManagedDirectories(m)
+	} else {
+		// Deep scan - use target directory
+		scanDirs = []string{c.config.TargetDir}
+	}
+
+	// Normalize to absolute paths and deduplicate
+	absScanDirs := make([]string, 0, len(scanDirs))
+	for _, dir := range scanDirs {
+		// For scoped mode, dir is relative; for deep mode, it's absolute
+		fullPath := dir
+		if scanCfg.Mode == dot.ScanScoped {
+			fullPath = filepath.Join(c.config.TargetDir, dir)
+		}
+		absScanDirs = append(absScanDirs, fullPath)
+	}
+
+	// Remove descendants to avoid rescanning subdirectories
+	rootDirs := filterDescendants(absScanDirs)
+
+	// Build link set for O(1) lookup
+	linkSet := buildManagedLinkSet(m)
+
+	// Scan each root directory (recursion will cover descendants)
+	for _, dir := range rootDirs {
+		err := c.scanForOrphanedLinksWithLimits(ctx, dir, m, linkSet, scanCfg, issues, stats)
+		if err != nil {
+			// Log but continue - orphan detection is best-effort
+			continue
+		}
+	}
 }
 
 // extractManagedDirectories returns unique directories containing managed links.
@@ -129,6 +149,47 @@ func extractManagedDirectories(m *manifest.Manifest) []string {
 	}
 
 	return dirs
+}
+
+// filterDescendants removes directories that are descendants of other directories in the list.
+// This prevents rescanning the same subtrees multiple times.
+func filterDescendants(dirs []string) []string {
+	if len(dirs) <= 1 {
+		return dirs
+	}
+
+	// Clean all paths
+	cleaned := make([]string, len(dirs))
+	for i, dir := range dirs {
+		cleaned[i] = filepath.Clean(dir)
+	}
+
+	// Filter out descendants
+	roots := make([]string, 0, len(cleaned))
+	for _, dir := range cleaned {
+		isDescendant := false
+
+		// Check if this dir is a descendant of any other dir
+		for _, other := range cleaned {
+			if dir == other {
+				continue
+			}
+
+			// Check if dir is under other
+			rel, err := filepath.Rel(other, dir)
+			if err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
+				// dir is a descendant of other
+				isDescendant = true
+				break
+			}
+		}
+
+		if !isDescendant {
+			roots = append(roots, dir)
+		}
+	}
+
+	return roots
 }
 
 // buildManagedLinkSet creates a set for O(1) link lookup.

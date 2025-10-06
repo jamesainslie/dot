@@ -90,6 +90,13 @@ type Client interface {
 	//   - Overall health status
 	//   - List of issues found
 	//   - Summary statistics
+	//
+	// TODO: BREAKING CHANGE in v0.2.0 - Added scanCfg parameter.
+	// Consider adding transitional path in v0.3.0:
+	//   - Add DoctorWithScan(ctx, scanCfg) method
+	//   - Deprecate Doctor() and make it call DoctorWithScan(ctx, DefaultScanConfig())
+	//   - Remove deprecated method in v1.0.0
+	// This would allow gradual migration for library consumers.
 	Doctor(ctx context.Context, scanCfg ScanConfig) (DiagnosticReport, error)
 
 	// Config returns a copy of the client's configuration.

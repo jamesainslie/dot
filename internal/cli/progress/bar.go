@@ -87,9 +87,14 @@ func (b *Bar) Render() string {
 	etaStr := ""
 	if b.started && b.current > 0 && b.current < b.total {
 		elapsed := time.Since(b.startTime)
-		rate := float64(b.current) / elapsed.Seconds()
-		remaining := float64(b.total-b.current) / rate
-		etaStr = fmt.Sprintf(" ETA %ds", int(remaining))
+		elapsedSeconds := elapsed.Seconds()
+		if elapsedSeconds > 0 {
+			rate := float64(b.current) / elapsedSeconds
+			if rate > 0 {
+				remaining := float64(b.total-b.current) / rate
+				etaStr = fmt.Sprintf(" ETA %ds", int(remaining))
+			}
+		}
 	}
 
 	return fmt.Sprintf("%s [%s] %d%% (%d/%d)%s",

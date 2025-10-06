@@ -24,7 +24,7 @@ Phase 15b introduces comprehensive configuration management for the dot CLI thro
 
 ### Configuration Precedence
 
-```
+```text
 ┌─────────────────┐
 │  CLI Flags      │ ← Highest precedence
 ├─────────────────┤
@@ -38,13 +38,13 @@ Phase 15b introduces comprehensive configuration management for the dot CLI thro
 
 ### Configuration Flow
 
-```
+```text
 User Command → Parse Flags → Load Environment → Load Config File → Merge with Defaults → Validate → Execute
 ```
 
 ### Component Structure
 
-```
+```text
 internal/
 ├── config/
 │   ├── config.go              # Extended Config struct (existing)
@@ -294,7 +294,7 @@ target = "~"
 
 ### Command Structure
 
-```
+```bash
 dot config                    # Show current configuration
 dot config init               # Create initial config file
 dot config get <key>          # Get configuration value

@@ -72,7 +72,8 @@ func (l *Layout) Box(text string, title string) string {
 		b.WriteString("─ ")
 		b.WriteString(title)
 		b.WriteString(" ")
-		b.WriteString(strings.Repeat("─", maxLen-len(title)-2))
+		pad := max(0, maxLen-len(title)-2)
+		b.WriteString(strings.Repeat("─", pad))
 	} else {
 		b.WriteString(strings.Repeat("─", maxLen))
 	}
@@ -136,7 +137,9 @@ func (l *Layout) calculateColumnWidths(headers []string, rows [][]string) []int 
 }
 
 func (l *Layout) adjustColumnWidths(colWidths []int) []int {
-	totalWidth := len(colWidths) * 3 // separators
+	// Calculate separators correctly: n columns need n-1 separators
+	separators := (len(colWidths) - 1) * 3
+	totalWidth := separators
 	for _, w := range colWidths {
 		totalWidth += w
 	}

@@ -115,8 +115,8 @@ Exit codes:
 
 	cmd.Flags().StringVarP(&format, "format", "f", "text", "Output format (text, json, yaml, table)")
 	cmd.Flags().StringVar(&color, "color", "auto", "Colorize output (auto, always, never)")
-	cmd.Flags().StringVar(&scanMode, "scan-mode", "off", "Orphan detection mode (off, scoped, deep)")
-	cmd.Flags().IntVar(&maxDepth, "max-depth", 10, "Maximum recursion depth for deep scan")
+	cmd.Flags().String("scan-mode", "off", "Orphan detection mode (off, scoped, deep)")
+	cmd.Flags().Int("max-depth", 10, "Maximum recursion depth for deep scan")
 
 	return cmd
 }

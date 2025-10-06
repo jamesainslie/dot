@@ -46,7 +46,7 @@
 
 ## Commits Made (12 total)
 
-```
+```text
 c21bf0f docs(phase15c): add implementation plan for API enhancements
 398b0de test(config): add aggressive coverage boost tests
 a39846b docs(review): add final coverage status and analysis

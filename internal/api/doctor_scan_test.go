@@ -63,7 +63,7 @@ func TestExtractManagedDirectories(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := extractManagedDirectories(&tt.manifest)
-			
+
 			// Verify all expected directories are present
 			for _, expected := range tt.want {
 				assert.Contains(t, got, expected, "expected directory %s not found", expected)
@@ -137,4 +137,3 @@ func TestShouldSkipDirectory(t *testing.T) {
 		})
 	}
 }
-

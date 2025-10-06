@@ -53,9 +53,38 @@ func (c *client) Doctor(ctx context.Context, scanCfg dot.ScanConfig) (dot.Diagno
 		}
 	}
 
-	// TODO: Implement orphaned link detection with depth limiting
-	// Scanning entire home directory is too slow for now
-	// Future enhancement: only scan directories containing managed links
+	// Orphaned link detection (if enabled)
+	if scanCfg.Mode != dot.ScanOff {
+		// Determine scan directories
+		var scanDirs []string
+		if len(scanCfg.ScopeToDirs) > 0 {
+			// Use explicitly provided directories
+			scanDirs = scanCfg.ScopeToDirs
+		} else if scanCfg.Mode == dot.ScanScoped {
+			// Auto-detect from manifest
+			scanDirs = extractManagedDirectories(&m)
+		} else {
+			// Deep scan - use target directory
+			scanDirs = []string{c.config.TargetDir}
+		}
+
+		// Build link set for O(1) lookup
+		linkSet := buildManagedLinkSet(&m)
+
+		// Scan each directory
+		for _, dir := range scanDirs {
+			// For scoped mode, dir is relative; for deep mode, it's absolute
+			fullPath := dir
+			if scanCfg.Mode == dot.ScanScoped {
+				fullPath = filepath.Join(c.config.TargetDir, dir)
+			}
+			err := c.scanForOrphanedLinksWithLimits(ctx, fullPath, &m, linkSet, scanCfg, &issues, &stats)
+			if err != nil {
+				// Log but continue - orphan detection is best-effort
+				continue
+			}
+		}
+	}
 
 	// Determine overall health
 	health := dot.HealthOK
@@ -167,8 +196,38 @@ func shouldSkipDirectory(path string, skipPatterns []string) bool {
 	return false
 }
 
+// scanForOrphanedLinksWithLimits wraps scanForOrphanedLinks with depth and skip checks.
+func (c *client) scanForOrphanedLinksWithLimits(
+	ctx context.Context,
+	dir string,
+	m *manifest.Manifest,
+	linkSet map[string]bool,
+	scanCfg dot.ScanConfig,
+	issues *[]dot.Issue,
+	stats *dot.DiagnosticStats,
+) error {
+	// Check context cancellation
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	// Check depth limit
+	depth := calculateDepth(dir, c.config.TargetDir)
+	if scanCfg.MaxDepth > 0 && depth > scanCfg.MaxDepth {
+		return nil // Skip too-deep directories
+	}
+
+	// Check skip patterns
+	if shouldSkipDirectory(dir, scanCfg.SkipPatterns) {
+		return nil
+	}
+
+	// Scan this directory
+	return c.scanForOrphanedLinks(ctx, dir, linkSet, issues, stats)
+}
+
 // scanForOrphanedLinks recursively scans for symlinks not in the manifest.
-func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manifest.Manifest, issues *[]dot.Issue, stats *dot.DiagnosticStats) error {
+func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, linkSet map[string]bool, issues *[]dot.Issue, stats *dot.DiagnosticStats) error {
 	entries, err := c.config.FS.ReadDir(ctx, dir)
 	if err != nil {
 		return err
@@ -188,8 +247,13 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manife
 		}
 
 		if entry.IsDir() {
+			// Skip directories that match skip patterns
+			if shouldSkipDirectory(fullPath, []string{".git", "node_modules", ".cache", ".npm"}) {
+				continue
+			}
+			
 			// Recurse into subdirectories
-			if err := c.scanForOrphanedLinks(ctx, fullPath, m, issues, stats); err != nil {
+			if err := c.scanForOrphanedLinks(ctx, fullPath, linkSet, issues, stats); err != nil {
 				// Continue on error
 				continue
 			}
@@ -200,12 +264,11 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manife
 				continue
 			}
 
-			if isLink {
-				// It's a symlink - check if it's managed
-				// This now uses the pre-built set for O(1) lookup instead of O(n²)
-				managed := c.isLinkManaged(relPath, fullPath, m)
+		if isLink {
+			// It's a symlink - check if it's managed using O(1) set lookup
+			managed := linkSet[relPath] || linkSet[fullPath]
 
-				if !managed {
+			if !managed {
 					stats.OrphanedLinks++
 					*issues = append(*issues, dot.Issue{
 						Severity:   dot.SeverityWarning,
@@ -220,18 +283,6 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manife
 	}
 
 	return nil
-}
-
-// isLinkManaged checks if a link path is managed by any package in the manifest.
-func (c *client) isLinkManaged(relPath, fullPath string, m *manifest.Manifest) bool {
-	for _, pkgInfo := range m.Packages {
-		for _, link := range pkgInfo.Links {
-			if link == relPath || link == fullPath {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // checkLink validates a single link from the manifest.

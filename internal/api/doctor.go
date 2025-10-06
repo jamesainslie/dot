@@ -222,12 +222,12 @@ func (c *client) scanForOrphanedLinksWithLimits(
 		return nil
 	}
 
-	// Scan this directory with configured skip patterns
-	return c.scanForOrphanedLinks(ctx, dir, linkSet, scanCfg.SkipPatterns, issues, stats)
+	// Scan this directory, passing config for recursive depth/context checks
+	return c.scanForOrphanedLinks(ctx, dir, m, linkSet, scanCfg, issues, stats)
 }
 
 // scanForOrphanedLinks recursively scans for symlinks not in the manifest.
-func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, linkSet map[string]bool, skipPatterns []string, issues *[]dot.Issue, stats *dot.DiagnosticStats) error {
+func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, m *manifest.Manifest, linkSet map[string]bool, scanCfg dot.ScanConfig, issues *[]dot.Issue, stats *dot.DiagnosticStats) error {
 	entries, err := c.config.FS.ReadDir(ctx, dir)
 	if err != nil {
 		return err
@@ -247,14 +247,9 @@ func (c *client) scanForOrphanedLinks(ctx context.Context, dir string, linkSet m
 		}
 
 		if entry.IsDir() {
-			// Skip directories that match configured skip patterns
-			if shouldSkipDirectory(fullPath, skipPatterns) {
-				continue
-			}
-
-			// Recurse into subdirectories with same skip patterns
-			if err := c.scanForOrphanedLinks(ctx, fullPath, linkSet, skipPatterns, issues, stats); err != nil {
-				// Continue on error
+			// Recurse into subdirectories using wrapper to enforce all safety checks
+			if err := c.scanForOrphanedLinksWithLimits(ctx, fullPath, m, linkSet, scanCfg, issues, stats); err != nil {
+				// Continue on error - best effort scanning
 				continue
 			}
 		} else {

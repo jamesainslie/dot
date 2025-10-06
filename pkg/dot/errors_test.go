@@ -143,3 +143,148 @@ func TestUserFacingErrorMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestErrEmptyPlan(t *testing.T) {
+	err := dot.ErrEmptyPlan{}
+	assert.Equal(t, "cannot execute empty plan", err.Error())
+}
+
+func TestErrExecutionFailed(t *testing.T) {
+	t.Run("basic error", func(t *testing.T) {
+		err := dot.ErrExecutionFailed{
+			Executed: 5,
+			Failed:   2,
+		}
+		msg := err.Error()
+		assert.Contains(t, msg, "5 succeeded")
+		assert.Contains(t, msg, "2 failed")
+	})
+
+	t.Run("with rollback", func(t *testing.T) {
+		err := dot.ErrExecutionFailed{
+			Executed:   3,
+			Failed:     1,
+			RolledBack: 2,
+		}
+		msg := err.Error()
+		assert.Contains(t, msg, "2 rolled back")
+	})
+
+	t.Run("with errors", func(t *testing.T) {
+		err := dot.ErrExecutionFailed{
+			Executed: 1,
+			Failed:   2,
+			Errors: []error{
+				errors.New("first error"),
+				errors.New("second error"),
+			},
+		}
+		msg := err.Error()
+		assert.Contains(t, msg, "first error")
+		assert.Contains(t, msg, "second error")
+
+		unwrapped := err.Unwrap()
+		assert.Len(t, unwrapped, 2)
+	})
+}
+
+func TestErrSourceNotFound(t *testing.T) {
+	err := dot.ErrSourceNotFound{Path: "/missing/file"}
+	msg := err.Error()
+	assert.Contains(t, msg, "/missing/file")
+	assert.Contains(t, msg, "source does not exist")
+}
+
+func TestErrParentNotFound(t *testing.T) {
+	err := dot.ErrParentNotFound{Path: "/missing/parent"}
+	msg := err.Error()
+	assert.Contains(t, msg, "/missing/parent")
+	assert.Contains(t, msg, "parent directory")
+}
+
+func TestErrCheckpointNotFound(t *testing.T) {
+	err := dot.ErrCheckpointNotFound{ID: "checkpoint-123"}
+	msg := err.Error()
+	assert.Contains(t, msg, "checkpoint-123")
+	assert.Contains(t, msg, "not found")
+}
+
+func TestErrNotImplemented(t *testing.T) {
+	err := dot.ErrNotImplemented{Feature: "advanced feature"}
+	msg := err.Error()
+	assert.Contains(t, msg, "advanced feature")
+	assert.Contains(t, msg, "not implemented")
+}
+
+func TestUserFacingErrorComprehensive(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		contains []string
+	}{
+		{
+			name:     "ErrCyclicDependency",
+			err:      dot.ErrCyclicDependency{Cycle: []string{"a", "b", "a"}},
+			contains: []string{"Circular dependency", "a", "b"},
+		},
+		{
+			name:     "ErrFilesystemOperation",
+			err:      dot.ErrFilesystemOperation{Operation: "write", Path: "/file", Err: errors.New("permission denied")},
+			contains: []string{"Failed to write", "permission denied"},
+		},
+		{
+			name:     "ErrPermissionDenied",
+			err:      dot.ErrPermissionDenied{Path: "/restricted", Operation: "read"},
+			contains: []string{"Permission denied", "/restricted"},
+		},
+		{
+			name:     "ErrMultiple",
+			err:      dot.ErrMultiple{Errors: []error{errors.New("err1"), errors.New("err2")}},
+			contains: []string{"Multiple errors", "err1", "err2"},
+		},
+		{
+			name:     "ErrEmptyPlan",
+			err:      dot.ErrEmptyPlan{},
+			contains: []string{"empty plan"},
+		},
+		{
+			name:     "ErrExecutionFailed",
+			err:      dot.ErrExecutionFailed{Executed: 3, Failed: 2},
+			contains: []string{"Execution failed", "3 operations succeeded", "2 failed"},
+		},
+		{
+			name:     "ErrSourceNotFound",
+			err:      dot.ErrSourceNotFound{Path: "/src"},
+			contains: []string{"Source file not found", "/src"},
+		},
+		{
+			name:     "ErrParentNotFound",
+			err:      dot.ErrParentNotFound{Path: "/parent"},
+			contains: []string{"parent", "/parent"},
+		},
+		{
+			name:     "ErrCheckpointNotFound",
+			err:      dot.ErrCheckpointNotFound{ID: "chk1"},
+			contains: []string{"checkpoint", "chk1"},
+		},
+		{
+			name:     "ErrNotImplemented",
+			err:      dot.ErrNotImplemented{Feature: "feat"},
+			contains: []string{"not implemented", "feat"},
+		},
+		{
+			name:     "generic error",
+			err:      errors.New("generic error message"),
+			contains: []string{"generic error message"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := dot.UserFacingError(tt.err)
+			for _, contain := range tt.contains {
+				assert.Contains(t, msg, contain, "expected message to contain %q", contain)
+			}
+		})
+	}
+}

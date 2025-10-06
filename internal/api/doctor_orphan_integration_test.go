@@ -144,4 +144,3 @@ func TestDoctor_OrphanDetection_SkipsGit(t *testing.T) {
 	// Note: If this detects the link, skip logic may need refinement
 	assert.Equal(t, 0, report.Statistics.OrphanedLinks, "links in .git should be skipped")
 }
-

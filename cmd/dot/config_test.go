@@ -5,297 +5,150 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jamesainslie/dot/internal/config"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildConfig_ValidPaths(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
-
-	// Set global config
-	globalCfg = globalConfig{
-		stowDir:   ".",
-		targetDir: ".",
-		dryRun:    false,
-		verbose:   0,
-		quiet:     false,
-		logJSON:   false,
-	}
-
-	cfg, err := buildConfig()
-	require.NoError(t, err)
-
-	// Paths should be absolute
-	require.True(t, filepath.IsAbs(cfg.StowDir))
-	require.True(t, filepath.IsAbs(cfg.TargetDir))
-	require.False(t, cfg.DryRun)
-	require.Equal(t, 0, cfg.Verbosity)
-	require.NotNil(t, cfg.FS)
-	require.NotNil(t, cfg.Logger)
-}
-
-func TestBuildConfig_DryRunEnabled(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
-
-	globalCfg = globalConfig{
-		stowDir:   ".",
-		targetDir: ".",
-		dryRun:    true,
-		verbose:   0,
-		quiet:     false,
-		logJSON:   false,
-	}
-
-	cfg, err := buildConfig()
-	require.NoError(t, err)
-	require.True(t, cfg.DryRun)
-}
-
-func TestBuildConfig_VerbositySet(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
-
-	globalCfg = globalConfig{
-		stowDir:   ".",
-		targetDir: ".",
-		dryRun:    false,
-		verbose:   2,
-		quiet:     false,
-		logJSON:   false,
-	}
-
-	cfg, err := buildConfig()
-	require.NoError(t, err)
-	require.Equal(t, 2, cfg.Verbosity)
-}
-
-func TestBuildConfig_MultipleCombinations(t *testing.T) {
-	tests := []struct {
-		name    string
-		dryRun  bool
-		verbose int
-		quiet   bool
-		logJSON bool
-	}{
-		{"default", false, 0, false, false},
-		{"dry-run", true, 0, false, false},
-		{"verbose", false, 1, false, false},
-		{"quiet", false, 0, true, false},
-		{"json", false, 0, false, true},
-		{"dry-run verbose", true, 2, false, false},
-		{"verbose json", false, 3, false, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Save previous globalCfg
-			previous := globalCfg
-			t.Cleanup(func() {
-				globalCfg = previous
-			})
-
-			globalCfg = globalConfig{
-				stowDir:   ".",
-				targetDir: ".",
-				dryRun:    tt.dryRun,
-				verbose:   tt.verbose,
-				quiet:     tt.quiet,
-				logJSON:   tt.logJSON,
-			}
-
-			cfg, err := buildConfig()
-			require.NoError(t, err)
-			require.Equal(t, tt.dryRun, cfg.DryRun)
-			require.Equal(t, tt.verbose, cfg.Verbosity)
-			require.NotNil(t, cfg.FS)
-			require.NotNil(t, cfg.Logger)
-		})
-	}
-}
-
-func TestCreateLogger_Quiet(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
-
-	globalCfg = globalConfig{
-		quiet: true,
-	}
-
-	logger := createLogger()
-	require.NotNil(t, logger)
-}
-
-func TestCreateLogger_JSONFormat(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
-
-	globalCfg = globalConfig{
-		quiet:   false,
-		logJSON: true,
-		verbose: 0,
-	}
-
-	logger := createLogger()
-	require.NotNil(t, logger)
-}
-
-func TestCreateLogger_TextFormat(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
-
-	globalCfg = globalConfig{
-		quiet:   false,
-		logJSON: false,
-		verbose: 0,
-	}
-
-	logger := createLogger()
-	require.NotNil(t, logger)
-}
-
-func TestCreateLogger_VerboseLevels(t *testing.T) {
-	tests := []struct {
-		name    string
-		verbose int
-	}{
-		{"no verbosity", 0},
-		{"level 1", 1},
-		{"level 2", 2},
-		{"level 3", 3},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Save previous globalCfg
-			previous := globalCfg
-			t.Cleanup(func() {
-				globalCfg = previous
-			})
-
-			globalCfg = globalConfig{
-				quiet:   false,
-				logJSON: false,
-				verbose: tt.verbose,
-			}
-
-			logger := createLogger()
-			require.NotNil(t, logger)
-		})
-	}
-}
-
-func TestVerbosityToLevel(t *testing.T) {
-	tests := []struct {
-		name      string
-		verbose   int
-		wantInfo  bool
-		wantDebug bool
-	}{
-		{
-			name:      "level 0 is Info",
-			verbose:   0,
-			wantInfo:  true,
-			wantDebug: false,
-		},
-		{
-			name:      "level 1 is Debug",
-			verbose:   1,
-			wantInfo:  true,
-			wantDebug: true,
-		},
-		{
-			name:      "level 2 is more verbose",
-			verbose:   2,
-			wantInfo:  true,
-			wantDebug: true,
-		},
-		{
-			name:      "level 3 is even more verbose",
-			verbose:   3,
-			wantInfo:  true,
-			wantDebug: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			level := verbosityToLevel(tt.verbose)
-			require.NotNil(t, level)
-		})
-	}
-}
-
-func TestBuildConfig_AbsolutePaths(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
-
+func TestConfigCommand_Init(t *testing.T) {
 	tmpDir := t.TempDir()
-	stowDir := filepath.Join(tmpDir, "stow")
-	targetDir := filepath.Join(tmpDir, "target")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	require.NoError(t, os.MkdirAll(stowDir, 0755))
-	require.NoError(t, os.MkdirAll(targetDir, 0755))
+	// Set DOT_CONFIG to use temp directory
+	os.Setenv("DOT_CONFIG", configPath)
+	defer os.Unsetenv("DOT_CONFIG")
 
-	globalCfg = globalConfig{
-		stowDir:   stowDir,
-		targetDir: targetDir,
-		dryRun:    false,
-		verbose:   0,
-		quiet:     false,
-		logJSON:   false,
-	}
-
-	cfg, err := buildConfig()
+	// Run init
+	err := runConfigInit(false, "yaml")
 	require.NoError(t, err)
-	require.Equal(t, stowDir, cfg.StowDir)
-	require.Equal(t, targetDir, cfg.TargetDir)
+
+	// Verify file was created
+	assert.FileExists(t, configPath)
+
+	// Verify file has correct permissions
+	info, err := os.Stat(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+
+	// Verify content is valid
+	cfg, err := config.LoadExtendedFromFile(configPath)
+	require.NoError(t, err)
+	assert.NotNil(t, cfg)
 }
 
-func TestBuildConfig_RelativePaths(t *testing.T) {
-	// Save previous globalCfg
-	previous := globalCfg
-	t.Cleanup(func() {
-		globalCfg = previous
-	})
+func TestConfigCommand_InitForce(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Start with relative paths
-	globalCfg = globalConfig{
-		stowDir:   "./test/stow",
-		targetDir: "./test/target",
-		dryRun:    false,
-		verbose:   0,
-		quiet:     false,
-		logJSON:   false,
-	}
+	os.Setenv("DOT_CONFIG", configPath)
+	defer os.Unsetenv("DOT_CONFIG")
 
-	cfg, err := buildConfig()
+	// Create initial config
+	err := runConfigInit(false, "yaml")
 	require.NoError(t, err)
 
-	// Should be converted to absolute
-	require.True(t, filepath.IsAbs(cfg.StowDir))
-	require.True(t, filepath.IsAbs(cfg.TargetDir))
-	require.Contains(t, cfg.StowDir, "test/stow")
-	require.Contains(t, cfg.TargetDir, "test/target")
+	// Try to init again without force - should fail
+	err = runConfigInit(false, "yaml")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "already exists")
+
+	// Init with force - should succeed
+	err = runConfigInit(true, "yaml")
+	assert.NoError(t, err)
+}
+
+func TestConfigCommand_Get(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Create config file
+	cfg := config.DefaultExtended()
+	cfg.Directories.Stow = "/test/dotfiles"
+	cfg.Logging.Level = "DEBUG"
+
+	writer := config.NewWriter(configPath)
+	err := writer.Write(cfg, config.WriteOptions{Format: "yaml"})
+	require.NoError(t, err)
+
+	os.Setenv("DOT_CONFIG", configPath)
+	defer os.Unsetenv("DOT_CONFIG")
+
+	// Test get
+	value, err := getConfigValue(cfg, "directories.stow")
+	require.NoError(t, err)
+	assert.Equal(t, "/test/dotfiles", value)
+
+	value, err = getConfigValue(cfg, "logging.level")
+	require.NoError(t, err)
+	assert.Equal(t, "DEBUG", value)
+}
+
+func TestConfigCommand_GetUnknownKey(t *testing.T) {
+	cfg := config.DefaultExtended()
+
+	_, err := getConfigValue(cfg, "invalid.key")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown config key")
+}
+
+func TestConfigCommand_Set(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	os.Setenv("DOT_CONFIG", configPath)
+	defer os.Unsetenv("DOT_CONFIG")
+
+	// Create initial config
+	writer := config.NewWriter(configPath)
+	err := writer.WriteDefault(config.WriteOptions{Format: "yaml"})
+	require.NoError(t, err)
+
+	// Set a value
+	err = runConfigSet("directories.stow", "/new/dotfiles")
+	require.NoError(t, err)
+
+	// Verify value was set
+	loader := config.NewLoader("dot", configPath)
+	cfg, err := loader.Load()
+	require.NoError(t, err)
+	assert.Equal(t, "/new/dotfiles", cfg.Directories.Stow)
+}
+
+func TestConfigCommand_Path(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	os.Setenv("DOT_CONFIG", configPath)
+	defer os.Unsetenv("DOT_CONFIG")
+
+	// Should not error even if file doesn't exist
+	err := runConfigPath()
+	assert.NoError(t, err)
+}
+
+func TestConfigCommand_Structure(t *testing.T) {
+	cmd := newConfigCommand()
+
+	assert.Equal(t, "config", cmd.Use)
+	assert.NotEmpty(t, cmd.Short)
+	assert.NotEmpty(t, cmd.Long)
+
+	// Verify subcommands exist
+	subcommands := cmd.Commands()
+	assert.GreaterOrEqual(t, len(subcommands), 5) // init, get, set, list, path
+}
+
+func TestConfigCommand_HasRequiredSubcommands(t *testing.T) {
+	cmd := newConfigCommand()
+
+	subcommandNames := make([]string, 0)
+	for _, subcmd := range cmd.Commands() {
+		subcommandNames = append(subcommandNames, subcmd.Name())
+	}
+
+	assert.Contains(t, subcommandNames, "init")
+	assert.Contains(t, subcommandNames, "get")
+	assert.Contains(t, subcommandNames, "set")
+	assert.Contains(t, subcommandNames, "list")
+	assert.Contains(t, subcommandNames, "path")
 }

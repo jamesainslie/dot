@@ -44,6 +44,27 @@ go install github.com/user/dot/cmd/dot@latest
 
 ## Usage
 
+### Configuration
+
+```bash
+# Initialize configuration file
+dot config init
+
+# View configuration
+dot config list
+
+# Get specific setting
+dot config get directories.stow
+
+# Set configuration value
+dot config set directories.stow ~/dotfiles
+
+# Show configuration file path
+dot config path
+```
+
+See [Configuration Guide](docs/Configuration.md) for detailed configuration options.
+
 ### Package Management
 
 ```bash

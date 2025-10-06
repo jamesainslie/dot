@@ -92,6 +92,54 @@ func TestBuildManagedLinkSet(t *testing.T) {
 	assert.Len(t, linkSet, 3)
 }
 
+func TestFilterDescendants(t *testing.T) {
+	tests := []struct {
+		name string
+		dirs []string
+		want []string
+	}{
+		{
+			name: "no duplicates",
+			dirs: []string{"/home/user/.config", "/home/user/.local"},
+			want: []string{"/home/user/.config", "/home/user/.local"},
+		},
+		{
+			name: "child and parent",
+			dirs: []string{"/home/user/.config", "/home/user/.config/nvim"},
+			want: []string{"/home/user/.config"}, // Parent only
+		},
+		{
+			name: "multiple descendants",
+			dirs: []string{"/home/user", "/home/user/.config", "/home/user/.config/nvim", "/home/user/.local"},
+			want: []string{"/home/user"}, // Root only
+		},
+		{
+			name: "mixed order",
+			dirs: []string{"/home/user/.config/nvim/lua", "/home/user/.config", "/home/user/.local", "/home/user/.config/nvim"},
+			want: []string{"/home/user/.config", "/home/user/.local"}, // Two roots
+		},
+		{
+			name: "empty list",
+			dirs: []string{},
+			want: []string{},
+		},
+		{
+			name: "single directory",
+			dirs: []string{"/home/user/.config"},
+			want: []string{"/home/user/.config"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filterDescendants(tt.dirs)
+
+			// Sort both for comparison (order doesn't matter)
+			assert.ElementsMatch(t, tt.want, got)
+		})
+	}
+}
+
 func TestCalculateDepth(t *testing.T) {
 	tests := []struct {
 		name      string

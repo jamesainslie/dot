@@ -26,19 +26,20 @@ func TestValidateDotfile_AllCases(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("translate true with empty suffix", func(t *testing.T) {
+	t.Run("translate true with empty prefix errors", func(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Dotfile.Translate = true
+		cfg.Dotfile.Prefix = "" // Empty prefix should error
 		
 		err := cfg.Validate()
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "prefix")
 	})
 
-	t.Run("translate true with valid prefix and suffix", func(t *testing.T) {
+	t.Run("translate true with valid prefix", func(t *testing.T) {
 		cfg := config.DefaultExtended()
 		cfg.Dotfile.Translate = true
 		cfg.Dotfile.Prefix = "dot-"
-		cfg.Dotfile.Suffix = "."
 		
 		err := cfg.Validate()
 		assert.NoError(t, err)

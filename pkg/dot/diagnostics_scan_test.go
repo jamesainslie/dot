@@ -84,4 +84,3 @@ func TestScanConfig_CustomConfiguration(t *testing.T) {
 	assert.Len(t, cfg.ScopeToDirs, 2)
 	assert.Len(t, cfg.SkipPatterns, 2)
 }
-

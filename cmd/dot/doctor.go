@@ -32,7 +32,7 @@ func newDoctorCommand() *cobra.Command {
 		}
 
 		// Run diagnostics
-		report, err := client.Doctor(cmd.Context())
+		report, err := client.Doctor(cmd.Context(), dot.DefaultScanConfig())
 		if err != nil {
 			return formatError(err)
 		}

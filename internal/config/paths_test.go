@@ -11,7 +11,7 @@ import (
 func TestGetConfigPath_WithXDGSet(t *testing.T) {
 	os.Setenv("XDG_CONFIG_HOME", "/tmp/test-config")
 	defer os.Unsetenv("XDG_CONFIG_HOME")
-	
+
 	path := config.GetConfigPath("dot")
 	assert.Contains(t, path, "/tmp/test-config")
 	assert.Contains(t, path, "dot")
@@ -19,7 +19,7 @@ func TestGetConfigPath_WithXDGSet(t *testing.T) {
 
 func TestGetConfigPath_WithoutXDG(t *testing.T) {
 	os.Unsetenv("XDG_CONFIG_HOME")
-	
+
 	path := config.GetConfigPath("dot")
 	assert.NotEmpty(t, path)
 	assert.Contains(t, path, "dot")
@@ -32,7 +32,7 @@ func TestGetConfigPath_EmptyApp(t *testing.T) {
 
 func TestDefaultExtended_AllFieldsSet(t *testing.T) {
 	cfg := config.DefaultExtended()
-	
+
 	// Verify all sections initialized
 	assert.NotEmpty(t, cfg.Directories.Stow)
 	assert.NotEmpty(t, cfg.Directories.Target)
@@ -44,4 +44,3 @@ func TestDefaultExtended_AllFieldsSet(t *testing.T) {
 	assert.NotNil(t, cfg.Dotfile.Translate)
 	assert.NotNil(t, cfg.Operations.DryRun)
 }
-

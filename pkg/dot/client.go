@@ -101,7 +101,9 @@ type Client interface {
 // The returned Client is safe for concurrent use from multiple goroutines.
 func NewClient(cfg Config) (Client, error) {
 	if newClientImpl == nil {
-		panic("Client implementation not registered. This is a bug - internal/api should register via init()")
+		panic("Client implementation not registered. This indicates internal/api package " +
+			"was not imported to trigger init() registration. " +
+			"Import path: github.com/jamesainslie/dot/internal/api")
 	}
 	return newClientImpl(cfg)
 }

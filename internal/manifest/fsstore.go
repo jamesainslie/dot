@@ -76,7 +76,9 @@ func (s *FSManifestStore) Save(ctx context.Context, targetDir dot.TargetPath, ma
 
 	// Atomic rename
 	if err := s.fs.Rename(ctx, tempPath, manifestPath); err != nil {
-		// Clean up temp file on failure
+		// Ignore cleanup error: best-effort during error recovery.
+		// Temp file (.dot-manifest.json.tmp) is harmless and will be
+		// overwritten on next successful write operation.
 		_ = s.fs.Remove(ctx, tempPath)
 		return fmt.Errorf("failed to rename manifest: %w", err)
 	}

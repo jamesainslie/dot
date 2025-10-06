@@ -265,13 +265,38 @@ All commits follow Conventional Commits specification.
 
 ---
 
-## Backward Compatibility
+## Breaking Changes
 
-✅ **Maintained**:
+⚠️ **Public API Change**:
+- `Client.Doctor()` signature changed from `Doctor(ctx)` to `Doctor(ctx, scanCfg)`
+- **Impact**: External library consumers must update their calls
+- **Migration**: Add `dot.DefaultScanConfig()` parameter to existing Doctor() calls
+- **Rationale**: Enables orphaned link detection control
+
+**Before**:
+```go
+report, err := client.Doctor(ctx)
+```
+
+**After**:
+```go
+report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+```
+
+**Future Migration Path** (TODO for v0.3.0):
+Consider adding transitional API:
+- Add `DoctorWithScan(ctx, scanCfg)` method
+- Deprecate current `Doctor()` signature
+- Provide gradual migration period
+- Remove deprecated method in v1.0.0
+
+## Backward Compatibility for CLI
+
+✅ **CLI Maintained**:
 - Default scan mode is ScanOff (current behavior)
-- No breaking changes to API
-- Existing code works without modification
-- Opt-in feature activation
+- No CLI breaking changes
+- Existing commands work without modification
+- Opt-in feature activation via --scan-mode flag
 
 ---
 

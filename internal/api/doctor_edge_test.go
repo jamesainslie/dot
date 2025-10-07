@@ -33,7 +33,7 @@ func TestDoctor_EmptyPackageLinks(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// No links to check - should be healthy
@@ -72,7 +72,7 @@ func TestDoctor_AbsoluteSymlinkPath(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Absolute symlink with valid target - should be healthy
@@ -113,7 +113,7 @@ func TestDoctor_MultipleIssuesSeverities(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Should have multiple errors

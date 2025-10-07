@@ -14,7 +14,7 @@ import (
 func testConfig(t *testing.T) dot.Config {
 	t.Helper()
 	return dot.Config{
-		PackageDir: "/test/stow",
+		PackageDir: "/test/packages",
 		TargetDir:  "/test/target",
 		FS:         adapters.NewMemFS(),
 		Logger:     adapters.NewNoopLogger(),
@@ -25,9 +25,9 @@ func setupTestFixtures(t *testing.T, fs dot.FS, packages ...string) {
 	t.Helper()
 	ctx := context.Background()
 
-	// Create stow directory structure
+	// Create manage directory structure
 	for _, pkg := range packages {
-		pkgDir := filepath.Join("/test/stow", pkg)
+		pkgDir := filepath.Join("/test/packages", pkg)
 		require.NoError(t, fs.MkdirAll(ctx, pkgDir, 0755))
 
 		// Create sample dotfile

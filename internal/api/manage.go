@@ -45,7 +45,7 @@ func (c *client) Manage(ctx context.Context, packages ...string) error {
 func (c *client) PlanManage(ctx context.Context, packages ...string) (dot.Plan, error) {
 	stowPathResult := dot.NewPackagePath(c.config.PackageDir)
 	if !stowPathResult.IsOk() {
-		return dot.Plan{}, fmt.Errorf("invalid stow directory: %w", stowPathResult.UnwrapErr())
+		return dot.Plan{}, fmt.Errorf("invalid package directory: %w", stowPathResult.UnwrapErr())
 	}
 	stowPath := stowPathResult.Unwrap()
 

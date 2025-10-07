@@ -160,7 +160,7 @@
 //		fs := adapters.NewMemFS()
 //
 //		cfg := dot.Config{
-//			PackageDir:   "/test/stow",
+//			PackageDir:   "/test/packages",
 //			TargetDir: "/test/target",
 //			FS:        fs,
 //			Logger:    adapters.NewNoopLogger(),

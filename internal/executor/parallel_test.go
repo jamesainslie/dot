@@ -19,14 +19,14 @@ func TestExecuteBatch_Concurrent(t *testing.T) {
 	})
 
 	// Create independent operations (no dependencies)
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	source2 := dot.MustParsePath("/stow/pkg/file2")
+	source2 := dot.MustParsePath("/packages/pkg/file2")
 	target2 := dot.MustParsePath("/home/file2")
-	source3 := dot.MustParsePath("/stow/pkg/file3")
+	source3 := dot.MustParsePath("/packages/pkg/file3")
 	target3 := dot.MustParsePath("/home/file3")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
@@ -60,13 +60,13 @@ func TestExecuteBatch_PartialFailure(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 
 	// Mix of success and failure
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	source3 := dot.MustParsePath("/stow/pkg/file3")
+	source3 := dot.MustParsePath("/packages/pkg/file3")
 	target3 := dot.MustParsePath("/home/file3")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
@@ -75,7 +75,7 @@ func TestExecuteBatch_PartialFailure(t *testing.T) {
 	ops := []dot.Operation{
 		dot.NewLinkCreate("link1", source1, target1),
 		// This will fail because parent directory /nonexistent doesn't exist
-		dot.NewLinkCreate("link2", dot.MustParsePath("/stow/pkg/file3"), dot.MustParsePath("/nonexistent/file2")),
+		dot.NewLinkCreate("link2", dot.MustParsePath("/packages/pkg/file3"), dot.MustParsePath("/nonexistent/file2")),
 		dot.NewLinkCreate("link3", source3, target3),
 	}
 
@@ -97,13 +97,13 @@ func TestExecute_ParallelBatches(t *testing.T) {
 	})
 
 	// Create plan with parallelizable operations
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home/dir1", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home/dir2", 0755))
 
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/dir1/file1")
-	source2 := dot.MustParsePath("/stow/pkg/file2")
+	source2 := dot.MustParsePath("/packages/pkg/file2")
 	target2 := dot.MustParsePath("/home/dir2/file2")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("c1"), 0644))
@@ -139,14 +139,14 @@ func TestExecuteParallel_Internal_MultipleBatches(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	source2 := dot.MustParsePath("/stow/pkg/file2")
+	source2 := dot.MustParsePath("/packages/pkg/file2")
 	target2 := dot.MustParsePath("/home/file2")
-	source3 := dot.MustParsePath("/stow/pkg/file3")
+	source3 := dot.MustParsePath("/packages/pkg/file3")
 	target3 := dot.MustParsePath("/home/file3")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))

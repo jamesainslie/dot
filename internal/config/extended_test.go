@@ -173,7 +173,7 @@ func TestExtendedConfig_ValidateDirectories(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "empty stow directory",
+			name: "empty package directory",
 			config: func() *config.ExtendedConfig {
 				cfg := config.DefaultExtended()
 				cfg.Directories.Package = ""

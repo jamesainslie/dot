@@ -206,7 +206,7 @@ func TestResolveResultQueries(t *testing.T) {
 // Task 7.1.5-7: Test Conflict Detection
 func TestDetectFileExistsConflict(t *testing.T) {
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 
 	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
 
@@ -227,8 +227,8 @@ func TestDetectFileExistsConflict(t *testing.T) {
 
 func TestDetectWrongLinkConflict(t *testing.T) {
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
-	wrongPath := dot.NewFilePath("/stow/other/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
+	wrongPath := dot.NewFilePath("/packages/other/dot-bashrc").Unwrap()
 
 	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
 
@@ -248,7 +248,7 @@ func TestDetectWrongLinkConflict(t *testing.T) {
 
 func TestDetectNoConflict(t *testing.T) {
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 
 	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
 
@@ -266,7 +266,7 @@ func TestDetectNoConflict(t *testing.T) {
 
 func TestDetectLinkAlreadyCorrect(t *testing.T) {
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 
 	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
 
@@ -339,7 +339,7 @@ func TestDetectDirCreateConflicts(t *testing.T) {
 // Task 7.4.1: Test Main Resolve Function
 func TestResolveFunction(t *testing.T) {
 	t.Run("no conflicts", func(t *testing.T) {
-		sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 		ops := []dot.Operation{
@@ -362,7 +362,7 @@ func TestResolveFunction(t *testing.T) {
 	})
 
 	t.Run("with conflict using fail policy", func(t *testing.T) {
-		sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 		ops := []dot.Operation{
@@ -390,7 +390,7 @@ func TestResolveFunction(t *testing.T) {
 	})
 
 	t.Run("with conflict using skip policy", func(t *testing.T) {
-		sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 		ops := []dot.Operation{
@@ -418,10 +418,10 @@ func TestResolveFunction(t *testing.T) {
 
 // Task 7.4.2: Test Conflict Aggregation
 func TestConflictAggregation(t *testing.T) {
-	source1 := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	source1 := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 	target1 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
-	source2 := dot.NewFilePath("/stow/vim/dot-vimrc").Unwrap()
+	source2 := dot.NewFilePath("/packages/vim/dot-vimrc").Unwrap()
 	target2 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 
 	ops := []dot.Operation{
@@ -453,7 +453,7 @@ func TestConflictAggregation(t *testing.T) {
 }
 
 func TestMixedOperations(t *testing.T) {
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 	dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
 
@@ -531,7 +531,7 @@ func TestResolveOperationWithAllTypes(t *testing.T) {
 
 	t.Run("FileMove passes through", func(t *testing.T) {
 		source := dot.NewFilePath("/home/user/.bashrc").Unwrap()
-		dest := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+		dest := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 		op := dot.NewFileMove("move-auto", source, dest)
 
 		outcome := resolveOperation(op, current, policies)
@@ -577,7 +577,7 @@ func TestApplyPolicyToDirCreate(t *testing.T) {
 }
 
 func TestApplyPolicyToLinkCreateEdgeCases(t *testing.T) {
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
 	conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
@@ -601,7 +601,7 @@ func TestApplyPolicyToLinkCreateEdgeCases(t *testing.T) {
 }
 
 func TestResolveLinkCreateWithDifferentConflicts(t *testing.T) {
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
 
@@ -610,7 +610,7 @@ func TestResolveLinkCreateWithDifferentConflicts(t *testing.T) {
 	policies.OnPermissionErr = PolicySkip
 
 	t.Run("wrong link with skip policy", func(t *testing.T) {
-		wrongPath := dot.NewFilePath("/stow/other/file").Unwrap()
+		wrongPath := dot.NewFilePath("/packages/other/file").Unwrap()
 		current := CurrentState{
 			Files: make(map[string]FileInfo),
 			Links: map[string]LinkTarget{
@@ -647,7 +647,7 @@ func TestResolveDirCreateEdgeCases(t *testing.T) {
 }
 
 func TestResolveWithWarnings(t *testing.T) {
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 	ops := []dot.Operation{

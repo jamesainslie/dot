@@ -222,7 +222,7 @@ func TestOperationKindString(t *testing.T) {
 }
 
 func TestLinkCreateOperationID(t *testing.T) {
-	source := dot.NewFilePath("/stow/vim/.vimrc").Unwrap()
+	source := dot.NewFilePath("/packages/vim/.vimrc").Unwrap()
 	dest := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 	op := dot.NewLinkCreate("link1", source, dest)
 
@@ -261,7 +261,7 @@ func TestDirDeleteOperationID(t *testing.T) {
 
 func TestFileMoveOperationID(t *testing.T) {
 	source := dot.NewFilePath("/home/user/.vimrc").Unwrap()
-	dest := dot.NewFilePath("/stow/vim/.vimrc").Unwrap()
+	dest := dot.NewFilePath("/packages/vim/.vimrc").Unwrap()
 	op := dot.NewFileMove("move1", source, dest)
 
 	id := op.ID()

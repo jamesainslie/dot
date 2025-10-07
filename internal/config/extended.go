@@ -25,8 +25,8 @@ type ExtendedConfig struct {
 
 // DirectoriesConfig contains directory path configuration.
 type DirectoriesConfig struct {
-	// Stow directory containing packages
-	Stow string `mapstructure:"stow" json:"stow" yaml:"stow" toml:"stow"`
+	// Package directory containing packages
+	Package string `mapstructure:"package" json:"package" yaml:"package" toml:"package"`
 
 	// Target directory for symlinks
 	Target string `mapstructure:"target" json:"target" yaml:"target" toml:"target"`
@@ -167,7 +167,7 @@ func DefaultExtended() *ExtendedConfig {
 
 	return &ExtendedConfig{
 		Directories: DirectoriesConfig{
-			Stow:     ".",
+			Package:  ".",
 			Target:   homeDir,
 			Manifest: getXDGDataPath("dot/manifest"),
 		},
@@ -276,8 +276,8 @@ func (c *ExtendedConfig) Validate() error {
 }
 
 func (c *ExtendedConfig) validateDirectories() error {
-	if c.Directories.Stow == "" {
-		return fmt.Errorf("directories.stow: stow directory cannot be empty")
+	if c.Directories.Package == "" {
+		return fmt.Errorf("directories.package: package directory cannot be empty")
 	}
 
 	if c.Directories.Target == "" {

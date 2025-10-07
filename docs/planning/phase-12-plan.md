@@ -87,7 +87,7 @@ import (
 
 func testConfig() dot.Config {
 	return dot.Config{
-		StowDir:   "/test/stow",
+		PackageDir:   "/test/stow",
 		TargetDir: "/test/target",
 		FS:        adapters.NewMemFS(),
 		Logger:    adapters.NewNoopLogger(),
@@ -104,7 +104,7 @@ func TestNewClient_ValidConfig(t *testing.T) {
 
 func TestNewClient_InvalidConfig(t *testing.T) {
 	cfg := dot.Config{
-		StowDir: "relative/path", // Invalid
+		PackageDir: "relative/path", // Invalid
 	}
 
 	client, err := dot.NewClient(cfg)
@@ -290,7 +290,7 @@ func setupTestFixtures(t *testing.T, fs dot.FS, packages ...string) {
 	t.Helper()
 	ctx := context.Background()
 
-	// Create stow directory structure
+	// Create package directory structure
 	for _, pkg := range packages {
 		pkgDir := filepath.Join("/test/stow", pkg)
 		require.NoError(t, fs.MkdirAll(ctx, pkgDir, 0755))
@@ -309,7 +309,7 @@ func TestClient_Manage(t *testing.T) {
 	setupTestFixtures(t, fs, "package1")
 
 	cfg := dot.Config{
-		StowDir:   "/test/stow",
+		PackageDir:   "/test/stow",
 		TargetDir: "/test/target",
 		FS:        fs,
 		Logger:    adapters.NewNoopLogger(),
@@ -333,7 +333,7 @@ func TestClient_PlanManage(t *testing.T) {
 	setupTestFixtures(t, fs, "package1")
 
 	cfg := dot.Config{
-		StowDir:   "/test/stow",
+		PackageDir:   "/test/stow",
 		TargetDir: "/test/target",
 		FS:        fs,
 		Logger:    adapters.NewNoopLogger(),
@@ -353,7 +353,7 @@ func TestClient_Manage_DryRun(t *testing.T) {
 	setupTestFixtures(t, fs, "package1")
 
 	cfg := dot.Config{
-		StowDir:   "/test/stow",
+		PackageDir:   "/test/stow",
 		TargetDir: "/test/target",
 		FS:        fs,
 		Logger:    adapters.NewNoopLogger(),
@@ -413,9 +413,9 @@ func (c *client) Manage(ctx context.Context, packages ...string) error {
 
 // PlanManage computes the execution plan for managing packages without applying changes.
 func (c *client) PlanManage(ctx context.Context, packages ...string) (dot.Plan, error) {
-	pkgPath, err := dot.NewPackagePath(c.config.StowDir)
+	pkgPath, err := dot.NewPackagePath(c.config.PackageDir)
 	if err != nil {
-		return dot.Plan{}, fmt.Errorf("invalid stow directory: %w", err)
+		return dot.Plan{}, fmt.Errorf("invalid package directory: %w", err)
 	}
 
 	targetPath, err := dot.NewTargetPath(c.config.TargetDir)
@@ -424,7 +424,7 @@ func (c *client) PlanManage(ctx context.Context, packages ...string) (dot.Plan, 
 	}
 
 	input := pipeline.StowInput{
-		StowDir:  pkgPath,
+		PackageDir:  pkgPath,
 		TargetDir: targetPath,
 		Packages: packages,
 	}
@@ -664,7 +664,7 @@ func (c *client) PlanAdopt(ctx context.Context, files []string, pkg string) (dot
 		
 		// Determine package destination (with dot- prefix translation)
 		pkgFile := translateToDotfile(file)
-		pkgPath := filepath.Join(c.config.StowDir, pkg, pkgFile)
+		pkgPath := filepath.Join(c.config.PackageDir, pkg, pkgFile)
 
 		// Create operations: move file, then create link
 		operations = append(operations,
@@ -866,7 +866,7 @@ func TestStatus(t *testing.T) {
 // Create a client and manage packages:
 //
 //	cfg := dot.Config{
-//		StowDir:   "/home/user/dotfiles",
+//		PackageDir:   "/home/user/dotfiles",
 //		TargetDir: "/home/user",
 //		FS:        osfs.New(),
 //		Logger:    slogger.New(),
@@ -918,7 +918,7 @@ func TestStatus(t *testing.T) {
 //
 // The Config struct controls all dot behavior:
 //
-//   - StowDir: Source directory containing packages (required, absolute)
+//   - PackageDir: Source directory containing packages (required, absolute)
 //   - TargetDir: Destination directory for symlinks (required, absolute)
 //   - FS: Filesystem implementation (required)
 //   - Logger: Logger implementation (required)
@@ -981,7 +981,7 @@ import (
 
 func ExampleNewClient() {
 	cfg := dot.Config{
-		StowDir:   "/home/user/dotfiles",
+		PackageDir:   "/home/user/dotfiles",
 		TargetDir: "/home/user",
 		FS:        adapters.NewOSFilesystem(),
 		Logger:    adapters.NewNoopLogger(),
@@ -998,7 +998,7 @@ func ExampleNewClient() {
 
 func ExampleClient_Manage() {
 	cfg := dot.Config{
-		StowDir:   "/home/user/dotfiles",
+		PackageDir:   "/home/user/dotfiles",
 		TargetDir: "/home/user",
 		FS:        adapters.NewOSFilesystem(),
 		Logger:    adapters.NewNoopLogger(),
@@ -1020,7 +1020,7 @@ func ExampleClient_Manage() {
 
 func ExampleClient_PlanManage() {
 	cfg := dot.Config{
-		StowDir:   "/home/user/dotfiles",
+		PackageDir:   "/home/user/dotfiles",
 		TargetDir: "/home/user",
 		FS:        adapters.NewOSFilesystem(),
 		Logger:    adapters.NewNoopLogger(),
@@ -1043,7 +1043,7 @@ func ExampleClient_PlanManage() {
 
 func ExampleConfig_validation() {
 	cfg := dot.Config{
-		StowDir:   "/home/user/dotfiles",
+		PackageDir:   "/home/user/dotfiles",
 		TargetDir: "/home/user",
 		FS:        adapters.NewOSFilesystem(),
 		Logger:    adapters.NewNoopLogger(),

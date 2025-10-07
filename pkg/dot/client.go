@@ -17,7 +17,7 @@ type Client interface {
 	// If DryRun is enabled in Config, shows the plan without executing.
 	//
 	// Returns an error if:
-	//   - Package does not exist in StowDir
+	//   - Package does not exist in PackageDir
 	//   - Conflicts are detected and policy is PolicyFail
 	//   - Filesystem operations fail
 	//   - Context is cancelled
@@ -28,7 +28,7 @@ type Client interface {
 	PlanManage(ctx context.Context, packages ...string) (Plan, error)
 
 	// Unmanage removes the specified packages by deleting their symlinks.
-	// Only removes links that point to the StowDir. Never touches user files.
+	// Only removes links that point to the PackageDir. Never touches user files.
 	//
 	// Returns an error if:
 	//   - Package is not currently installed
@@ -43,7 +43,7 @@ type Client interface {
 	// Uses incremental planning to skip unchanged packages when possible.
 	//
 	// Returns an error if:
-	//   - Package does not exist in StowDir
+	//   - Package does not exist in PackageDir
 	//   - Conflicts are detected
 	//   - Filesystem operations fail
 	//   - Context is cancelled
@@ -58,7 +58,7 @@ type Client interface {
 	//
 	// Returns an error if:
 	//   - Files do not exist in TargetDir
-	//   - Package does not exist in StowDir
+	//   - Package does not exist in PackageDir
 	//   - Filesystem operations fail
 	//   - Context is cancelled
 	Adopt(ctx context.Context, files []string, pkg string) error

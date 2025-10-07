@@ -16,12 +16,12 @@ func setupGlobalCfg(t *testing.T) {
 
 	// Set globalCfg to use temporary directories
 	globalCfg = globalConfig{
-		stowDir:   t.TempDir(),
-		targetDir: t.TempDir(),
-		dryRun:    true, // Always dry-run in tests to avoid side effects
-		verbose:   0,
-		quiet:     false,
-		logJSON:   false,
+		packageDir: t.TempDir(),
+		targetDir:  t.TempDir(),
+		dryRun:     true, // Always dry-run in tests to avoid side effects
+		verbose:    0,
+		quiet:      false,
+		logJSON:    false,
 	}
 
 	// Restore previous globalCfg on cleanup

@@ -314,7 +314,7 @@ func (c *client) detectPackageChanges(
 
     // Compute current hash
     hasher := manifest.NewContentHasher(c.config.FS)
-    newHash, err := hasher.HashPackage(ctx, c.config.StowDir, pkgName)
+    newHash, err := hasher.HashPackage(ctx, c.config.PackageDir, pkgName)
     if err != nil {
         return PackageChanges{}, err
     }

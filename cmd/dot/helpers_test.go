@@ -40,20 +40,20 @@ func TestShouldColorize_Auto(t *testing.T) {
 	_ = result
 }
 
-func TestBuildConfig_ValidatesStowDir(t *testing.T) {
+func TestBuildConfig_ValidatesPackageDir(t *testing.T) {
 	previous := globalCfg
 	t.Cleanup(func() {
 		globalCfg = previous
 	})
 
 	globalCfg = globalConfig{
-		stowDir:   ".",
-		targetDir: ".",
+		packageDir: ".",
+		targetDir:  ".",
 	}
 
 	cfg, err := buildConfig()
 	assert.NoError(t, err)
-	assert.NotEmpty(t, cfg.StowDir)
+	assert.NotEmpty(t, cfg.PackageDir)
 }
 
 func TestCreateLogger_AllModes(t *testing.T) {

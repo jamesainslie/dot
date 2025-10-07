@@ -8,7 +8,7 @@ The CLI uses "manage/unmanage/remanage" commands but the configuration and codeb
 
 ### What We Found
 - **779 total occurrences** of "stow" terminology
-- **170 occurrences** of `StowDir` field/variable
+- **170 occurrences** of `PackageDir` field/variable
 - **50+ files** require updates
 - **Inconsistency**: Commands say "manage", config says "stow"
 
@@ -16,8 +16,8 @@ The CLI uses "manage/unmanage/remanage" commands but the configuration and codeb
 
 | Current | Target | Type |
 |---------|--------|------|
-| `StowDir` | `PackageDir` | Field name |
-| `stowDir` | `packageDir` | Variable name |
+| `PackageDir` | `PackageDir` | Field name |
+| `packageDir` | `packageDir` | Variable name |
 | `directories.stow` | `directories.packages` | Config key |
 | `DOT_DIRECTORIES_STOW` | `DOT_DIRECTORIES_PACKAGES` | Env var |
 | `StowPipeline` | `ManagePipeline` | Type name |
@@ -34,7 +34,7 @@ The CLI uses "manage/unmanage/remanage" commands but the configuration and codeb
 ## Three-Phase Plan
 
 ### Phase 1: Internal (Non-Breaking) - 8-12 hours
-- Add `PackageDir` alongside `StowDir` (deprecated)
+- Add `PackageDir` alongside `PackageDir` (deprecated)
 - Support both `directories.stow` and `directories.packages`
 - Update all internal code to use new names
 - Emit deprecation warnings
@@ -86,7 +86,7 @@ dot config migrate --dry-run # Preview changes
 ```go
 // v0.1.0 - Both fields available
 type Config struct {
-    StowDir    string  // Deprecated
+    PackageDir    string  // Deprecated
     PackageDir string  // Preferred
 }
 

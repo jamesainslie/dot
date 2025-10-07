@@ -83,7 +83,7 @@ type StowPipeline struct {
 - Handles all errors through Result monad
 
 **Pipeline Options**:
-- StowDir, TargetDir paths
+- PackageDir, TargetDir paths
 - FS interface for filesystem access
 - IgnoreSet for pattern matching
 - Resolution policies configuration

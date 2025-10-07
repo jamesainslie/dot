@@ -63,7 +63,7 @@ func TestConfigCommand_Get(t *testing.T) {
 
 	// Create config file
 	cfg := config.DefaultExtended()
-	cfg.Directories.Stow = "/test/dotfiles"
+	cfg.Directories.Package = "/test/dotfiles"
 	cfg.Logging.Level = "DEBUG"
 
 	writer := config.NewWriter(configPath)
@@ -74,7 +74,7 @@ func TestConfigCommand_Get(t *testing.T) {
 	defer os.Unsetenv("DOT_CONFIG")
 
 	// Test get
-	value, err := getConfigValue(cfg, "directories.stow")
+	value, err := getConfigValue(cfg, "directories.package")
 	require.NoError(t, err)
 	assert.Equal(t, "/test/dotfiles", value)
 
@@ -104,14 +104,14 @@ func TestConfigCommand_Set(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set a value
-	err = runConfigSet("directories.stow", "/new/dotfiles")
+	err = runConfigSet("directories.package", "/new/dotfiles")
 	require.NoError(t, err)
 
 	// Verify value was set
 	loader := config.NewLoader("dot", configPath)
 	cfg, err := loader.Load()
 	require.NoError(t, err)
-	assert.Equal(t, "/new/dotfiles", cfg.Directories.Stow)
+	assert.Equal(t, "/new/dotfiles", cfg.Directories.Package)
 }
 
 func TestConfigCommand_Path(t *testing.T) {

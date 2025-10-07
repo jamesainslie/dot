@@ -16,7 +16,7 @@ func TestExtendedConfig_Default(t *testing.T) {
 	require.NotNil(t, cfg)
 
 	// Directories
-	assert.NotEmpty(t, cfg.Directories.Stow)
+	assert.NotEmpty(t, cfg.Directories.Package)
 	assert.NotEmpty(t, cfg.Directories.Target)
 	assert.NotEmpty(t, cfg.Directories.Manifest)
 
@@ -76,7 +76,7 @@ func TestExtendedConfig_LoadFromYAML(t *testing.T) {
 
 	configContent := `
 directories:
-  stow: /home/user/dotfiles
+  package: /home/user/dotfiles
   target: /home/user
   manifest: /home/user/.local/share/dot/manifest
 
@@ -139,7 +139,7 @@ experimental:
 	require.NoError(t, err)
 
 	// Verify all values
-	assert.Equal(t, "/home/user/dotfiles", cfg.Directories.Stow)
+	assert.Equal(t, "/home/user/dotfiles", cfg.Directories.Package)
 	assert.Equal(t, "/home/user", cfg.Directories.Target)
 	assert.Equal(t, "DEBUG", cfg.Logging.Level)
 	assert.Equal(t, "absolute", cfg.Symlinks.Mode)
@@ -166,7 +166,7 @@ func TestExtendedConfig_ValidateDirectories(t *testing.T) {
 			name: "valid directories",
 			config: func() *config.ExtendedConfig {
 				cfg := config.DefaultExtended()
-				cfg.Directories.Stow = "/home/user/dotfiles"
+				cfg.Directories.Package = "/home/user/dotfiles"
 				cfg.Directories.Target = "/home/user"
 				return cfg
 			},
@@ -176,11 +176,11 @@ func TestExtendedConfig_ValidateDirectories(t *testing.T) {
 			name: "empty stow directory",
 			config: func() *config.ExtendedConfig {
 				cfg := config.DefaultExtended()
-				cfg.Directories.Stow = ""
+				cfg.Directories.Package = ""
 				return cfg
 			},
 			wantErr: true,
-			errMsg:  "stow directory cannot be empty",
+			errMsg:  "package directory cannot be empty",
 		},
 		{
 			name: "empty target directory",
@@ -379,7 +379,7 @@ func TestExtendedConfig_ValidateOperations(t *testing.T) {
 
 func TestExtendedConfig_MarshalYAML(t *testing.T) {
 	cfg := config.DefaultExtended()
-	cfg.Directories.Stow = "/test/dotfiles"
+	cfg.Directories.Package = "/test/dotfiles"
 	cfg.Logging.Level = "DEBUG"
 
 	// This will be used when implementing marshaling

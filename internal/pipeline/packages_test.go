@@ -42,14 +42,14 @@ func TestManagePipeline_Execute(t *testing.T) {
 
 		packagePathResult := dot.NewPackagePath("/packages")
 		require.True(t, packagePathResult.IsOk(), "failed to create package path")
-		stowPath := packagePathResult.Unwrap()
+		packagePath := packagePathResult.Unwrap()
 
 		targetPathResult := dot.NewTargetPath("/target")
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")
 		targetPath := targetPathResult.Unwrap()
 
 		result := pipeline.Execute(context.Background(), ManageInput{
-			PackageDir: stowPath,
+			PackageDir: packagePath,
 			TargetDir:  targetPath,
 			Packages:   []string{},
 		})
@@ -77,14 +77,14 @@ func TestManagePipeline_Execute(t *testing.T) {
 
 		packagePathResult := dot.NewPackagePath("/packages")
 		require.True(t, packagePathResult.IsOk(), "failed to create package path")
-		stowPath := packagePathResult.Unwrap()
+		packagePath := packagePathResult.Unwrap()
 
 		targetPathResult := dot.NewTargetPath("/target")
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")
 		targetPath := targetPathResult.Unwrap()
 
 		result := pipeline.Execute(context.Background(), ManageInput{
-			PackageDir: stowPath,
+			PackageDir: packagePath,
 			TargetDir:  targetPath,
 			Packages:   []string{"nonexistent"},
 		})

@@ -8,7 +8,7 @@ import (
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
-// ManagePipelineOpts contains options for the Stow pipeline
+// ManagePipelineOpts contains options for the Manage pipeline
 type ManagePipelineOpts struct {
 	FS        dot.FS
 	IgnoreSet *ignore.IgnoreSet
@@ -28,7 +28,7 @@ type ManagePipeline struct {
 	opts ManagePipelineOpts
 }
 
-// NewManagePipeline creates a new Stow pipeline with the given options.
+// NewManagePipeline creates a new Manage pipeline with the given options.
 func NewManagePipeline(opts ManagePipelineOpts) *ManagePipeline {
 	return &ManagePipeline{
 		opts: opts,

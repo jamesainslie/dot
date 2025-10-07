@@ -144,3 +144,95 @@ func (r *TableRenderer) colorText(color string) string {
 	}
 	return ""
 }
+
+// RenderPlan renders an execution plan as a table.
+func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+	fmt.Fprintf(w, "%sDry run mode - no changes will be applied%s\n\n", r.colorText(r.scheme.Warning), r.resetColor())
+
+	if len(plan.Operations) == 0 {
+		fmt.Fprintln(w, "No operations required")
+		return nil
+	}
+
+	// Build table of operations
+	headers := []string{"#", "Action", "Type", "Details"}
+	rows := make([][]string, 0, len(plan.Operations))
+
+	for i, op := range plan.Operations {
+		action := "Create"
+		opType := ""
+		details := ""
+
+		switch op.Kind() {
+		case dot.OpKindDirCreate:
+			opType = "Directory"
+			dirOp := op.(dot.DirCreate)
+			details = dirOp.Path.String()
+
+		case dot.OpKindLinkCreate:
+			opType = "Symlink"
+			linkOp := op.(dot.LinkCreate)
+			details = fmt.Sprintf("%s -> %s", linkOp.Target.String(), linkOp.Source.String())
+
+		case dot.OpKindFileMove:
+			action = "Move"
+			opType = "File"
+			moveOp := op.(dot.FileMove)
+			details = fmt.Sprintf("%s -> %s", moveOp.Source.String(), moveOp.Dest.String())
+
+		case dot.OpKindFileBackup:
+			action = "Backup"
+			opType = "File"
+			backupOp := op.(dot.FileBackup)
+			details = fmt.Sprintf("%s -> %s", backupOp.Source.String(), backupOp.Backup.String())
+
+		case dot.OpKindDirDelete:
+			action = "Delete"
+			opType = "Directory"
+			dirOp := op.(dot.DirDelete)
+			details = dirOp.Path.String()
+
+		case dot.OpKindLinkDelete:
+			action = "Delete"
+			opType = "Symlink"
+			linkOp := op.(dot.LinkDelete)
+			details = linkOp.Target.String()
+		}
+
+		// Truncate details if too long
+		if len(details) > 60 {
+			details = details[:57] + "..."
+		}
+
+		rows = append(rows, []string{
+			fmt.Sprintf("%d", i+1),
+			action,
+			opType,
+			details,
+		})
+	}
+
+	if err := r.renderTable(w, headers, rows); err != nil {
+		return err
+	}
+
+	// Summary
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Summary:")
+
+	dirCount := 0
+	linkCount := 0
+	for _, op := range plan.Operations {
+		if op.Kind() == dot.OpKindDirCreate {
+			dirCount++
+		} else if op.Kind() == dot.OpKindLinkCreate {
+			linkCount++
+		}
+	}
+
+	fmt.Fprintf(w, "  Directories: %d\n", dirCount)
+	fmt.Fprintf(w, "  Symlinks: %d\n", linkCount)
+	fmt.Fprintf(w, "  Conflicts: %d\n", len(plan.Metadata.Conflicts))
+
+	return nil
+}

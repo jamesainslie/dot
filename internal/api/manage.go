@@ -19,7 +19,8 @@ func (c *client) Manage(ctx context.Context, packages ...string) error {
 	}
 
 	if c.config.DryRun {
-		c.config.Logger.Info(ctx, "dry_run_mode", "operations", len(plan.Operations))
+		// In dry-run mode, return early without executing.
+		// The CLI layer will handle rendering the plan.
 		return nil
 	}
 

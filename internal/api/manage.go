@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/jamesainslie/dot/internal/manifest"
@@ -87,37 +88,59 @@ func (c *client) updateManifest(ctx context.Context, packages []string, plan dot
 		m = manifest.New()
 	}
 
-	// Update package entries
-	// Note: This is a simplified implementation that records the operation happened
-	// but doesn't track which specific links belong to which package.
-	// Full implementation would need package-to-operation mapping from the planner.
-	for _, pkg := range packages {
-		// Get existing package info to preserve data if it exists
-		existingInfo, hasExisting := m.GetPackage(pkg)
+	// Update package entries using package-operation mapping from plan
+	hasher := manifest.NewContentHasher(c.config.FS)
 
-		if hasExisting {
-			// Update timestamp but preserve existing link data
-			// (we don't have per-package link tracking yet)
-			m.AddPackage(manifest.PackageInfo{
-				Name:        pkg,
-				InstalledAt: time.Now(),
-				LinkCount:   existingInfo.LinkCount,
-				Links:       existingInfo.Links,
-			})
-		} else {
-			// New package - record with minimal info
-			// TODO: Track links per package in planner/pipeline
-			m.AddPackage(manifest.PackageInfo{
-				Name:        pkg,
-				InstalledAt: time.Now(),
-				LinkCount:   0, // Will be updated when per-package tracking is implemented
-				Links:       []string{},
-			})
+	for _, pkg := range packages {
+		// Extract links from package operations
+		ops := plan.OperationsForPackage(pkg)
+		links := extractLinksFromOperations(ops, c.config.TargetDir)
+
+		m.AddPackage(manifest.PackageInfo{
+			Name:        pkg,
+			InstalledAt: time.Now(),
+			LinkCount:   len(links),
+			Links:       links,
+		})
+
+		// Compute and store package hash for incremental remanage
+		pkgPathStr := filepath.Join(c.config.PackageDir, pkg)
+		pkgPathResult := dot.NewPackagePath(pkgPathStr)
+		if pkgPathResult.IsOk() {
+			pkgPath := pkgPathResult.Unwrap()
+			hash, err := hasher.HashPackage(ctx, pkgPath)
+			if err != nil {
+				c.config.Logger.Warn(ctx, "failed_to_compute_hash", "package", pkg, "error", err)
+			} else {
+				m.SetHash(pkg, hash)
+			}
 		}
 	}
 
 	// Save manifest
 	return c.manifest.Save(ctx, targetPath, m)
+}
+
+// extractLinksFromOperations extracts link paths from LinkCreate operations.
+// Returns relative paths from the target directory for manifest storage.
+func extractLinksFromOperations(ops []dot.Operation, targetDir string) []string {
+	links := make([]string, 0, len(ops))
+
+	for _, op := range ops {
+		// Only track LinkCreate operations
+		if linkOp, ok := op.(dot.LinkCreate); ok {
+			// Get relative path from target directory
+			targetPath := linkOp.Target.String()
+			relPath, err := filepath.Rel(targetDir, targetPath)
+			if err != nil {
+				// If we can't compute relative path, use absolute path
+				relPath = targetPath
+			}
+			links = append(links, relPath)
+		}
+	}
+
+	return links
 }
 
 // countLinksInPlan returns the number of LinkCreate operations in a plan.

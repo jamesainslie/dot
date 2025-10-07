@@ -47,7 +47,7 @@ func newDoctorCommand() *cobra.Command {
 		}
 
 		// Run diagnostics
-		report, err := client.Doctor(cmd.Context(), scanCfg)
+		report, err := client.DoctorWithScan(cmd.Context(), scanCfg)
 		if err != nil {
 			return formatError(err)
 		}

@@ -16,7 +16,7 @@ func TestDoctor_NoManifest(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(context.Background(), dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(context.Background(), dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, dot.HealthOK, report.OverallHealth)
@@ -55,7 +55,7 @@ func TestDoctor_WithValidLinks(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, dot.HealthOK, report.OverallHealth)
@@ -87,7 +87,7 @@ func TestDoctor_BrokenLink_DoesNotExist(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, dot.HealthErrors, report.OverallHealth)
@@ -122,7 +122,7 @@ func TestDoctor_NotSymlink(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, dot.HealthErrors, report.OverallHealth)
@@ -156,7 +156,7 @@ func TestDoctor_BrokenSymlinkTarget(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, dot.HealthErrors, report.OverallHealth)
@@ -188,7 +188,7 @@ func TestDoctor_MultiplePackages(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// All links missing, should have errors
@@ -227,7 +227,7 @@ func TestDoctor_MixedHealthyAndBroken(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, dot.HealthErrors, report.OverallHealth)

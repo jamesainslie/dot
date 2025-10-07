@@ -39,13 +39,13 @@ func TestPlanRemanage_GeneratesPlan(t *testing.T) {
 	err = client.Manage(ctx, "vim")
 	require.NoError(t, err)
 
-	// Plan remanage
+	// Plan remanage without changes
 	plan, err := client.PlanRemanage(ctx, "vim")
 	require.NoError(t, err)
 
-	// Plan should exist
+	// With incremental remanage, unchanged packages should have no operations
 	assert.NotNil(t, plan)
-	assert.NotZero(t, len(plan.Operations))
+	assert.Equal(t, 0, len(plan.Operations), "unchanged package should have no operations")
 }
 
 func TestPlanRemanage_CombinesUnmanageAndManage(t *testing.T) {

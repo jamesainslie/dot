@@ -66,6 +66,9 @@ type SymlinksConfig struct {
 
 	// Backup suffix when backups enabled
 	BackupSuffix string `mapstructure:"backup_suffix" json:"backup_suffix" yaml:"backup_suffix" toml:"backup_suffix"`
+
+	// Directory for backup files (default: <target>/.dot-backup)
+	BackupDir string `mapstructure:"backup_dir" json:"backup_dir" yaml:"backup_dir" toml:"backup_dir"`
 }
 
 // IgnoreConfig contains ignore pattern configuration.

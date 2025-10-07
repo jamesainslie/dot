@@ -151,4 +151,3 @@ func TestManageCommand_Integration_PackageNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 }
-

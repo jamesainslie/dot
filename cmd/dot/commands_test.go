@@ -33,6 +33,7 @@ func setupGlobalCfg(t *testing.T) {
 func TestManageCommand_ExecuteStub(t *testing.T) {
 	setupGlobalCfg(t)
 
+	// Commands now actually execute, so we expect error for non-existent package
 	cmd := newManageCommand()
 	cmd.SetArgs([]string{"package1"})
 
@@ -41,7 +42,7 @@ func TestManageCommand_ExecuteStub(t *testing.T) {
 	cmd.SetErr(out)
 
 	err := cmd.Execute()
-	require.NoError(t, err)
+	require.Error(t, err, "should error when package does not exist")
 }
 
 func TestManageCommand_NoPackages(t *testing.T) {
@@ -105,6 +106,7 @@ func TestUnmanageCommand_Metadata(t *testing.T) {
 func TestRemanageCommand_ExecuteStub(t *testing.T) {
 	setupGlobalCfg(t)
 
+	// Remanage tries to unmanage then manage, so will error on manage phase
 	cmd := newRemanageCommand()
 	cmd.SetArgs([]string{"package1"})
 
@@ -113,7 +115,7 @@ func TestRemanageCommand_ExecuteStub(t *testing.T) {
 	cmd.SetErr(out)
 
 	err := cmd.Execute()
-	require.NoError(t, err)
+	require.Error(t, err, "should error when package does not exist")
 }
 
 func TestRemanageCommand_NoPackages(t *testing.T) {
@@ -141,6 +143,7 @@ func TestRemanageCommand_Metadata(t *testing.T) {
 func TestAdoptCommand_ExecuteStub(t *testing.T) {
 	setupGlobalCfg(t)
 
+	// Adopt tries to verify package exists, so will error
 	cmd := newAdoptCommand()
 	cmd.SetArgs([]string{"package1", "file1"})
 
@@ -149,7 +152,7 @@ func TestAdoptCommand_ExecuteStub(t *testing.T) {
 	cmd.SetErr(out)
 
 	err := cmd.Execute()
-	require.NoError(t, err)
+	require.Error(t, err, "should error when package does not exist")
 }
 
 func TestAdoptCommand_NotEnoughArgs(t *testing.T) {
@@ -177,6 +180,7 @@ func TestAdoptCommand_Metadata(t *testing.T) {
 func TestAdoptCommand_MultipleFiles(t *testing.T) {
 	setupGlobalCfg(t)
 
+	// Multiple files with non-existent package will error
 	cmd := newAdoptCommand()
 	cmd.SetArgs([]string{"package1", "file1", "file2", "file3"})
 
@@ -185,12 +189,13 @@ func TestAdoptCommand_MultipleFiles(t *testing.T) {
 	cmd.SetErr(out)
 
 	err := cmd.Execute()
-	require.NoError(t, err)
+	require.Error(t, err, "should error when package does not exist")
 }
 
 func TestManageCommand_MultiplePackages(t *testing.T) {
 	setupGlobalCfg(t)
 
+	// Multiple packages that don't exist will error
 	cmd := newManageCommand()
 	cmd.SetArgs([]string{"package1", "package2", "package3"})
 
@@ -199,7 +204,7 @@ func TestManageCommand_MultiplePackages(t *testing.T) {
 	cmd.SetErr(out)
 
 	err := cmd.Execute()
-	require.NoError(t, err)
+	require.Error(t, err, "should error when packages do not exist")
 }
 
 func TestUnmanageCommand_MultiplePackages(t *testing.T) {
@@ -219,6 +224,7 @@ func TestUnmanageCommand_MultiplePackages(t *testing.T) {
 func TestRemanageCommand_MultiplePackages(t *testing.T) {
 	setupGlobalCfg(t)
 
+	// Multiple packages that don't exist will error on manage phase
 	cmd := newRemanageCommand()
 	cmd.SetArgs([]string{"package1", "package2", "package3"})
 
@@ -227,7 +233,7 @@ func TestRemanageCommand_MultiplePackages(t *testing.T) {
 	cmd.SetErr(out)
 
 	err := cmd.Execute()
-	require.NoError(t, err)
+	require.Error(t, err, "should error when packages do not exist")
 }
 
 func TestRootCommand_NoArgs(t *testing.T) {
@@ -301,7 +307,8 @@ func TestRootCommand_GlobalFlagsWithCommand(t *testing.T) {
 	rootCmd.SetErr(out)
 
 	err := rootCmd.Execute()
-	require.NoError(t, err)
+	// Package doesn't exist, expect error
+	require.Error(t, err)
 }
 
 func TestRootCommand_DryRunFlag(t *testing.T) {
@@ -315,7 +322,8 @@ func TestRootCommand_DryRunFlag(t *testing.T) {
 	rootCmd.SetErr(out)
 
 	err := rootCmd.Execute()
-	require.NoError(t, err)
+	// Package doesn't exist, expect error
+	require.Error(t, err)
 }
 
 func TestRootCommand_VerboseFlag(t *testing.T) {
@@ -329,7 +337,8 @@ func TestRootCommand_VerboseFlag(t *testing.T) {
 	rootCmd.SetErr(out)
 
 	err := rootCmd.Execute()
-	require.NoError(t, err)
+	// Package doesn't exist, expect error
+	require.Error(t, err)
 }
 
 func TestRootCommand_QuietFlag(t *testing.T) {
@@ -343,7 +352,8 @@ func TestRootCommand_QuietFlag(t *testing.T) {
 	rootCmd.SetErr(out)
 
 	err := rootCmd.Execute()
-	require.NoError(t, err)
+	// Package doesn't exist, expect error
+	require.Error(t, err)
 }
 
 func TestRootCommand_LogJSONFlag(t *testing.T) {
@@ -357,5 +367,6 @@ func TestRootCommand_LogJSONFlag(t *testing.T) {
 	rootCmd.SetErr(out)
 
 	err := rootCmd.Execute()
-	require.NoError(t, err)
+	// Package doesn't exist, expect error
+	require.Error(t, err)
 }

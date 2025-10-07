@@ -379,5 +379,4 @@ For issues specific to Homebrew installation:
 2. Search [GitHub Issues](https://github.com/jamesainslie/dot/issues)
 3. Report bugs with `brew gist-logs dot` output
 
-For general dot usage questions, see the main [documentation](../README.md).
-
+For general dot usage questions, see the main [documentation](../../README.md).

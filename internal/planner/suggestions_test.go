@@ -46,15 +46,15 @@ func TestGenerateSuggestionsForWrongLink(t *testing.T) {
 
 	assert.NotEmpty(t, suggestions)
 
-	// Should suggest unstowing other package
-	hasUnstow := false
+	// Should suggest unmanaging other package
+	hasUnmanage := false
 	for _, s := range suggestions {
-		if containsIgnoreCase(s.Action, "unstow") {
-			hasUnstow = true
+		if containsIgnoreCase(s.Action, "unmanage") {
+			hasUnmanage = true
 			assert.NotEmpty(t, s.Explanation)
 		}
 	}
-	assert.True(t, hasUnstow, "Should suggest unstow option")
+	assert.True(t, hasUnmanage, "Should suggest unmanage option")
 }
 
 func TestGenerateSuggestionsForPermission(t *testing.T) {

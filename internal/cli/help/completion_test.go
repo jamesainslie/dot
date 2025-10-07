@@ -111,7 +111,7 @@ func TestCompletionGenerator_WithComplexCommand(t *testing.T) {
 		Use:   "manage",
 		Short: "Manage packages",
 	}
-	manageCmd.Flags().StringP("dir", "d", "", "Stow directory")
+	manageCmd.Flags().StringP("dir", "d", "", "Package directory")
 	manageCmd.Flags().StringP("target", "t", "", "Target directory")
 
 	rootCmd.AddCommand(manageCmd)

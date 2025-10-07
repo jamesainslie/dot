@@ -121,8 +121,8 @@ func (l *Loader) loadFromEnv() *ExtendedConfig {
 }
 
 func loadDirectoriesFromEnv(v *viper.Viper, cfg *DirectoriesConfig) {
-	if v.IsSet("directories.stow") {
-		cfg.Stow = v.GetString("directories.stow")
+	if v.IsSet("directories.package") {
+		cfg.Package = v.GetString("directories.package")
 	}
 	if v.IsSet("directories.target") {
 		cfg.Target = v.GetString("directories.target")
@@ -262,7 +262,7 @@ func getEnvWithPrefix(prefix, key string) string {
 
 // bindEnvKeys binds all configuration keys to environment variables.
 func (l *Loader) bindEnvKeys(v *viper.Viper) {
-	v.BindEnv("directories.stow")
+	v.BindEnv("directories.package")
 	v.BindEnv("directories.target")
 	v.BindEnv("directories.manifest")
 
@@ -348,7 +348,7 @@ func applyFlagsToConfig(cfg *ExtendedConfig, flags map[string]interface{}) bool 
 // applyDirectoryFlags applies directory-related flags.
 func applyDirectoryFlags(cfg *ExtendedConfig, flags map[string]interface{}) {
 	if val, ok := flags["dir"].(string); ok && val != "" {
-		cfg.Directories.Stow = val
+		cfg.Directories.Package = val
 	}
 	if val, ok := flags["target"].(string); ok && val != "" {
 		cfg.Directories.Target = val
@@ -417,8 +417,8 @@ func mergeConfigsWithVerbosity(base, override *ExtendedConfig, verbosityExplicit
 
 // mergeDirectories merges directory configuration.
 func mergeDirectories(merged *ExtendedConfig, override *ExtendedConfig) {
-	if override.Directories.Stow != "" {
-		merged.Directories.Stow = override.Directories.Stow
+	if override.Directories.Package != "" {
+		merged.Directories.Package = override.Directories.Package
 	}
 	if override.Directories.Target != "" {
 		merged.Directories.Target = override.Directories.Target

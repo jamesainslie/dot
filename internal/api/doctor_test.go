@@ -29,10 +29,10 @@ func TestDoctor_WithValidLinks(t *testing.T) {
 
 	// Create manifest and actual symlinks
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
 
 	// Create source file
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 
 	// Create symlink
@@ -203,10 +203,10 @@ func TestDoctor_MixedHealthyAndBroken(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
 
 	// Create one valid link
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 	linkPath1 := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, linkPath1))

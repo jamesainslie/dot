@@ -29,8 +29,8 @@ func TestUnmanage_RemovesFromManifest(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, manifestPath, manifestContent, 0644))
 
 	// Create the symlink
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 	linkPath := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, linkPath))
@@ -137,7 +137,7 @@ func TestAdopt_PlansCorrectly(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("content"), 0644))
 
 	// Create package directory
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -162,7 +162,7 @@ func TestAdopt_DryRunDoesNotModify(t *testing.T) {
 	filePath := filepath.Join(cfg.TargetDir, ".bashrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("test"), 0644))
 
-	pkgDir := filepath.Join(cfg.StowDir, "bash")
+	pkgDir := filepath.Join(cfg.PackageDir, "bash")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	cfg.DryRun = true

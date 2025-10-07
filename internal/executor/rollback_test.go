@@ -19,9 +19,9 @@ func TestRollback_SingleOperation(t *testing.T) {
 	})
 
 	// Set up filesystem and create link
-	source := dot.MustParsePath("/stow/pkg/file")
+	source := dot.MustParsePath("/packages/pkg/file")
 	target := dot.MustParsePath("/home/file")
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 	require.NoError(t, fs.Symlink(ctx, source.String(), target.String()))
@@ -53,10 +53,10 @@ func TestRollback_ReverseOrder(t *testing.T) {
 
 	// Create operations in order: DirCreate, then LinkCreate
 	dirPath := dot.MustParsePath("/home/subdir")
-	source := dot.MustParsePath("/stow/pkg/file")
+	source := dot.MustParsePath("/packages/pkg/file")
 	target := dot.MustParsePath("/home/subdir/file")
 
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 	require.NoError(t, fs.MkdirAll(ctx, dirPath.String(), 0755))
@@ -91,12 +91,12 @@ func TestRollback_PartialRollbackOnError(t *testing.T) {
 	})
 
 	// Create two links
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	source2 := dot.MustParsePath("/stow/pkg/file2")
+	source2 := dot.MustParsePath("/packages/pkg/file2")
 	target2 := dot.MustParsePath("/home/file2")
 
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 	require.NoError(t, fs.WriteFile(ctx, source2.String(), []byte("content2"), 0644))
@@ -131,16 +131,16 @@ func TestExecute_AutomaticRollback(t *testing.T) {
 
 	// Create a scenario where prepare passes but execute fails
 	// We'll test by directly calling executeSequential with a checkpoint
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 
 	op1 := dot.NewLinkCreate("link1", source1, target1)
 
 	// Second operation will fail during execution (parent doesn't exist)
-	source2 := dot.MustParsePath("/stow/pkg/file2")
+	source2 := dot.MustParsePath("/packages/pkg/file2")
 	target2 := dot.MustParsePath("/nonexistent/file2")
 	require.NoError(t, fs.WriteFile(ctx, source2.String(), []byte("content2"), 0644))
 

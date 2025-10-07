@@ -20,7 +20,7 @@ func TestAdopt_WithExecutionError(t *testing.T) {
 	filePath := filepath.Join(cfg.TargetDir, ".bashrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("test"), 0644))
 
-	pkgDir := filepath.Join(cfg.StowDir, "bash")
+	pkgDir := filepath.Join(cfg.PackageDir, "bash")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -142,15 +142,15 @@ func TestUnmanage_UpdatesManifestCorrectly(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, manifestPath, manifestContent, 0644))
 
 	// Create links
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "tmux"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "tmux"), 0755))
 
-	vimSource := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	vimSource := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, vimSource, []byte("test"), 0644))
 	vimLink := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.Symlink(ctx, vimSource, vimLink))
 
-	tmuxSource := filepath.Join(cfg.StowDir, "tmux", "conf")
+	tmuxSource := filepath.Join(cfg.PackageDir, "tmux", "conf")
 	require.NoError(t, cfg.FS.WriteFile(ctx, tmuxSource, []byte("test"), 0644))
 	tmuxLink := filepath.Join(cfg.TargetDir, ".tmux.conf")
 	require.NoError(t, cfg.FS.Symlink(ctx, tmuxSource, tmuxLink))

@@ -11,17 +11,17 @@ import (
 
 func TestConfig_Validate_Valid(t *testing.T) {
 	cfg := dot.Config{
-		StowDir:   "/stow",
-		TargetDir: "/target",
-		FS:        adapters.NewMemFS(),
-		Logger:    adapters.NewNoopLogger(),
+		PackageDir: "/packages",
+		TargetDir:  "/target",
+		FS:         adapters.NewMemFS(),
+		Logger:     adapters.NewNoopLogger(),
 	}
 
 	err := cfg.Validate()
 	assert.NoError(t, err)
 }
 
-func TestConfig_Validate_EmptyStowDir(t *testing.T) {
+func TestConfig_Validate_EmptyPackageDir(t *testing.T) {
 	cfg := dot.Config{
 		TargetDir: "/target",
 		FS:        adapters.NewMemFS(),
@@ -30,15 +30,15 @@ func TestConfig_Validate_EmptyStowDir(t *testing.T) {
 
 	err := cfg.Validate()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "stowDir")
+	assert.Contains(t, err.Error(), "packageDir")
 }
 
-func TestConfig_Validate_RelativeStowDir(t *testing.T) {
+func TestConfig_Validate_RelativePackageDir(t *testing.T) {
 	cfg := dot.Config{
-		StowDir:   "relative",
-		TargetDir: "/target",
-		FS:        adapters.NewMemFS(),
-		Logger:    adapters.NewNoopLogger(),
+		PackageDir: "relative",
+		TargetDir:  "/target",
+		FS:         adapters.NewMemFS(),
+		Logger:     adapters.NewNoopLogger(),
 	}
 
 	err := cfg.Validate()
@@ -48,9 +48,9 @@ func TestConfig_Validate_RelativeStowDir(t *testing.T) {
 
 func TestConfig_Validate_MissingFS(t *testing.T) {
 	cfg := dot.Config{
-		StowDir:   "/stow",
-		TargetDir: "/target",
-		Logger:    adapters.NewNoopLogger(),
+		PackageDir: "/packages",
+		TargetDir:  "/target",
+		Logger:     adapters.NewNoopLogger(),
 	}
 
 	err := cfg.Validate()
@@ -60,11 +60,11 @@ func TestConfig_Validate_MissingFS(t *testing.T) {
 
 func TestConfig_Validate_NegativeVerbosity(t *testing.T) {
 	cfg := dot.Config{
-		StowDir:   "/stow",
-		TargetDir: "/target",
-		FS:        adapters.NewMemFS(),
-		Logger:    adapters.NewNoopLogger(),
-		Verbosity: -1,
+		PackageDir: "/packages",
+		TargetDir:  "/target",
+		FS:         adapters.NewMemFS(),
+		Logger:     adapters.NewNoopLogger(),
+		Verbosity:  -1,
 	}
 
 	err := cfg.Validate()

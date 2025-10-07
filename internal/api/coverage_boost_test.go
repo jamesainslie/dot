@@ -29,8 +29,8 @@ func TestUnmanage_ManifestUpdateFails(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, manifestPath, manifestContent, 0644))
 
 	// Create valid link
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 	linkPath := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, linkPath))
@@ -79,7 +79,7 @@ func TestAdopt_WithManifestError(t *testing.T) {
 	filePath := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("test"), 0644))
 
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -186,9 +186,9 @@ func TestUnmanage_MultipleLinksPerPackage(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, manifestPath, manifestContent, 0644))
 
 	// Create the links
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
 	for _, link := range []string{".vimrc", ".gvimrc", ".vim/"} {
-		source := filepath.Join(cfg.StowDir, "vim", filepath.Base(link))
+		source := filepath.Join(cfg.PackageDir, "vim", filepath.Base(link))
 		require.NoError(t, cfg.FS.WriteFile(ctx, source, []byte("test"), 0644))
 		target := filepath.Join(cfg.TargetDir, link)
 		require.NoError(t, cfg.FS.Symlink(ctx, source, target))

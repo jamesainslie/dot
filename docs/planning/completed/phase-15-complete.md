@@ -19,7 +19,7 @@ Implemented user-friendly error message formatting:
 **Features**:
 - Terminal width detection and text wrapping
 - ANSI color support with enable/disable
-- Context-aware suggestions (includes stow directory, flags, etc.)
+- Context-aware suggestions (includes package directory, flags, etc.)
 - Special case handling (tilde expansion, relative paths, dry-run mode)
 - Multi-error aggregation formatting
 

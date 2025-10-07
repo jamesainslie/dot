@@ -170,10 +170,10 @@ ErrInvalidPath:
 
 ErrPackageNotFound:
   Title: "Package Not Found"
-  Description: "Package '%s' does not exist in stow directory"
+  Description: "Package '%s' does not exist in package directory"
   Suggestions:
     - "Check available packages with: dot list"
-    - "Verify stow directory: %s"
+    - "Verify package directory: %s"
     - "Check for typos in package name"
 
 ErrConflict (FileExists):
@@ -724,7 +724,7 @@ SYNOPSIS
     dot manage [OPTIONS] PACKAGE...
 
 DESCRIPTION
-    Install packages by creating symlinks from the stow directory
+    Install packages by creating symlinks from the package directory
     to the target directory. Files in each package are linked to
     corresponding locations in the target.
 
@@ -785,7 +785,7 @@ func (g *CompletionGenerator) GenerateFish() (string, error)
 **Completion Features**:
 - Command name completion
 - Flag name completion
-- Package name completion (from stow directory)
+- Package name completion (from package directory)
 - Path completion for --dir and --target
 - Flag value completion where applicable
 

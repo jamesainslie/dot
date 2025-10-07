@@ -21,7 +21,7 @@ func TestPlanAdopt_CreatesOperations(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("set number"), 0644))
 
 	// Create package directory
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -45,7 +45,7 @@ func TestPlanAdopt_GeneratesPlan(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("export PATH"), 0644))
 
 	// Create package directory
-	pkgDir := filepath.Join(cfg.StowDir, "bash")
+	pkgDir := filepath.Join(cfg.PackageDir, "bash")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -64,7 +64,7 @@ func TestAdopt_FileNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)

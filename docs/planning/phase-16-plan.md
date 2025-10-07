@@ -227,11 +227,11 @@ func genTargetPath() gopter.Gen {
     })
 }
 
-// Generate PackagePath relative to stow directory
-func genPackagePath(stowDir StowPath) gopter.Gen {
+// Generate PackagePath relative to package directory
+func genPackagePath(packageDir StowPath) gopter.Gen {
   return genPathSegment().
     Map(func(pkg string) PackagePath {
-      return stowDir.Join(pkg)
+      return packageDir.Join(pkg)
     })
 }
 
@@ -251,7 +251,7 @@ func genFilePath(base Path, maxDepth int) gopter.Gen {
 **Tasks**:
 - [ ] Implement genAbsolutePath() for valid absolute paths
 - [ ] Implement genPathSegment() for valid filename components
-- [ ] Implement genStowPath() for typed stow directory paths
+- [ ] Implement genStowPath() for typed package directory paths
 - [ ] Implement genTargetPath() for typed target directory paths
 - [ ] Implement genPackagePath() for package directory paths
 - [ ] Implement genFilePath() with depth control
@@ -310,7 +310,7 @@ func genFileTreeNode(maxDepth, maxBreadth, currentDepth int) gopter.Gen {
 }
 
 // Generate complete package with metadata
-func genPackage(stowDir StowPath) gopter.Gen {
+func genPackage(packageDir StowPath) gopter.Gen {
   return gopter.CombineGens(
     genPathSegment(),           // Package name
     genFileTree(4, 5),          // File tree (depth 4, breadth 5)
@@ -324,7 +324,7 @@ func genPackage(stowDir StowPath) gopter.Gen {
     
     return Package{
       Name: name,
-      Path: stowDir.Join(name),
+      Path: packageDir.Join(name),
       Files: FileTree{Root: tree},
       Metadata: PackageMetadata{
         IgnorePatterns: ignore,
@@ -335,12 +335,12 @@ func genPackage(stowDir StowPath) gopter.Gen {
 }
 
 // Generate list of packages with controlled count
-func genPackageList(stowDir StowPath, minCount, maxCount int) gopter.Gen {
+func genPackageList(packageDir StowPath, minCount, maxCount int) gopter.Gen {
   return gen.IntRange(minCount, maxCount).
     FlatMap(func(count int) gopter.Gen {
       gens := make([]gopter.Gen, count)
       for i := 0; i < count; i++ {
-        gens[i] = genPackage(stowDir)
+        gens[i] = genPackage(packageDir)
       }
       return gopter.CombineGens(gens...).Map(func(pkgs []interface{}) []Package {
         result := make([]Package, len(pkgs))
@@ -370,9 +370,9 @@ func genPackageList(stowDir StowPath, minCount, maxCount int) gopter.Gen {
 
 ```go
 // Generate LinkCreate operation
-func genLinkCreate(targetDir TargetPath, stowDir StowPath) gopter.Gen {
+func genLinkCreate(targetDir TargetPath, packageDir StowPath) gopter.Gen {
   return gopter.CombineGens(
-    genFilePath(stowDir, 3),
+    genFilePath(packageDir, 3),
     genFilePath(targetDir, 3),
     gen.OneConstOf(LinkRelative, LinkAbsolute),
   ).Map(func(vals []interface{}) Operation {
@@ -443,11 +443,11 @@ func genOperationSequence(minOps, maxOps int) gopter.Gen {
 
 ```go
 // Generate filesystem state with files and directories
-func genFilesystemState(targetDir TargetPath, stowDir StowPath) gopter.Gen {
+func genFilesystemState(targetDir TargetPath, packageDir StowPath) gopter.Gen {
   return gopter.CombineGens(
     genExistingFiles(targetDir, 5, 15),      // 5-15 existing files
     genExistingDirs(targetDir, 3, 10),       // 3-10 existing dirs
-    genExistingLinks(targetDir, stowDir, 2, 8), // 2-8 existing links
+    genExistingLinks(targetDir, packageDir, 2, 8), // 2-8 existing links
   ).Map(func(vals []interface{}) FilesystemState {
     return FilesystemState{
       Files:   vals[0].(map[TargetPath]FileInfo),
@@ -633,7 +633,7 @@ func TestManageIdempotence(t *testing.T) {
       // States should be identical
       return filesystemStatesEqual(state1, state2)
     },
-    genPackageList(testStowDir, 1, 5),
+    genPackageList(testPackageDir, 1, 5),
   ))
   
   runProperties(t, properties, "ManageIdempotence")
@@ -670,7 +670,7 @@ func TestRemanageIdempotence(t *testing.T) {
       
       return filesystemStatesEqual(state1, state2)
     },
-    genPackageList(testStowDir, 1, 5),
+    genPackageList(testPackageDir, 1, 5),
   ))
   
   runProperties(t, properties, "RemanageIdempotence")
@@ -702,7 +702,7 @@ func TestStatusIdempotence(t *testing.T) {
       
       return statusesEqual(status1, status2)
     },
-    genPackageList(testStowDir, 1, 5),
+    genPackageList(testPackageDir, 1, 5),
   ))
   
   runProperties(t, properties, "StatusIdempotence")
@@ -756,7 +756,7 @@ func TestManageUnmanageReversibility(t *testing.T) {
       // Should return to initial state
       return filesystemStatesEqual(initial, final)
     },
-    genPackageList(testStowDir, 1, 5),
+    genPackageList(testPackageDir, 1, 5),
   ))
   
   runProperties(t, properties, "ManageUnmanageReversibility")
@@ -797,7 +797,7 @@ func TestAdoptReversibility(t *testing.T) {
       
       // Move files back from package
       for _, path := range paths {
-        pkgPath := filepath.Join(testStowDir, pkg, path)
+        pkgPath := filepath.Join(testPackageDir, pkg, path)
         if err := fs.Rename(ctx, pkgPath, path); err != nil {
           return false
         }
@@ -867,7 +867,7 @@ func TestManageCommutativity(t *testing.T) {
       // States should be equivalent (same links, may differ in creation order)
       return filesystemStatesEquivalent(state1, state2)
     },
-    genNonConflictingPackages(testStowDir, 2, 5),
+    genNonConflictingPackages(testPackageDir, 2, 5),
   ))
   
   runProperties(t, properties, "ManageCommutativity")
@@ -974,7 +974,7 @@ func TestManageAssociativity(t *testing.T) {
       // States should be equivalent
       return filesystemStatesEquivalent(state1, state2)
     },
-    genNonConflictingPackages(testStowDir, 3, 6),
+    genNonConflictingPackages(testPackageDir, 3, 6),
   ))
   
   runProperties(t, properties, "ManageAssociativity")
@@ -1074,7 +1074,7 @@ func TestLinkCountConservation(t *testing.T) {
       
       return actualLinks == expectedLinks
     },
-    genPackageList(testStowDir, 1, 5),
+    genPackageList(testPackageDir, 1, 5),
   ))
   
   runProperties(t, properties, "LinkCountConservation")
@@ -1109,12 +1109,12 @@ package properties_test
 func TestPathTypeInvariants(t *testing.T) {
   properties := newPropertiesSuite()
   
-  properties.Property("stow paths never escape stow directory", prop.ForAll(
-    func(stowDir StowPath, pkgName string) bool {
-      pkgPath := stowDir.Join(pkgName)
+  properties.Property("stow paths never escape package directory", prop.ForAll(
+    func(packageDir StowPath, pkgName string) bool {
+      pkgPath := packageDir.Join(pkgName)
       
-      // Package path should be within stow directory
-      return strings.HasPrefix(pkgPath.String(), stowDir.String())
+      // Package path should be within package directory
+      return strings.HasPrefix(pkgPath.String(), packageDir.String())
     },
     genStowPath(),
     genPathSegment(),
@@ -1344,7 +1344,7 @@ func TestManifestConsistencyInvariant(t *testing.T) {
       
       return true
     },
-    genPackageList(testStowDir, 1, 5),
+    genPackageList(testPackageDir, 1, 5),
   ))
   
   runProperties(t, properties, "ManifestConsistencyInvariant")
@@ -1389,7 +1389,7 @@ func TestManifestCompletenessInvariant(t *testing.T) {
       
       return true
     },
-    genPackageList(testStowDir, 1, 5),
+    genPackageList(testPackageDir, 1, 5),
   ))
   
   runProperties(t, properties, "ManifestCompletenessInvariant")
@@ -1416,7 +1416,7 @@ func TestHashStabilityInvariant(t *testing.T) {
       // All hashes should be identical
       return hash1 == hash2 && hash2 == hash3
     },
-    genPackage(testStowDir),
+    genPackage(testPackageDir),
   ))
   
   properties.Property("hash changes when content changes", prop.ForAll(
@@ -1443,7 +1443,7 @@ func TestHashStabilityInvariant(t *testing.T) {
       // Hash should change
       return hash1 != hash2
     },
-    genPackage(testStowDir),
+    genPackage(testPackageDir),
   ))
   
   runProperties(t, properties, "HashStabilityInvariant")
@@ -1475,7 +1475,7 @@ func TestOperationValidityInvariant(t *testing.T) {
       // Generated operations should always be valid
       return op.Validate() == nil
     },
-    genOperation(testStowDir, testTargetDir),
+    genOperation(testPackageDir, testTargetDir),
   ))
   
   properties.Property("operations have unique IDs", prop.ForAll(
@@ -1584,7 +1584,7 @@ func TestConflictDetectionInvariant(t *testing.T) {
       
       return setEqual(detectedPaths, expectedPaths)
     },
-    genPackageList(testStowDir, 2, 4),
+    genPackageList(testPackageDir, 2, 4),
   ))
   
   properties.Property("no false positive conflicts", prop.ForAll(
@@ -1608,7 +1608,7 @@ func TestConflictDetectionInvariant(t *testing.T) {
       // Should have no conflicts
       return len(plan.Conflicts) == 0
     },
-    genNonConflictingPackages(testStowDir, 2, 4),
+    genNonConflictingPackages(testPackageDir, 2, 4),
   ))
   
   runProperties(t, properties, "ConflictDetectionInvariant")
@@ -1792,7 +1792,7 @@ func TestIncrementalRemanagePerformance(t *testing.T) {
       // Incremental should be faster (at least 2x)
       return incrementalTime < fullTime/2
     },
-    genPackageList(testStowDir, 5, 10),
+    genPackageList(testPackageDir, 5, 10),
     gen.IntRange(0, 1000),
   ))
   
@@ -1826,7 +1826,7 @@ func TestManifestStatusPerformance(t *testing.T) {
       
       return duration < maxTime
     },
-    genPackageList(testStowDir, 1, 20),
+    genPackageList(testPackageDir, 1, 20),
   ))
   
   runProperties(t, properties, "ManifestStatusPerformance")

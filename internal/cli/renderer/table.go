@@ -235,18 +235,33 @@ func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Summary:")
 
-	dirCount := 0
-	linkCount := 0
+	// Count all operation kinds in a single pass
+	counts := make(map[dot.OperationKind]int)
 	for _, op := range plan.Operations {
-		if op.Kind() == dot.OpKindDirCreate {
-			dirCount++
-		} else if op.Kind() == dot.OpKindLinkCreate {
-			linkCount++
-		}
+		counts[op.Kind()]++
 	}
 
-	fmt.Fprintf(w, "  Directories: %d\n", dirCount)
-	fmt.Fprintf(w, "  Symlinks: %d\n", linkCount)
+	// Display counts with semantic labels for each operation kind
+	if count := counts[dot.OpKindDirCreate]; count > 0 {
+		fmt.Fprintf(w, "  Directories created: %d\n", count)
+	}
+	if count := counts[dot.OpKindLinkCreate]; count > 0 {
+		fmt.Fprintf(w, "  Symlinks created: %d\n", count)
+	}
+	if count := counts[dot.OpKindFileMove]; count > 0 {
+		fmt.Fprintf(w, "  Files moved: %d\n", count)
+	}
+	if count := counts[dot.OpKindFileBackup]; count > 0 {
+		fmt.Fprintf(w, "  Backups created: %d\n", count)
+	}
+	if count := counts[dot.OpKindDirDelete]; count > 0 {
+		fmt.Fprintf(w, "  Directories deleted: %d\n", count)
+	}
+	if count := counts[dot.OpKindLinkDelete]; count > 0 {
+		fmt.Fprintf(w, "  Symlinks deleted: %d\n", count)
+	}
+
+	// Always show conflicts count
 	fmt.Fprintf(w, "  Conflicts: %d\n", len(plan.Metadata.Conflicts))
 
 	return nil

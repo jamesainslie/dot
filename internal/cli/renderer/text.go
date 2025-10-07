@@ -171,36 +171,23 @@ func (r *TextRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 func (r *TextRenderer) renderOperation(w io.Writer, op dot.Operation) {
 	symbol := r.colorText(r.scheme.Success) + "+" + r.resetColor()
 
-	switch typed := op.(type) {
-	case dot.DirCreate:
-		fmt.Fprintf(w, "  %s Create directory: %s\n", symbol, typed.Path.String())
+	// Normalize: dereference pointers to get value type for switching
+	normalized := normalizeOperation(op)
 
-	case *dot.DirCreate:
+	switch typed := normalized.(type) {
+	case dot.DirCreate:
 		fmt.Fprintf(w, "  %s Create directory: %s\n", symbol, typed.Path.String())
 
 	case dot.LinkCreate:
 		fmt.Fprintf(w, "  %s Create symlink: %s -> %s\n", symbol, typed.Target.String(), typed.Source.String())
 
-	case *dot.LinkCreate:
-		fmt.Fprintf(w, "  %s Create symlink: %s -> %s\n", symbol, typed.Target.String(), typed.Source.String())
-
 	case dot.FileMove:
-		fmt.Fprintf(w, "  %s Move file: %s -> %s\n", symbol, typed.Source.String(), typed.Dest.String())
-
-	case *dot.FileMove:
 		fmt.Fprintf(w, "  %s Move file: %s -> %s\n", symbol, typed.Source.String(), typed.Dest.String())
 
 	case dot.FileBackup:
 		fmt.Fprintf(w, "  %s Backup file: %s -> %s\n", symbol, typed.Source.String(), typed.Backup.String())
 
-	case *dot.FileBackup:
-		fmt.Fprintf(w, "  %s Backup file: %s -> %s\n", symbol, typed.Source.String(), typed.Backup.String())
-
 	case dot.DirDelete:
-		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
-		fmt.Fprintf(w, "  %s Delete directory: %s\n", deleteSymbol, typed.Path.String())
-
-	case *dot.DirDelete:
 		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
 		fmt.Fprintf(w, "  %s Delete directory: %s\n", deleteSymbol, typed.Path.String())
 
@@ -208,12 +195,9 @@ func (r *TextRenderer) renderOperation(w io.Writer, op dot.Operation) {
 		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
 		fmt.Fprintf(w, "  %s Delete symlink: %s\n", deleteSymbol, typed.Target.String())
 
-	case *dot.LinkDelete:
-		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
-		fmt.Fprintf(w, "  %s Delete symlink: %s\n", deleteSymbol, typed.Target.String())
-
 	default:
-		fmt.Fprintf(w, "  %s Unknown operation: %s\n", symbol, op.Kind().String())
+		// Handle unknown operation types with clear, informative output
+		fmt.Fprintf(w, "  %s Unknown operation: %T - %s\n", symbol, op, op.String())
 	}
 }
 

@@ -23,6 +23,13 @@ dot manages configuration files through symbolic links, providing a centralized 
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew tap jamesainslie/dot
+brew install dot
+```
+
 ### From Binary Releases
 
 Download the latest release for your platform from [GitHub Releases](https://github.com/jamesainslie/dot/releases).
@@ -39,17 +46,6 @@ Requires Go 1.25 or later:
 
 ```bash
 go install github.com/jamesainslie/dot/cmd/dot@latest
-```
-
-### Package Managers
-
-```bash
-# Homebrew (macOS/Linux)
-brew install jamesainslie/tap/dot
-
-# Scoop (Windows)
-scoop bucket add jamesainslie https://github.com/jamesainslie/scoop-bucket
-scoop install dot
 ```
 
 ### Verification

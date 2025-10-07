@@ -141,7 +141,7 @@ func TestDoctor_DetectsMissingLink(t *testing.T) {
 	require.NoError(t, err)
 
 	// Doctor will report broken/missing link
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Greater(t, len(report.Issues), 0)
@@ -175,7 +175,7 @@ func TestDoctor_ChecksAllBranches(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx)
+	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Valid link - no errors

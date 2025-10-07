@@ -82,11 +82,22 @@ type Client interface {
 	// Doctor performs health checks on the installation.
 	// Detects broken links, orphaned links, permission issues, and inconsistencies.
 	//
+	// The scanCfg parameter controls orphaned link detection behavior.
+	// Use DefaultScanConfig() for no orphan scanning (backward compatible),
+	// ScopedScanConfig() for smart scanning, or DeepScanConfig(depth) for full scan.
+	//
 	// Returns a DiagnosticReport with:
 	//   - Overall health status
 	//   - List of issues found
 	//   - Summary statistics
-	Doctor(ctx context.Context) (DiagnosticReport, error)
+	//
+	// TODO: BREAKING CHANGE in v0.2.0 - Added scanCfg parameter.
+	// Consider adding transitional path in v0.3.0:
+	//   - Add DoctorWithScan(ctx, scanCfg) method
+	//   - Deprecate Doctor() and make it call DoctorWithScan(ctx, DefaultScanConfig())
+	//   - Remove deprecated method in v1.0.0
+	// This would allow gradual migration for library consumers.
+	Doctor(ctx context.Context, scanCfg ScanConfig) (DiagnosticReport, error)
 
 	// Config returns a copy of the client's configuration.
 	Config() Config

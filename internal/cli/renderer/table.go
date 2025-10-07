@@ -154,14 +154,13 @@ type operationDisplay struct {
 
 // formatOperationForTable extracts display information from an operation.
 func formatOperationForTable(op dot.Operation) operationDisplay {
+	// Normalize: dereference pointers to get value type for switching
+	normalized := normalizeOperation(op)
+
 	display := operationDisplay{Action: "Create"}
 
-	switch typed := op.(type) {
+	switch typed := normalized.(type) {
 	case dot.DirCreate:
-		display.Type = "Directory"
-		display.Details = typed.Path.String()
-
-	case *dot.DirCreate:
 		display.Type = "Directory"
 		display.Details = typed.Path.String()
 
@@ -169,16 +168,7 @@ func formatOperationForTable(op dot.Operation) operationDisplay {
 		display.Type = "Symlink"
 		display.Details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
 
-	case *dot.LinkCreate:
-		display.Type = "Symlink"
-		display.Details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
-
 	case dot.FileMove:
-		display.Action = "Move"
-		display.Type = "File"
-		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
-
-	case *dot.FileMove:
 		display.Action = "Move"
 		display.Type = "File"
 		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
@@ -188,17 +178,7 @@ func formatOperationForTable(op dot.Operation) operationDisplay {
 		display.Type = "File"
 		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
 
-	case *dot.FileBackup:
-		display.Action = "Backup"
-		display.Type = "File"
-		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
-
 	case dot.DirDelete:
-		display.Action = "Delete"
-		display.Type = "Directory"
-		display.Details = typed.Path.String()
-
-	case *dot.DirDelete:
 		display.Action = "Delete"
 		display.Type = "Directory"
 		display.Details = typed.Path.String()
@@ -208,10 +188,11 @@ func formatOperationForTable(op dot.Operation) operationDisplay {
 		display.Type = "Symlink"
 		display.Details = typed.Target.String()
 
-	case *dot.LinkDelete:
-		display.Action = "Delete"
-		display.Type = "Symlink"
-		display.Details = typed.Target.String()
+	default:
+		// Handle unknown operation types with clear, informative display
+		display.Action = "Unknown"
+		display.Type = fmt.Sprintf("%T", op)
+		display.Details = op.String()
 	}
 
 	return display

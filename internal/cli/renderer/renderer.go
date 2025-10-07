@@ -244,3 +244,26 @@ func wrapText(text string, width int) string {
 
 	return result.String()
 }
+
+// normalizeOperation dereferences pointer operations to their value types.
+// This allows switching on a single set of type cases instead of duplicating
+// for both value and pointer variants.
+func normalizeOperation(op dot.Operation) dot.Operation {
+	switch typed := op.(type) {
+	case *dot.DirCreate:
+		return *typed
+	case *dot.LinkCreate:
+		return *typed
+	case *dot.FileMove:
+		return *typed
+	case *dot.FileBackup:
+		return *typed
+	case *dot.DirDelete:
+		return *typed
+	case *dot.LinkDelete:
+		return *typed
+	default:
+		// Return as-is (already a value type or unknown)
+		return op
+	}
+}

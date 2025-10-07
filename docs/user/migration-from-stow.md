@@ -99,13 +99,6 @@ Stow uses command-line options or `.stowrc` file.
 
 dot uses YAML/JSON/TOML configuration:
 
-```yaml
-# ~/.config/dot/config.yaml
-packageDir: ~/dotfiles
-targetDir: ~
-linkMode: relative
-folding: true
-```
 
 ## Package Structure
 

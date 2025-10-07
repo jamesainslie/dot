@@ -32,9 +32,23 @@ builds:
       - -trimpath
 
 archives:
-  - id: default
+  - id: archives-unix
     formats:
       - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+  
+  - id: archives-windows
+    formats:
       - zip
     name_template: >-
       {{ .ProjectName }}_
@@ -85,6 +99,8 @@ changelog:
 
 brews:
   - name: dot
+    ids:
+      - archives-unix
     repository:
       owner: jamesainslie
       name: homebrew-dot

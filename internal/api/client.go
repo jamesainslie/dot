@@ -49,6 +49,7 @@ func newClient(cfg dot.Config) (dot.Client, error) {
 		FS:        cfg.FS,
 		IgnoreSet: ignoreSet,
 		Policies:  policies,
+		BackupDir: cfg.BackupDir,
 	})
 
 	// Create executor

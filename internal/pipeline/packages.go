@@ -14,6 +14,7 @@ type ManagePipelineOpts struct {
 	FS        dot.FS
 	IgnoreSet *ignore.IgnoreSet
 	Policies  planner.ResolutionPolicies
+	BackupDir string
 }
 
 // ManageInput contains the input for manage operations
@@ -71,7 +72,7 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 		Desired:   desired,
 		FS:        p.opts.FS,
 		Policies:  p.opts.Policies,
-		BackupDir: "", // TODO: Add backup dir to options
+		BackupDir: p.opts.BackupDir,
 	}
 
 	resolveResult := ResolveStage()(ctx, resolveInput)

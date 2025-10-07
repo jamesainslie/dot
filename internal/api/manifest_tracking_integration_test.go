@@ -282,4 +282,3 @@ func TestManifest_StatusShowsCorrectCounts(t *testing.T) {
 	require.NotNil(t, zshStatus, "zsh should be in status")
 	assert.Equal(t, 1, zshStatus.LinkCount, "zsh status should show 1 link")
 }
-

@@ -33,7 +33,9 @@ builds:
 
 archives:
   - id: default
-    format: tar.gz
+    formats:
+      - tar.gz
+      - zip
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -41,9 +43,6 @@ archives:
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-    format_overrides:
-      - goos: windows
-        format: zip
     files:
       - LICENSE
       - README.md
@@ -54,7 +53,7 @@ checksum:
   algorithm: sha256
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   use: github
@@ -84,6 +83,40 @@ changelog:
     - title: Others
       order: 999
 
+brews:
+  - name: dot
+    repository:
+      owner: jamesainslie
+      name: homebrew-dot
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    
+    directory: Formula
+    
+    homepage: "https://github.com/jamesainslie/dot"
+    description: "Type-safe symbolic link manager for dotfiles"
+    license: "MIT"
+    
+    install: |
+      bin.install "dot"
+    
+    test: |
+      system "#{bin}/dot", "--version"
+      system "#{bin}/dot", "--help"
+    
+    caveats: |
+      dot manages configuration files through symbolic links.
+      
+      Configuration file location (XDG Base Directory):
+        $XDG_CONFIG_HOME/dot/config.yaml
+        or ~/.config/dot/config.yaml
+      
+      Basic usage:
+        dot manage <package>    # Install package
+        dot status             # Show package status
+        dot unmanage <package>  # Remove package
+      
+      Documentation: https://github.com/jamesainslie/dot
+
 release:
   draft: false
   prerelease: auto
@@ -93,16 +126,22 @@ release:
     
     **Release Date**: {{.Date}}
     
-    For detailed changes, see the [CHANGELOG](https://github.com/user/dot/blob/main/CHANGELOG.md).
+    For detailed changes, see the [CHANGELOG](https://github.com/jamesainslie/dot/blob/main/CHANGELOG.md).
   footer: |
     ## Installation
+    
+    ### Homebrew
+    ```bash
+    brew tap jamesainslie/dot
+    brew install dot
+    ```
     
     ### Binary Download
     Download the appropriate binary for your platform from the assets below.
     
     ### Go Install
     ```bash
-    go install github.com/user/dot/cmd/dot@{{.Tag}}
+    go install github.com/jamesainslie/dot/cmd/dot@{{.Tag}}
     ```
   name_template: "{{.ProjectName}} {{.Version}}"
 

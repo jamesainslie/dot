@@ -146,7 +146,10 @@ func (c *client) planNewPackageInstall(ctx context.Context, pkg string) ([]dot.O
 
 // planFullRemanage plans full unmanage + manage for a package.
 func (c *client) planFullRemanage(ctx context.Context, pkg string) ([]dot.Operation, map[string][]dot.OperationID, error) {
-	unmanagePlan, _ := c.PlanUnmanage(ctx, pkg)
+	unmanagePlan, err := c.PlanUnmanage(ctx, pkg)
+	if err != nil {
+		return nil, nil, err
+	}
 	managePlan, err := c.PlanManage(ctx, pkg)
 	if err != nil {
 		return nil, nil, err

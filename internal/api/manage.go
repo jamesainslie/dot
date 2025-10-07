@@ -89,6 +89,8 @@ func (c *client) updateManifest(ctx context.Context, packages []string, plan dot
 	}
 
 	// Update package entries using package-operation mapping from plan
+	hasher := manifest.NewContentHasher(c.config.FS)
+
 	for _, pkg := range packages {
 		// Extract links from package operations
 		ops := plan.OperationsForPackage(pkg)
@@ -100,6 +102,19 @@ func (c *client) updateManifest(ctx context.Context, packages []string, plan dot
 			LinkCount:   len(links),
 			Links:       links,
 		})
+
+		// Compute and store package hash for incremental remanage
+		pkgPathStr := filepath.Join(c.config.PackageDir, pkg)
+		pkgPathResult := dot.NewPackagePath(pkgPathStr)
+		if pkgPathResult.IsOk() {
+			pkgPath := pkgPathResult.Unwrap()
+			hash, err := hasher.HashPackage(ctx, pkgPath)
+			if err != nil {
+				c.config.Logger.Warn(ctx, "failed_to_compute_hash", "package", pkg, "error", err)
+			} else {
+				m.SetHash(pkg, hash)
+			}
+		}
 	}
 
 	// Save manifest

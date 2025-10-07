@@ -235,4 +235,3 @@ func mustPackagePath(path string) dot.PackagePath {
 	}
 	return result.Unwrap()
 }
-

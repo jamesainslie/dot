@@ -191,4 +191,3 @@ func TestRemanage_Incremental_Execute(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "version2", string(content2), "link should point to updated content")
 }
-

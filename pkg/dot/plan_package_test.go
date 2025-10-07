@@ -149,4 +149,3 @@ func TestPlan_OperationCount_ByPackage(t *testing.T) {
 	assert.Equal(t, 2, plan.OperationCountForPackage("zsh"))
 	assert.Equal(t, 0, plan.OperationCountForPackage("git"))
 }
-

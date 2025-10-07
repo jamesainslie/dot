@@ -11,9 +11,9 @@ import (
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
-func TestAdopt_InvalidStowDir(t *testing.T) {
+func TestAdopt_InvalidPackageDir(t *testing.T) {
 	cfg := testConfig(t)
-	cfg.StowDir = "relative/path"
+	cfg.PackageDir = "relative/path"
 
 	// NewClient should fail validation
 	_, err := dot.NewClient(cfg)
@@ -40,7 +40,7 @@ func TestAdopt_DryRunMode(t *testing.T) {
 	filePath := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("test"), 0644))
 
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	cfg.DryRun = true
@@ -64,7 +64,7 @@ func TestAdopt_EmptyFileList(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
 
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -89,7 +89,7 @@ func TestAdopt_MultipleFilesPlan(t *testing.T) {
 		require.NoError(t, cfg.FS.WriteFile(ctx, path, []byte("test"), 0644))
 	}
 
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -107,7 +107,7 @@ func TestAdopt_InvalidFilePath(t *testing.T) {
 	cfg := testConfig(t)
 	ctx := context.Background()
 
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	// Create file with problematic path

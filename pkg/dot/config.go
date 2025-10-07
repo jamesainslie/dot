@@ -8,9 +8,9 @@ import (
 
 // Config holds configuration for the dot Client.
 type Config struct {
-	// StowDir is the source directory containing packages.
+	// PackageDir is the source directory containing packages.
 	// Must be an absolute path.
-	StowDir string
+	PackageDir string
 
 	// TargetDir is the destination directory for symlinks.
 	// Must be an absolute path.
@@ -56,11 +56,11 @@ const (
 
 // Validate checks that the configuration is valid.
 func (c Config) Validate() error {
-	if c.StowDir == "" {
-		return fmt.Errorf("stowDir is required")
+	if c.PackageDir == "" {
+		return fmt.Errorf("packageDir is required")
 	}
-	if !filepath.IsAbs(c.StowDir) {
-		return fmt.Errorf("stowDir must be absolute path: %s", c.StowDir)
+	if !filepath.IsAbs(c.PackageDir) {
+		return fmt.Errorf("packageDir must be absolute path: %s", c.PackageDir)
 	}
 
 	if c.TargetDir == "" {

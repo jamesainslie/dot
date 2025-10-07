@@ -8,9 +8,9 @@ This phase eliminates all remnants of GNU Stow terminology from the codebase, al
 
 Despite having established terminology documented in `TERMINOLOGY.md`, the codebase contains approximately 779 occurrences of "stow" terminology across 37+ files:
 
-- **170 occurrences** of `StowDir`
+- **170 occurrences** of `PackageDir`
 - **29 occurrences** of `StowPath`
-- **42 occurrences** of `stowDir`
+- **42 occurrences** of `packageDir`
 - **Hundreds more** in comments, documentation, configuration keys, test names, and pipeline names
 
 This creates semantic inconsistency and confuses users about whether the tool implements GNU Stow or uses its own approach.
@@ -31,9 +31,9 @@ From `docs/TERMINOLOGY.md`:
 
 | Old Term | New Term | Rationale |
 |----------|----------|-----------|
-| `stow directory` | `package directory` | Describes content (packages) |
-| `StowDir` | `PackageDir` | Consistent with PackagePath |
-| `stowDir` | `packageDir` | Lowercase variant |
+| `package directory` | `package directory` | Describes content (packages) |
+| `PackageDir` | `PackageDir` | Consistent with PackagePath |
+| `packageDir` | `packageDir` | Lowercase variant |
 | `directories.stow` | `directories.packages` | Configuration key alignment |
 | `DOT_DIRECTORIES_STOW` | `DOT_DIRECTORIES_PACKAGES` | Environment variable alignment |
 | `StowPipeline` | `ManagePipeline` | Aligns with `manage` command |
@@ -73,7 +73,7 @@ From `docs/TERMINOLOGY.md`:
 ```go
 // Before
 type Config struct {
-    StowDir   string
+    PackageDir   string
     TargetDir string
     // ...
 }
@@ -139,7 +139,7 @@ type StowPipelineOpts struct {
 }
 
 type StowInput struct {
-    StowDir   dot.PackagePath
+    PackageDir   dot.PackagePath
     TargetDir dot.TargetPath
     Packages  []string
 }
@@ -190,7 +190,7 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 - `internal/api/execution_test.go` - Execution tests
 - `internal/api/final_coverage_test.go` - Coverage tests
 
-**Changes**: Update all references to `StowDir` in Config structs and assertions
+**Changes**: Update all references to `PackageDir` in Config structs and assertions
 
 ### 5. CLI Layer (`cmd/dot/`)
 
@@ -205,12 +205,12 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 ```go
 // Before
 type globalConfig struct {
-    stowDir   string
+    packageDir   string
     targetDir string
     // ...
 }
 
-rootCmd.PersistentFlags().StringVarP(&globalCfg.stowDir, "dir", "d", ".",
+rootCmd.PersistentFlags().StringVarP(&globalCfg.packageDir, "dir", "d", ".",
     "Stow directory containing packages")
 
 // After
@@ -291,7 +291,7 @@ rootCmd.PersistentFlags().StringVarP(&globalCfg.packageDir, "dir", "d", ".",
    ```go
    type Config struct {
        // Deprecated: Use PackageDir instead
-       StowDir    string
+       PackageDir    string
        PackageDir string
        // ...
    }
@@ -344,7 +344,7 @@ rootCmd.PersistentFlags().StringVarP(&globalCfg.packageDir, "dir", "d", ".",
 - Migration tool available
 
 **Changes**:
-1. Remove `StowDir` from `pkg/dot/Config`
+1. Remove `PackageDir` from `pkg/dot/Config`
 2. Keep only `PackageDir`
 3. Remove `directories.stow` support from config loader
 4. Remove legacy environment variable support
@@ -374,7 +374,7 @@ dot config migrate --dry-run
 
 #### Core Domain
 - [ ] Update `pkg/dot/config.go` - Add `PackageDir` field
-- [ ] Update `pkg/dot/config.go` - Deprecate `StowDir` field
+- [ ] Update `pkg/dot/config.go` - Deprecate `PackageDir` field
 - [ ] Update `pkg/dot/config.go` - Add compatibility logic
 - [ ] Update `pkg/dot/config_test.go`
 - [ ] Update `pkg/dot/config_validation_test.go`
@@ -398,7 +398,7 @@ dot config migrate --dry-run
 - [ ] Update `StowPipeline` → `ManagePipeline`
 - [ ] Update `StowPipelineOpts` → `ManagePipelineOpts`
 - [ ] Update `StowInput` → `ManageInput`
-- [ ] Update `StowInput.StowDir` → `ManageInput.PackageDir`
+- [ ] Update `StowInput.PackageDir` → `ManageInput.PackageDir`
 - [ ] Update `NewStowPipeline` → `NewManagePipeline`
 - [ ] Update `internal/pipeline/stages.go` references
 - [ ] Update `internal/pipeline/stages_test.go` references
@@ -418,7 +418,7 @@ dot config migrate --dry-run
 - [ ] Update `internal/api/final_coverage_test.go` test configs
 
 #### CLI Layer
-- [ ] Update `cmd/dot/root.go` - Rename `stowDir` → `packageDir`
+- [ ] Update `cmd/dot/root.go` - Rename `packageDir` → `packageDir`
 - [ ] Update `cmd/dot/root.go` - Update flag help text
 - [ ] Update `cmd/dot/root.go` - Update `buildConfig()` function
 - [ ] Update `cmd/dot/commands_test.go` test configurations
@@ -461,7 +461,7 @@ dot config migrate --dry-run
 
 ### Phase 3: Public API Cleanup (Future Major Version)
 
-- [ ] Remove `StowDir` field from `pkg/dot/Config`
+- [ ] Remove `PackageDir` field from `pkg/dot/Config`
 - [ ] Remove `directories.stow` support from loader
 - [ ] Remove `DOT_DIRECTORIES_STOW` environment variable
 - [ ] Remove compatibility layer
@@ -568,7 +568,7 @@ All existing tests must pass after refactoring:
 
 - Ship Phase 3
 - Remove deprecated terminology
-- Breaking change: `StowDir` removed
+- Breaking change: `PackageDir` removed
 - Migration tool included
 
 ### Communication
@@ -580,7 +580,7 @@ All existing tests must pass after refactoring:
    ### Changed
    - Configuration key `directories.stow` deprecated in favor of `directories.packages`
    - Environment variable `DOT_DIRECTORIES_STOW` deprecated in favor of `DOT_DIRECTORIES_PACKAGES`
-   - All internal terminology updated to use "package directory" instead of "stow directory"
+   - All internal terminology updated to use "package directory" instead of "package directory"
    
    ### Added
    - Backward compatibility support for old configuration keys

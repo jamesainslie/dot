@@ -4,7 +4,7 @@
 
 ### Install Packages (Stow)
 
-**As a user**, I want to install one or more packages by creating symlinks from my stow directory to my target directory, so that I can manage my configuration files in a centralized location.
+**As a user**, I want to install one or more packages by creating symlinks from my package directory to my target directory, so that I can manage my configuration files in a centralized location.
 
 **As a user**, I want support for nested directory structures with automatic parent directory creation, so that complex package layouts work seamlessly.
 
@@ -24,7 +24,7 @@
 
 **As a user**, I want to safely remove symlinks for specified packages, so that I can cleanly uninstall configurations.
 
-**As a cautious user**, I want the tool to only remove links pointing to the stow directory and never touch my personal files, so that I can avoid accidental data loss.
+**As a cautious user**, I want the tool to only remove links pointing to the package directory and never touch my personal files, so that I can avoid accidental data loss.
 
 **As a user**, I want automatic cleanup of empty directories after link removal, so that my filesystem stays tidy.
 
@@ -332,7 +332,7 @@
 
 ### Configuration Options
 
-**As a user**, I want to configure `stowDir` as the source directory for packages, so that I can organize my dotfiles repository.
+**As a user**, I want to configure `packageDir` as the source directory for packages, so that I can organize my dotfiles repository.
 
 **As a user**, I want to configure `targetDir` as the destination directory for links, so that I can control where files are linked.
 
@@ -552,7 +552,7 @@
 
 ### Global Flags
 
-**As a user**, I want `-d, --dir` to specify stow directory path, so that I can point to my dotfiles repository.
+**As a user**, I want `-d, --dir` to specify package directory path, so that I can point to my dotfiles repository.
 
 **As a user**, I want `-t, --target` to specify target directory path, so that I can control where links are created.
 

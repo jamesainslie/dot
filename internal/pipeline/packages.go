@@ -8,43 +8,43 @@ import (
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
-// StowPipelineOpts contains options for the Stow pipeline
-type StowPipelineOpts struct {
+// ManagePipelineOpts contains options for the Stow pipeline
+type ManagePipelineOpts struct {
 	FS        dot.FS
 	IgnoreSet *ignore.IgnoreSet
 	Policies  planner.ResolutionPolicies
 }
 
-// StowInput contains the input for stow operations
-type StowInput struct {
-	StowDir   dot.PackagePath
-	TargetDir dot.TargetPath
-	Packages  []string
+// ManageInput contains the input for manage operations
+type ManageInput struct {
+	PackageDir dot.PackagePath
+	TargetDir  dot.TargetPath
+	Packages   []string
 }
 
-// StowPipeline implements the complete stow workflow.
+// ManagePipeline implements the complete manage workflow.
 // It composes scanning, planning, resolution, and sorting stages.
-type StowPipeline struct {
-	opts StowPipelineOpts
+type ManagePipeline struct {
+	opts ManagePipelineOpts
 }
 
-// NewStowPipeline creates a new Stow pipeline with the given options.
-func NewStowPipeline(opts StowPipelineOpts) *StowPipeline {
-	return &StowPipeline{
+// NewManagePipeline creates a new Stow pipeline with the given options.
+func NewManagePipeline(opts ManagePipelineOpts) *ManagePipeline {
+	return &ManagePipeline{
 		opts: opts,
 	}
 }
 
 // Execute runs the complete stow pipeline.
 // It performs: scan packages -> compute desired state -> resolve conflicts -> sort operations
-func (p *StowPipeline) Execute(ctx context.Context, input StowInput) dot.Result[dot.Plan] {
+func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Result[dot.Plan] {
 	// Stage 1: Scan packages
 	scanInput := ScanInput{
-		StowDir:   input.StowDir,
-		TargetDir: input.TargetDir,
-		Packages:  input.Packages,
-		IgnoreSet: p.opts.IgnoreSet,
-		FS:        p.opts.FS,
+		PackageDir: input.PackageDir,
+		TargetDir:  input.TargetDir,
+		Packages:   input.Packages,
+		IgnoreSet:  p.opts.IgnoreSet,
+		FS:         p.opts.FS,
 	}
 
 	scanResult := ScanStage()(ctx, scanInput)

@@ -30,7 +30,7 @@
 //	)
 //
 //	cfg := dot.Config{
-//		StowDir:   "/home/user/dotfiles",
+//		PackageDir:   "/home/user/dotfiles",
 //		TargetDir: "/home/user",
 //		FS:        adapters.NewOSFilesystem(),
 //		Logger:    adapters.NewNoopLogger(),
@@ -100,7 +100,7 @@
 //
 // The Config struct controls all dot behavior:
 //
-//   - StowDir: Source directory containing packages (required, absolute path)
+//   - PackageDir: Source directory containing packages (required, absolute path)
 //   - TargetDir: Destination directory for symlinks (required, absolute path)
 //   - FS: Filesystem implementation (required)
 //   - Logger: Logger implementation (required)
@@ -116,7 +116,7 @@
 // Configuration must be validated before use:
 //
 //	cfg := dot.Config{
-//		StowDir:   "/home/user/dotfiles",
+//		PackageDir:   "/home/user/dotfiles",
 //		TargetDir: "/home/user",
 //		FS:        adapters.NewOSFilesystem(),
 //		Logger:    adapters.NewNoopLogger(),
@@ -137,7 +137,7 @@
 // Example with full observability:
 //
 //	cfg := dot.Config{
-//		StowDir: "/home/user/dotfiles",
+//		PackageDir: "/home/user/dotfiles",
 //		TargetDir: "/home/user",
 //		FS:      adapters.NewOSFilesystem(),
 //		Logger:  adapters.NewSlogLogger(slog.Default()),
@@ -160,7 +160,7 @@
 //		fs := adapters.NewMemFS()
 //
 //		cfg := dot.Config{
-//			StowDir:   "/test/stow",
+//			PackageDir:   "/test/stow",
 //			TargetDir: "/test/target",
 //			FS:        fs,
 //			Logger:    adapters.NewNoopLogger(),
@@ -176,7 +176,7 @@
 // All operations return explicit errors. Common error types:
 //
 //   - ErrInvalidPath: Path validation failed
-//   - ErrPackageNotFound: Package doesn't exist in StowDir
+//   - ErrPackageNotFound: Package doesn't exist in PackageDir
 //   - ErrConflict: Conflict detected during operation
 //   - ErrCyclicDependency: Circular dependency in operations
 //   - ErrMultiple: Multiple errors occurred

@@ -15,12 +15,12 @@ import (
 
 // Global configuration shared across commands
 type globalConfig struct {
-	stowDir   string
-	targetDir string
-	dryRun    bool
-	verbose   int
-	quiet     bool
-	logJSON   bool
+	packageDir string
+	targetDir  string
+	dryRun     bool
+	verbose    int
+	quiet      bool
+	logJSON    bool
 }
 
 var globalCfg globalConfig
@@ -41,7 +41,7 @@ comprehensive conflict detection, and incremental updates.`,
 	}
 
 	// Global flags
-	rootCmd.PersistentFlags().StringVarP(&globalCfg.stowDir, "dir", "d", ".",
+	rootCmd.PersistentFlags().StringVarP(&globalCfg.packageDir, "dir", "d", ".",
 		"Source directory containing packages")
 
 	// Compute cross-platform home directory default
@@ -83,9 +83,9 @@ comprehensive conflict detection, and incremental updates.`,
 // buildConfig creates a dot.Config from global flags and adapters.
 func buildConfig() (dot.Config, error) {
 	// Make paths absolute
-	stowDir, err := filepath.Abs(globalCfg.stowDir)
+	packageDir, err := filepath.Abs(globalCfg.packageDir)
 	if err != nil {
-		return dot.Config{}, fmt.Errorf("invalid stow directory: %w", err)
+		return dot.Config{}, fmt.Errorf("invalid package directory: %w", err)
 	}
 
 	targetDir, err := filepath.Abs(globalCfg.targetDir)
@@ -98,12 +98,12 @@ func buildConfig() (dot.Config, error) {
 	logger := createLogger()
 
 	cfg := dot.Config{
-		StowDir:   stowDir,
-		TargetDir: targetDir,
-		DryRun:    globalCfg.dryRun,
-		Verbosity: globalCfg.verbose,
-		FS:        fs,
-		Logger:    logger,
+		PackageDir: packageDir,
+		TargetDir:  targetDir,
+		DryRun:     globalCfg.dryRun,
+		Verbosity:  globalCfg.verbose,
+		FS:         fs,
+		Logger:     logger,
 	}
 
 	return cfg, nil

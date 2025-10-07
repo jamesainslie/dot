@@ -35,7 +35,7 @@ func NewManagePipeline(opts ManagePipelineOpts) *ManagePipeline {
 	}
 }
 
-// Execute runs the complete stow pipeline.
+// Execute runs the complete manage pipeline.
 // It performs: scan packages -> compute desired state -> resolve conflicts -> sort operations
 func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Result[dot.Plan] {
 	// Stage 1: Scan packages

@@ -12,7 +12,7 @@ import (
 
 func TestContentHasher_HashPackage_EmptyPackage(t *testing.T) {
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkgPath.String(), 0755))
 
 	hasher := NewContentHasher(fs)
@@ -25,7 +25,7 @@ func TestContentHasher_HashPackage_EmptyPackage(t *testing.T) {
 
 func TestContentHasher_HashPackage_SingleFile(t *testing.T) {
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkgPath.String(), 0755))
 
 	vimrcPath := filepath.Join(pkgPath.String(), "dot-vimrc")
@@ -42,7 +42,7 @@ func TestContentHasher_HashPackage_SingleFile(t *testing.T) {
 
 func TestContentHasher_HashPackage_Deterministic(t *testing.T) {
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkgPath.String(), 0755))
 
 	vimrcPath := filepath.Join(pkgPath.String(), "dot-vimrc")
@@ -61,7 +61,7 @@ func TestContentHasher_HashPackage_Deterministic(t *testing.T) {
 
 func TestContentHasher_HashPackage_DifferentContent(t *testing.T) {
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkgPath.String(), 0755))
 
 	vimrcPath := filepath.Join(pkgPath.String(), "dot-vimrc")
@@ -82,7 +82,7 @@ func TestContentHasher_HashPackage_DifferentContent(t *testing.T) {
 
 func TestContentHasher_HashPackage_NestedDirectories(t *testing.T) {
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 
 	// Create nested structure
 	colorsPath := filepath.Join(pkgPath.String(), "dot-vim", "colors")
@@ -100,7 +100,7 @@ func TestContentHasher_HashPackage_NestedDirectories(t *testing.T) {
 
 func TestContentHasher_HashPackage_IgnoresSymlinks(t *testing.T) {
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkgPath.String(), 0755))
 
 	// Create file and symlink
@@ -120,7 +120,7 @@ func TestContentHasher_HashPackage_IgnoresSymlinks(t *testing.T) {
 
 func TestContentHasher_HashPackage_MultipleFiles(t *testing.T) {
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkgPath.String(), 0755))
 
 	// Create multiple files
@@ -141,7 +141,7 @@ func TestContentHasher_HashPackage_OrderIndependent(t *testing.T) {
 	// Files are sorted internally, so hash should be the same regardless of
 	// the order files are discovered
 	fs := adapters.NewMemFS()
-	pkgPath := mustPackagePath(t, "/stow/vim")
+	pkgPath := mustPackagePath(t, "/packages/vim")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkgPath.String(), 0755))
 
 	// Create files in alphabetical order
@@ -166,13 +166,13 @@ func TestContentHasher_HashPackage_NoCollisions(t *testing.T) {
 	fs := adapters.NewMemFS()
 
 	// Scenario 1: file "a" with content "bc"
-	pkg1Path := mustPackagePath(t, "/stow/pkg1")
+	pkg1Path := mustPackagePath(t, "/packages/pkg1")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkg1Path.String(), 0755))
 	require.NoError(t, fs.WriteFile(context.Background(),
 		filepath.Join(pkg1Path.String(), "a"), []byte("bc"), 0644))
 
 	// Scenario 2: file "ab" with content "c"
-	pkg2Path := mustPackagePath(t, "/stow/pkg2")
+	pkg2Path := mustPackagePath(t, "/packages/pkg2")
 	require.NoError(t, fs.MkdirAll(context.Background(), pkg2Path.String(), 0755))
 	require.NoError(t, fs.WriteFile(context.Background(),
 		filepath.Join(pkg2Path.String(), "ab"), []byte("c"), 0644))

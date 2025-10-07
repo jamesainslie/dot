@@ -44,7 +44,7 @@ func newClient(cfg dot.Config) (dot.Client, error) {
 		OnFileExists: planner.PolicyFail, // Safe default
 	}
 
-	// Create stow pipeline
+	// Create manage pipeline
 	stowPipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
 		FS:        cfg.FS,
 		IgnoreSet: ignoreSet,

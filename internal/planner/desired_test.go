@@ -203,7 +203,7 @@ func TestPlanResult(t *testing.T) {
 }
 
 func TestComputeOperationsFromDesiredState(t *testing.T) {
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
 	desired := planner.DesiredState{
@@ -227,7 +227,7 @@ func TestComputeOperationsFromDesiredState(t *testing.T) {
 
 func TestComputeOperationsFromDesiredStateWithDirs(t *testing.T) {
 	dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
-	sourcePath := dot.NewFilePath("/stow/bash/dot-bashrc").Unwrap()
+	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
 	targetPath := dot.NewFilePath("/home/user/.config/bash").Unwrap()
 
 	desired := planner.DesiredState{
@@ -265,8 +265,8 @@ func TestComputeDesiredStateWithMultipleFiles(t *testing.T) {
 	targetDir := dot.NewTargetPath("/home/user").Unwrap()
 
 	// Create package with multiple files
-	pkgPath := dot.NewPackagePath("/stow/bash").Unwrap()
-	pkgRoot := dot.NewFilePath("/stow/bash").Unwrap()
+	pkgPath := dot.NewPackagePath("/packages/bash").Unwrap()
+	pkgRoot := dot.NewFilePath("/packages/bash").Unwrap()
 	file1 := pkgPath.Join("dot-bashrc")
 	file2 := pkgPath.Join("dot-profile")
 

@@ -19,7 +19,7 @@ func TestScanStage_ContextCancellation(t *testing.T) {
 
 		scanStage := ScanStage()
 		input := ScanInput{
-			PackageDir: dot.NewPackagePath("/stow").Unwrap(),
+			PackageDir: dot.NewPackagePath("/packages").Unwrap(),
 			TargetDir:  dot.NewTargetPath("/target").Unwrap(),
 			Packages:   []string{"vim"},
 			IgnoreSet:  ignore.NewIgnoreSet(),
@@ -38,7 +38,7 @@ func TestScanStage_ContextCancellation(t *testing.T) {
 
 		scanStage := ScanStage()
 		input := ScanInput{
-			PackageDir: dot.NewPackagePath("/stow").Unwrap(),
+			PackageDir: dot.NewPackagePath("/packages").Unwrap(),
 			TargetDir:  dot.NewTargetPath("/target").Unwrap(),
 			Packages:   []string{}, // Empty list
 			IgnoreSet:  ignore.NewIgnoreSet(),
@@ -116,7 +116,7 @@ func TestSortStage_ContextCancellation(t *testing.T) {
 
 		sortStage := SortStage()
 
-		source := dot.NewFilePath("/stow/vim/vimrc").Unwrap()
+		source := dot.NewFilePath("/packages/vim/vimrc").Unwrap()
 		target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 
 		input := SortInput{
@@ -138,7 +138,7 @@ func TestStages_ValidContextPropagation(t *testing.T) {
 
 		// Scan stage with empty packages
 		scanResult := ScanStage()(ctx, ScanInput{
-			PackageDir: dot.NewPackagePath("/stow").Unwrap(),
+			PackageDir: dot.NewPackagePath("/packages").Unwrap(),
 			TargetDir:  dot.NewTargetPath("/target").Unwrap(),
 			Packages:   []string{},
 			IgnoreSet:  ignore.NewIgnoreSet(),

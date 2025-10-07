@@ -26,7 +26,7 @@ func generateFileExistsSuggestions(c Conflict) []Suggestion {
 		{
 			Action:      "Use --backup flag to preserve existing file",
 			Explanation: "Moves conflicting file to backup location before linking",
-			Example:     "dot stow --backup <package>",
+			Example:     "dot manage --backup <package>",
 		},
 		{
 			Action:      "Use dot adopt to move file into package",
@@ -52,7 +52,7 @@ func generateWrongLinkSuggestions(c Conflict) []Suggestion {
 		{
 			Action:      "Use --overwrite to replace the link",
 			Explanation: "Forces link to point to new package",
-			Example:     "dot stow --overwrite <package>",
+			Example:     "dot manage --overwrite <package>",
 		},
 		{
 			Action:      "Check which package owns the link",
@@ -81,7 +81,7 @@ func generatePermissionSuggestions(c Conflict) []Suggestion {
 		{
 			Action:      "Run with appropriate permissions",
 			Explanation: "May need elevated privileges for system directories",
-			Example:     "sudo dot stow <package>",
+			Example:     "sudo dot manage <package>",
 		},
 		{
 			Action:      "Change ownership of target directory",

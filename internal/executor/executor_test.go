@@ -69,9 +69,9 @@ func TestExecute_SingleOperation_Success(t *testing.T) {
 	})
 
 	// Create source file with parent directories
-	source := dot.MustParsePath("/stow/pkg/file")
+	source := dot.MustParsePath("/packages/pkg/file")
 	target := dot.MustParsePath("/home/file")
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 
@@ -124,9 +124,9 @@ func TestExecute_MultipleOperations_PartialFailure(t *testing.T) {
 	})
 
 	// First operation succeeds
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 	op1 := dot.NewLinkCreate("link1", source1, target1)

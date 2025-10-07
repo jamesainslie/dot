@@ -10,7 +10,7 @@ import (
 
 func TestConfig_WithDefaults(t *testing.T) {
 	cfg := dot.Config{
-		PackageDir: "/stow",
+		PackageDir: "/packages",
 		TargetDir:  "/target",
 	}
 

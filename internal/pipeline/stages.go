@@ -40,7 +40,7 @@ func ScanStage() Pipeline[ScanInput, []dot.Package] {
 			default:
 			}
 
-			// Create package path by joining stow dir with package name
+			// Create package path by joining package dir with package name
 			pkgPathStr := filepath.Join(input.PackageDir.String(), pkgName)
 			pkgPathResult := dot.NewPackagePath(pkgPathStr)
 			if pkgPathResult.IsErr() {

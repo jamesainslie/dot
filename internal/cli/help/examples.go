@@ -28,8 +28,8 @@ var (
 			Command:     "dot manage --absolute vim",
 		},
 		{
-			Description: "Install from specific stow directory",
-			Command:     "dot manage --dir /path/to/stow vim",
+			Description: "Install from specific package directory",
+			Command:     "dot manage --dir /path/to/packages vim",
 		},
 	}
 

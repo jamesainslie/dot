@@ -18,8 +18,8 @@ func TestDoctor_OrphanDetection_ScanOff(t *testing.T) {
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
 
 	// Create an orphaned symlink
-	sourcePath := filepath.Join(cfg.StowDir, "orphan")
-	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.StowDir, 0755))
+	sourcePath := filepath.Join(cfg.PackageDir, "orphan")
+	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.PackageDir, 0755))
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("data"), 0644))
 	orphanLink := filepath.Join(cfg.TargetDir, ".orphan")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, orphanLink))
@@ -44,16 +44,16 @@ func TestDoctor_OrphanDetection_Scoped(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
 
 	// Create orphaned symlink in root
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "orphan")
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "orphan")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("data"), 0644))
 	orphanLink := filepath.Join(cfg.TargetDir, ".orphan")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, orphanLink))
 
 	// Create managed link
-	managedSource := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	managedSource := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, managedSource, []byte("config"), 0644))
 	managedLink := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.Symlink(ctx, managedSource, managedLink))
@@ -89,10 +89,10 @@ func TestDoctor_OrphanDetection_Deep(t *testing.T) {
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
 	nestedDir := filepath.Join(cfg.TargetDir, ".config", "app")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, nestedDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.StowDir, 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.PackageDir, 0755))
 
 	// Create orphaned link in nested directory
-	sourcePath := filepath.Join(cfg.StowDir, "orphan-file")
+	sourcePath := filepath.Join(cfg.PackageDir, "orphan-file")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("data"), 0644))
 	orphanLink := filepath.Join(nestedDir, "config.json")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, orphanLink))
@@ -120,10 +120,10 @@ func TestDoctor_OrphanDetection_SkipsGit(t *testing.T) {
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
 	gitDir := filepath.Join(cfg.TargetDir, ".git", "hooks")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, gitDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.StowDir, 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.PackageDir, 0755))
 
 	// Create symlink in .git (should be skipped)
-	sourcePath := filepath.Join(cfg.StowDir, "hook")
+	sourcePath := filepath.Join(cfg.PackageDir, "hook")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("hook"), 0755))
 	hookLink := filepath.Join(gitDir, "pre-commit")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, hookLink))

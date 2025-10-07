@@ -14,10 +14,10 @@ import (
 func testConfig(t *testing.T) dot.Config {
 	t.Helper()
 	return dot.Config{
-		StowDir:   "/test/stow",
-		TargetDir: "/test/target",
-		FS:        adapters.NewMemFS(),
-		Logger:    adapters.NewNoopLogger(),
+		PackageDir: "/test/packages",
+		TargetDir:  "/test/target",
+		FS:         adapters.NewMemFS(),
+		Logger:     adapters.NewNoopLogger(),
 	}
 }
 
@@ -25,9 +25,9 @@ func setupTestFixtures(t *testing.T, fs dot.FS, packages ...string) {
 	t.Helper()
 	ctx := context.Background()
 
-	// Create stow directory structure
+	// Create manage directory structure
 	for _, pkg := range packages {
-		pkgDir := filepath.Join("/test/stow", pkg)
+		pkgDir := filepath.Join("/test/packages", pkg)
 		require.NoError(t, fs.MkdirAll(ctx, pkgDir, 0755))
 
 		// Create sample dotfile
@@ -49,7 +49,7 @@ func TestNewClient_ValidConfig(t *testing.T) {
 
 func TestNewClient_InvalidConfig(t *testing.T) {
 	cfg := dot.Config{
-		StowDir: "relative/path", // Invalid
+		PackageDir: "relative/path", // Invalid
 	}
 
 	client, err := dot.NewClient(cfg)
@@ -79,6 +79,6 @@ func TestClient_Config(t *testing.T) {
 	require.NoError(t, err)
 
 	resultCfg := client.Config()
-	require.Equal(t, cfg.StowDir, resultCfg.StowDir)
+	require.Equal(t, cfg.PackageDir, resultCfg.PackageDir)
 	require.Equal(t, cfg.TargetDir, resultCfg.TargetDir)
 }

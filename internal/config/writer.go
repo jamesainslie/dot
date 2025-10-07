@@ -137,8 +137,8 @@ func (w *Writer) marshalYAMLWithComments(cfg *ExtendedConfig) ([]byte, error) {
 
 	buf.WriteString("# Core Directories\n")
 	buf.WriteString("directories:\n")
-	buf.WriteString("  # Stow directory containing packages\n")
-	buf.WriteString(fmt.Sprintf("  stow: %s\n", cfg.Directories.Stow))
+	buf.WriteString("  # Package directory containing packages\n")
+	buf.WriteString(fmt.Sprintf("  package: %s\n", cfg.Directories.Package))
 	buf.WriteString("  # Target directory for symlinks\n")
 	buf.WriteString(fmt.Sprintf("  target: %s\n", cfg.Directories.Target))
 	buf.WriteString("  # Manifest directory for tracking\n")
@@ -342,8 +342,8 @@ func setDirectoriesValue(cfg *DirectoriesConfig, field string, value interface{}
 	}
 
 	switch field {
-	case "stow":
-		cfg.Stow = str
+	case "package":
+		cfg.Package = str
 	case "target":
 		cfg.Target = str
 	case "manifest":

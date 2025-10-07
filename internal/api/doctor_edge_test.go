@@ -46,10 +46,10 @@ func TestDoctor_AbsoluteSymlinkPath(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
 
 	// Create source file
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 
 	// Create absolute symlink
@@ -85,10 +85,10 @@ func TestDoctor_MultipleIssuesSeverities(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
 
 	// Create one valid link
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 	validLink := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, validLink))

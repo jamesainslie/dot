@@ -12,11 +12,11 @@ import (
 
 // ScanInput contains the input for scanning packages
 type ScanInput struct {
-	StowDir   dot.PackagePath
-	TargetDir dot.TargetPath
-	Packages  []string
-	IgnoreSet *ignore.IgnoreSet
-	FS        dot.FS
+	PackageDir dot.PackagePath
+	TargetDir  dot.TargetPath
+	Packages   []string
+	IgnoreSet  *ignore.IgnoreSet
+	FS         dot.FS
 }
 
 // ScanStage creates a pipeline stage that scans packages.
@@ -40,8 +40,8 @@ func ScanStage() Pipeline[ScanInput, []dot.Package] {
 			default:
 			}
 
-			// Create package path by joining stow dir with package name
-			pkgPathStr := filepath.Join(input.StowDir.String(), pkgName)
+			// Create package path by joining package dir with package name
+			pkgPathStr := filepath.Join(input.PackageDir.String(), pkgName)
 			pkgPathResult := dot.NewPackagePath(pkgPathStr)
 			if pkgPathResult.IsErr() {
 				return dot.Err[[]dot.Package](pkgPathResult.UnwrapErr())

@@ -32,10 +32,10 @@ files, and managing configuration across sources.`,
   dot config init
 
   # Get specific value
-  dot config get directories.stow
+  dot config get directories.package
 
   # Set configuration value
-  dot config set directories.stow ~/dotfiles
+  dot config set directories.package ~/dotfiles
 
   # Show configuration file path
   dot config path`,
@@ -166,9 +166,9 @@ func newConfigGetCommand() *cobra.Command {
 		Long: `Retrieve configuration value by key path.
 
 Keys use dot notation: section.field
-For example: directories.stow, logging.level`,
-		Example: `  # Get stow directory
-  dot config get directories.stow
+For example: directories.package, logging.level`,
+		Example: `  # Get package directory
+  dot config get directories.package
 
   # Get logging level
   dot config get logging.level`,
@@ -203,8 +203,8 @@ func runConfigGet(key string) error {
 // getConfigValue retrieves a value from config by key path.
 func getConfigValue(cfg *config.ExtendedConfig, key string) (string, error) {
 	switch key {
-	case "directories.stow":
-		return cfg.Directories.Stow, nil
+	case "directories.package":
+		return cfg.Directories.Package, nil
 	case "directories.target":
 		return cfg.Directories.Target, nil
 	case "directories.manifest":
@@ -241,8 +241,8 @@ func newConfigSetCommand() *cobra.Command {
 
 Keys use dot notation: section.field
 Values are automatically type-converted based on the field.`,
-		Example: `  # Set stow directory
-  dot config set directories.stow ~/dotfiles
+		Example: `  # Set package directory
+  dot config set directories.package ~/dotfiles
 
   # Set logging level
   dot config set logging.level DEBUG
@@ -306,7 +306,7 @@ func runConfigListCmd(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Configuration (from %s):\n\n", configPath)
 
 	fmt.Println("Directories:")
-	fmt.Printf("  stow: %s\n", cfg.Directories.Stow)
+	fmt.Printf("  package: %s\n", cfg.Directories.Package)
 	fmt.Printf("  target: %s\n", cfg.Directories.Target)
 	fmt.Printf("  manifest: %s\n\n", cfg.Directories.Manifest)
 

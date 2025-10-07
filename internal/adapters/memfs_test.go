@@ -157,10 +157,10 @@ func TestMemFS_Symlink(t *testing.T) {
 	mfs := NewMemFS()
 
 	require.NoError(t, mfs.MkdirAll(ctx, "/home", 0755))
-	require.NoError(t, mfs.MkdirAll(ctx, "/stow", 0755))
+	require.NoError(t, mfs.MkdirAll(ctx, "/packages", 0755))
 
 	// Create symlink
-	err := mfs.Symlink(ctx, "/stow/file", "/home/link")
+	err := mfs.Symlink(ctx, "/packages/file", "/home/link")
 	require.NoError(t, err)
 
 	// Verify it's a symlink
@@ -171,7 +171,7 @@ func TestMemFS_Symlink(t *testing.T) {
 	// Read link target
 	target, err := mfs.ReadLink(ctx, "/home/link")
 	require.NoError(t, err)
-	require.Equal(t, "/stow/file", target)
+	require.Equal(t, "/packages/file", target)
 }
 
 func TestMemFS_Symlink_ParentNotExist(t *testing.T) {

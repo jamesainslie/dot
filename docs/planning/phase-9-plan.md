@@ -194,7 +194,7 @@ func TestStowPipeline_Execute(t *testing.T) {
     pipeline := NewStowPipeline(opts)
     
     input := ScanInput{
-        StowDir:   mustParsePath("/stow"),
+        PackageDir:   mustParsePath("/stow"),
         TargetDir: mustParsePath("/home/user"),
         Packages:  []string{"vim", "git"},
     }
@@ -242,7 +242,7 @@ func TestAdoptPipeline_Operations(t *testing.T) {
     input := AdoptInput{
         Package:   "bash",
         Files:     []string{".bashrc"},
-        StowDir:   mustParsePath("/stow"),
+        PackageDir:   mustParsePath("/stow"),
         TargetDir: mustParsePath("/home/user"),
     }
     
@@ -482,7 +482,7 @@ func TestIntegration_StowPipeline(t *testing.T) {
     
     // Execute pipeline
     input := ScanInput{
-        StowDir:   mustParsePath("/stow"),
+        PackageDir:   mustParsePath("/stow"),
         TargetDir: mustParsePath("/home/user"),
         Packages:  []string{"vim"},
     }

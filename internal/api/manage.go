@@ -43,11 +43,11 @@ func (c *client) Manage(ctx context.Context, packages ...string) error {
 
 // PlanManage computes the execution plan for managing packages without applying changes.
 func (c *client) PlanManage(ctx context.Context, packages ...string) (dot.Plan, error) {
-	stowPathResult := dot.NewPackagePath(c.config.StowDir)
-	if !stowPathResult.IsOk() {
-		return dot.Plan{}, fmt.Errorf("invalid stow directory: %w", stowPathResult.UnwrapErr())
+	packagePathResult := dot.NewPackagePath(c.config.PackageDir)
+	if !packagePathResult.IsOk() {
+		return dot.Plan{}, fmt.Errorf("invalid package directory: %w", packagePathResult.UnwrapErr())
 	}
-	stowPath := stowPathResult.Unwrap()
+	packagePath := packagePathResult.Unwrap()
 
 	targetPathResult := dot.NewTargetPath(c.config.TargetDir)
 	if !targetPathResult.IsOk() {
@@ -55,13 +55,13 @@ func (c *client) PlanManage(ctx context.Context, packages ...string) (dot.Plan, 
 	}
 	targetPath := targetPathResult.Unwrap()
 
-	input := pipeline.StowInput{
-		StowDir:   stowPath,
-		TargetDir: targetPath,
-		Packages:  packages,
+	input := pipeline.ManageInput{
+		PackageDir: packagePath,
+		TargetDir:  targetPath,
+		Packages:   packages,
 	}
 
-	planResult := c.stowPipe.Execute(ctx, input)
+	planResult := c.managePipe.Execute(ctx, input)
 	if !planResult.IsOk() {
 		return dot.Plan{}, planResult.UnwrapErr()
 	}

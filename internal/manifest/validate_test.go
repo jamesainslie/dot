@@ -29,7 +29,7 @@ func TestValidator_Validate_ValidManifest(t *testing.T) {
 	targetDir := mustTargetPath(t, "/home/user")
 
 	// Create source file
-	vimrcSrc := "/stow/vim/dot-vimrc"
+	vimrcSrc := "/packages/vim/dot-vimrc"
 	require.NoError(t, fs.MkdirAll(context.Background(), filepath.Dir(vimrcSrc), 0755))
 	require.NoError(t, fs.WriteFile(context.Background(), vimrcSrc, []byte("content"), 0644))
 
@@ -129,14 +129,14 @@ func TestValidator_Validate_MultiplePackages(t *testing.T) {
 	require.NoError(t, fs.MkdirAll(context.Background(), targetDir.String(), 0755))
 
 	// Create vim package and link
-	vimrcSrc := "/stow/vim/dot-vimrc"
+	vimrcSrc := "/packages/vim/dot-vimrc"
 	require.NoError(t, fs.MkdirAll(context.Background(), filepath.Dir(vimrcSrc), 0755))
 	require.NoError(t, fs.WriteFile(context.Background(), vimrcSrc, []byte("vim"), 0644))
 	vimrcTarget := filepath.Join(targetDir.String(), ".vimrc")
 	require.NoError(t, fs.Symlink(context.Background(), vimrcSrc, vimrcTarget))
 
 	// Create zsh package and link
-	zshrcSrc := "/stow/zsh/dot-zshrc"
+	zshrcSrc := "/packages/zsh/dot-zshrc"
 	require.NoError(t, fs.MkdirAll(context.Background(), filepath.Dir(zshrcSrc), 0755))
 	require.NoError(t, fs.WriteFile(context.Background(), zshrcSrc, []byte("zsh"), 0644))
 	zshrcTarget := filepath.Join(targetDir.String(), ".zshrc")

@@ -84,7 +84,7 @@ docs/user/
 
 **Tasks**:
 - [ ] Explain what dot does at high level
-- [ ] Define stow directory concept and purpose
+- [ ] Define package directory concept and purpose
 - [ ] Define target directory concept and purpose
 - [ ] Define package concept and structure
 - [ ] Explain symlink management approach

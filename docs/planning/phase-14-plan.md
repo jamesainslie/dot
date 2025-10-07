@@ -551,7 +551,7 @@ Command → Client API → Domain Logic → Result
      - Managed by dot but wrong target
      - Not managed by dot (orphaned)
    - Check for permission issues
-   - Validate stow directory exists and is readable
+   - Validate package directory exists and is readable
    - Check for circular symlink dependencies
    - Verify manifest consistency with filesystem
    - Generate suggestions for each issue
@@ -743,7 +743,7 @@ Command → Client API → Domain Logic → Result
 
 2. **Error Handling**
    - Handle missing manifest gracefully (suggest running manage first)
-   - Handle missing stow directory
+   - Handle missing package directory
    - Handle missing target directory
    - Handle filesystem permission errors
    - Provide clear error messages

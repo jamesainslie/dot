@@ -985,12 +985,12 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) validateDirectories(result *ValidationResult) {
-    // Validate stow directory
+    // Validate package directory
     if c.Directories.Stow == "" {
         result.Errors = append(result.Errors, ValidationError{
             Field:   "directories.stow",
             Value:   c.Directories.Stow,
-            Message: "stow directory cannot be empty",
+            Message: "package directory cannot be empty",
         })
     }
     

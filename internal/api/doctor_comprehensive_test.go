@@ -16,11 +16,11 @@ func TestDoctor_AllPathTypes(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "test"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "test"), 0755))
 
 	// Create various symlink scenarios
 	// 1. Valid absolute symlink
-	source1 := filepath.Join(cfg.StowDir, "test", "file1")
+	source1 := filepath.Join(cfg.PackageDir, "test", "file1")
 	require.NoError(t, cfg.FS.WriteFile(ctx, source1, []byte("test"), 0644))
 	link1 := filepath.Join(cfg.TargetDir, ".file1")
 	require.NoError(t, cfg.FS.Symlink(ctx, source1, link1))
@@ -98,11 +98,11 @@ func TestDoctor_HandlesMultiplePackagesCorrectly(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "tmux"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "tmux"), 0755))
 
 	// Create valid links for tmux
-	tmuxSource := filepath.Join(cfg.StowDir, "tmux", "conf")
+	tmuxSource := filepath.Join(cfg.PackageDir, "tmux", "conf")
 	require.NoError(t, cfg.FS.WriteFile(ctx, tmuxSource, []byte("test"), 0644))
 	tmuxLink := filepath.Join(cfg.TargetDir, ".tmux.conf")
 	require.NoError(t, cfg.FS.Symlink(ctx, tmuxSource, tmuxLink))
@@ -138,15 +138,15 @@ func TestDoctor_RelativeSymlinkResolution(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
 
 	// Create source
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 
 	// Create relative symlink
 	linkPath := filepath.Join(cfg.TargetDir, ".vimrc")
-	relTarget := "../" + filepath.Base(cfg.StowDir) + "/vim/vimrc"
+	relTarget := "../" + filepath.Base(cfg.PackageDir) + "/vim/vimrc"
 	require.NoError(t, cfg.FS.Symlink(ctx, relTarget, linkPath))
 
 	manifestContent := []byte(`{
@@ -204,7 +204,7 @@ func TestAdopt_UpdatesManifest(t *testing.T) {
 	filePath := filepath.Join(cfg.TargetDir, ".bashrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("test"), 0644))
 
-	pkgDir := filepath.Join(cfg.StowDir, "bash")
+	pkgDir := filepath.Join(cfg.PackageDir, "bash")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)

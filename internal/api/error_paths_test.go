@@ -32,7 +32,7 @@ func TestAdopt_ExecutorError(t *testing.T) {
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
 	filePath := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, filePath, []byte("test"), 0644))
-	pkgDir := filepath.Join(cfg.StowDir, "vim")
+	pkgDir := filepath.Join(cfg.PackageDir, "vim")
 	require.NoError(t, cfg.FS.MkdirAll(ctx, pkgDir, 0755))
 
 	client, err := dot.NewClient(cfg)
@@ -64,8 +64,8 @@ func TestUnmanage_ExecutorError(t *testing.T) {
 	require.NoError(t, cfg.FS.WriteFile(ctx, manifestPath, manifestContent, 0644))
 
 	// Create link
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "vim"), 0755))
-	sourcePath := filepath.Join(cfg.StowDir, "vim", "vimrc")
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "vim"), 0755))
+	sourcePath := filepath.Join(cfg.PackageDir, "vim", "vimrc")
 	require.NoError(t, cfg.FS.WriteFile(ctx, sourcePath, []byte("test"), 0644))
 	linkPath := filepath.Join(cfg.TargetDir, ".vimrc")
 	require.NoError(t, cfg.FS.Symlink(ctx, sourcePath, linkPath))
@@ -153,10 +153,10 @@ func TestDoctor_ChecksAllBranches(t *testing.T) {
 	ctx := context.Background()
 
 	require.NoError(t, cfg.FS.MkdirAll(ctx, cfg.TargetDir, 0755))
-	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.StowDir, "pkg"), 0755))
+	require.NoError(t, cfg.FS.MkdirAll(ctx, filepath.Join(cfg.PackageDir, "pkg"), 0755))
 
 	// Create a symlink that points to a file that exists
-	source := filepath.Join(cfg.StowDir, "pkg", "file")
+	source := filepath.Join(cfg.PackageDir, "pkg", "file")
 	require.NoError(t, cfg.FS.WriteFile(ctx, source, []byte("test"), 0644))
 	linkPath := filepath.Join(cfg.TargetDir, ".file")
 	require.NoError(t, cfg.FS.Symlink(ctx, source, linkPath))

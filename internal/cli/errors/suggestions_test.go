@@ -78,7 +78,7 @@ func TestSuggestionEngine_Generate_PackageNotFound_WithContext(t *testing.T) {
 	engine := SuggestionEngine{
 		context: ErrorContext{
 			Config: ConfigSummary{
-				StowDir: "/home/user/dotfiles",
+				PackageDir: "/home/user/dotfiles",
 			},
 		},
 	}
@@ -96,7 +96,7 @@ func TestSuggestionEngine_Generate_PackageNotFound_WithContext(t *testing.T) {
 			break
 		}
 	}
-	assert.True(t, found, "should include stow directory from context")
+	assert.True(t, found, "should include package directory from context")
 }
 
 func TestSuggestionEngine_Generate_Conflict(t *testing.T) {
@@ -246,7 +246,7 @@ func TestSuggestionEngine_Generate_ExecutionFailed_WithDryRun(t *testing.T) {
 func TestSuggestionEngine_Generate_SourceNotFound(t *testing.T) {
 	engine := SuggestionEngine{}
 	err := dot.ErrSourceNotFound{
-		Path: "/stow/vim/vimrc",
+		Path: "/packages/vim/vimrc",
 	}
 
 	suggestions := engine.Generate(err)
@@ -266,12 +266,12 @@ func TestSuggestionEngine_Generate_SourceNotFound_WithContext(t *testing.T) {
 	engine := SuggestionEngine{
 		context: ErrorContext{
 			Config: ConfigSummary{
-				StowDir: "/home/user/dotfiles",
+				PackageDir: "/home/user/dotfiles",
 			},
 		},
 	}
 	err := dot.ErrSourceNotFound{
-		Path: "/stow/vim/vimrc",
+		Path: "/packages/vim/vimrc",
 	}
 
 	suggestions := engine.Generate(err)
@@ -284,7 +284,7 @@ func TestSuggestionEngine_Generate_SourceNotFound_WithContext(t *testing.T) {
 			break
 		}
 	}
-	assert.True(t, found, "should include stow directory from context")
+	assert.True(t, found, "should include package directory from context")
 }
 
 func TestSuggestionEngine_Generate_UnknownError(t *testing.T) {
@@ -342,17 +342,17 @@ func TestSuggestionEngine_ContextInfluence(t *testing.T) {
 		check   func(*testing.T, []string)
 	}{
 		{
-			name: "package not found with stow dir",
+			name: "package not found with package dir",
 			context: ErrorContext{
 				Config: ConfigSummary{
-					StowDir: "/custom/stow",
+					PackageDir: "/custom/packages",
 				},
 			},
 			err: dot.ErrPackageNotFound{Package: "vim"},
 			check: func(t *testing.T, suggestions []string) {
 				found := false
 				for _, s := range suggestions {
-					if strings.Contains(s, "/custom/stow") {
+					if strings.Contains(s, "/custom/packages") {
 						found = true
 						break
 					}

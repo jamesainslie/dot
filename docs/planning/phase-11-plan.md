@@ -857,10 +857,10 @@ func TestValidator_Validate_EmptyManifest(t *testing.T) {
 func TestValidator_Validate_ValidManifest(t *testing.T) {
     fs := memfs.New()
     targetDir := mustTargetPath(t, "/home/user")
-    stowDir := mustStowPath(t, "/stow")
+    packageDir := mustStowPath(t, "/stow")
     
     // Create package structure
-    pkgPath := filepath.Join(stowDir.String(), "vim")
+    pkgPath := filepath.Join(packageDir.String(), "vim")
     vimrcSrc := filepath.Join(pkgPath, "dot-vimrc")
     require.NoError(t, fs.MkdirAll(context.Background(), pkgPath, 0755))
     require.NoError(t, fs.WriteFile(context.Background(), vimrcSrc, []byte("content"), 0644))
@@ -932,10 +932,10 @@ func TestValidator_Validate_MissingLink(t *testing.T) {
 func TestValidator_Validate_ExtraLink(t *testing.T) {
     fs := memfs.New()
     targetDir := mustTargetPath(t, "/home/user")
-    stowDir := mustStowPath(t, "/stow")
+    packageDir := mustStowPath(t, "/stow")
     
     // Create package and link not in manifest
-    pkgPath := filepath.Join(stowDir.String(), "vim")
+    pkgPath := filepath.Join(packageDir.String(), "vim")
     vimrcSrc := filepath.Join(pkgPath, "dot-vimrc")
     require.NoError(t, fs.MkdirAll(context.Background(), pkgPath, 0755))
     require.NoError(t, fs.WriteFile(context.Background(), vimrcSrc, []byte("content"), 0644))
@@ -1165,10 +1165,10 @@ func TestIncrementalPlanner_DetectChangedPackages_NoManifest(t *testing.T) {
     hasher := manifest.NewContentHasher(fs)
     planner := planner.NewIncrementalPlanner(manifestStore, hasher)
     
-    stowDir := mustStowPath(t, "/stow")
+    packageDir := mustStowPath(t, "/stow")
     packages := []string{"vim", "zsh"}
     
-    changed := planner.DetectChangedPackages(context.Background(), stowDir, packages, manifest.New())
+    changed := planner.DetectChangedPackages(context.Background(), packageDir, packages, manifest.New())
     
     // No previous manifest means all packages are changed
     assert.ElementsMatch(t, packages, changed)
@@ -1178,8 +1178,8 @@ func TestIncrementalPlanner_DetectChangedPackages_UnchangedPackage(t *testing.T)
     fs := memfs.New()
     
     // Create package
-    stowDir := mustStowPath(t, "/stow")
-    vimPath := filepath.Join(stowDir.String(), "vim")
+    packageDir := mustStowPath(t, "/stow")
+    vimPath := filepath.Join(packageDir.String(), "vim")
     require.NoError(t, fs.MkdirAll(context.Background(), vimPath, 0755))
     require.NoError(t, fs.WriteFile(context.Background(), 
         filepath.Join(vimPath, "dot-vimrc"), []byte("content"), 0644))
@@ -1196,7 +1196,7 @@ func TestIncrementalPlanner_DetectChangedPackages_UnchangedPackage(t *testing.T)
     manifestStore := manifest.NewFSManifestStore(fs)
     planner := planner.NewIncrementalPlanner(manifestStore, hasher)
     
-    changed := planner.DetectChangedPackages(context.Background(), stowDir, []string{"vim"}, m)
+    changed := planner.DetectChangedPackages(context.Background(), packageDir, []string{"vim"}, m)
     
     // Package unchanged
     assert.Empty(t, changed)
@@ -1206,8 +1206,8 @@ func TestIncrementalPlanner_DetectChangedPackages_ChangedPackage(t *testing.T) {
     fs := memfs.New()
     
     // Create package with initial content
-    stowDir := mustStowPath(t, "/stow")
-    vimPath := filepath.Join(stowDir.String(), "vim")
+    packageDir := mustStowPath(t, "/stow")
+    vimPath := filepath.Join(packageDir.String(), "vim")
     vimrcPath := filepath.Join(vimPath, "dot-vimrc")
     require.NoError(t, fs.MkdirAll(context.Background(), vimPath, 0755))
     require.NoError(t, fs.WriteFile(context.Background(), vimrcPath, []byte("initial"), 0644))
@@ -1226,7 +1226,7 @@ func TestIncrementalPlanner_DetectChangedPackages_ChangedPackage(t *testing.T) {
     manifestStore := manifest.NewFSManifestStore(fs)
     planner := planner.NewIncrementalPlanner(manifestStore, hasher)
     
-    changed := planner.DetectChangedPackages(context.Background(), stowDir, []string{"vim"}, m)
+    changed := planner.DetectChangedPackages(context.Background(), packageDir, []string{"vim"}, m)
     
     // Package changed
     assert.Equal(t, []string{"vim"}, changed)
@@ -1238,7 +1238,7 @@ func TestIncrementalPlanner_DetectChangedPackages_ChangedPackage(t *testing.T) {
 // DetectChangedPackages identifies packages with content changes
 func (p *IncrementalPlanner) DetectChangedPackages(
     ctx context.Context,
-    stowDir dot.StowPath,
+    packageDir dot.StowPath,
     packages []string,
     manifest manifest.Manifest,
 ) []string {
@@ -1249,7 +1249,7 @@ func (p *IncrementalPlanner) DetectChangedPackages(
             break
         }
         
-        pkgPath := stowDir.Join(pkgName)
+        pkgPath := packageDir.Join(pkgName)
         
         // Compute current hash
         currentHash, err := p.hasher.HashPackage(ctx, pkgPath)

@@ -80,24 +80,32 @@ type Client interface {
 	List(ctx context.Context) ([]PackageInfo, error)
 
 	// Doctor performs health checks on the installation.
-	// Detects broken links, orphaned links, permission issues, and inconsistencies.
+	// Detects broken links, permission issues, and inconsistencies.
 	//
-	// The scanCfg parameter controls orphaned link detection behavior.
-	// Use DefaultScanConfig() for no orphan scanning (backward compatible),
-	// ScopedScanConfig() for smart scanning, or DeepScanConfig(depth) for full scan.
+	// This is the current recommended method. It uses DefaultScanConfig() which
+	// performs no orphan scanning for backward compatibility and performance.
+	//
+	// For explicit scan configuration control, use DoctorWithScan instead.
 	//
 	// Returns a DiagnosticReport with:
 	//   - Overall health status
 	//   - List of issues found
 	//   - Summary statistics
+	Doctor(ctx context.Context) (DiagnosticReport, error)
+
+	// DoctorWithScan performs health checks with explicit scan configuration.
+	// This is the full-featured method allowing control over orphan link detection.
 	//
-	// TODO: BREAKING CHANGE in v0.2.0 - Added scanCfg parameter.
-	// Consider adding transitional path in v0.3.0:
-	//   - Add DoctorWithScan(ctx, scanCfg) method
-	//   - Deprecate Doctor() and make it call DoctorWithScan(ctx, DefaultScanConfig())
-	//   - Remove deprecated method in v1.0.0
-	// This would allow gradual migration for library consumers.
-	Doctor(ctx context.Context, scanCfg ScanConfig) (DiagnosticReport, error)
+	// The scanCfg parameter controls orphaned link detection behavior:
+	//   - DefaultScanConfig(): No orphan scanning (fastest, backward compatible)
+	//   - ScopedScanConfig(): Smart scanning of managed directories (recommended)
+	//   - DeepScanConfig(depth): Full scan with depth limit (thorough but slow)
+	//
+	// Returns a DiagnosticReport with:
+	//   - Overall health status
+	//   - List of issues found
+	//   - Summary statistics
+	DoctorWithScan(ctx context.Context, scanCfg ScanConfig) (DiagnosticReport, error)
 
 	// Config returns a copy of the client's configuration.
 	Config() Config

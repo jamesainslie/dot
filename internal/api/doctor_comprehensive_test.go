@@ -48,7 +48,7 @@ func TestDoctor_AllPathTypes(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Should detect issues for file2 (broken) and file3 (not symlink)
@@ -78,7 +78,7 @@ func TestDoctor_WarningsVsErrors(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Missing link is an error
@@ -124,7 +124,7 @@ func TestDoctor_HandlesMultiplePackagesCorrectly(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Should have 2 total links, 1 broken
@@ -163,7 +163,7 @@ func TestDoctor_RelativeSymlinkResolution(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	// Relative symlink with valid target should be healthy

@@ -10,8 +10,15 @@ import (
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
-// Doctor performs comprehensive health checks on the installation.
-func (c *client) Doctor(ctx context.Context, scanCfg dot.ScanConfig) (dot.DiagnosticReport, error) {
+// Doctor performs health checks with default scan configuration.
+// Uses DefaultScanConfig() which performs no orphan scanning for
+// backward compatibility and performance.
+func (c *client) Doctor(ctx context.Context) (dot.DiagnosticReport, error) {
+	return c.DoctorWithScan(ctx, dot.DefaultScanConfig())
+}
+
+// DoctorWithScan performs health checks with explicit scan configuration.
+func (c *client) DoctorWithScan(ctx context.Context, scanCfg dot.ScanConfig) (dot.DiagnosticReport, error) {
 	targetPathResult := dot.NewTargetPath(c.config.TargetDir)
 	if !targetPathResult.IsOk() {
 		return dot.DiagnosticReport{}, targetPathResult.UnwrapErr()

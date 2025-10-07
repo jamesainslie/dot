@@ -33,7 +33,7 @@ func TestDoctor_OrphanDetection_ScanOff(t *testing.T) {
 	require.NoError(t, err)
 
 	// ScanOff should NOT detect orphans
-	report, err := client.Doctor(ctx, dot.DefaultScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.DefaultScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, report.Statistics.OrphanedLinks)
@@ -74,7 +74,7 @@ func TestDoctor_OrphanDetection_Scoped(t *testing.T) {
 	require.NoError(t, err)
 
 	// Scoped scan should detect orphan in scanned directory
-	report, err := client.Doctor(ctx, dot.ScopedScanConfig())
+	report, err := client.DoctorWithScan(ctx, dot.ScopedScanConfig())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.Statistics.OrphanedLinks)
@@ -106,7 +106,7 @@ func TestDoctor_OrphanDetection_Deep(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deep scan should find nested orphan
-	report, err := client.Doctor(ctx, dot.DeepScanConfig(5))
+	report, err := client.DoctorWithScan(ctx, dot.DeepScanConfig(5))
 	require.NoError(t, err)
 
 	assert.Greater(t, report.Statistics.OrphanedLinks, 0)
@@ -137,7 +137,7 @@ func TestDoctor_OrphanDetection_SkipsGit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deep scan should skip .git directory
-	report, err := client.Doctor(ctx, dot.DeepScanConfig(10))
+	report, err := client.DoctorWithScan(ctx, dot.DeepScanConfig(10))
 	require.NoError(t, err)
 
 	// Should not detect link in .git (skip patterns working)

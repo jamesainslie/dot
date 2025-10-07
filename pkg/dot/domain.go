@@ -62,6 +62,12 @@ type Plan struct {
 	Operations []Operation
 	Metadata   PlanMetadata
 	Batches    [][]Operation // Parallel execution batches (if computed)
+
+	// PackageOperations maps package names to operation IDs that belong to that package.
+	// This enables tracking which operations were generated for which packages,
+	// allowing accurate manifest updates and selective operations.
+	// Optional field for backward compatibility.
+	PackageOperations map[string][]OperationID `json:"package_operations,omitempty"`
 }
 
 // Validate checks if the plan is valid.
@@ -84,6 +90,66 @@ func (p Plan) CanParallelize() bool {
 // Returns nil if parallelization has not been computed.
 func (p Plan) ParallelBatches() [][]Operation {
 	return p.Batches
+}
+
+// OperationsForPackage returns all operations that belong to the specified package.
+// Returns an empty slice if the package is not in the plan or if PackageOperations is not set.
+func (p Plan) OperationsForPackage(pkg string) []Operation {
+	if p.PackageOperations == nil {
+		return []Operation{}
+	}
+
+	ids := p.PackageOperations[pkg]
+	if len(ids) == 0 {
+		return []Operation{}
+	}
+
+	result := make([]Operation, 0, len(ids))
+	for _, op := range p.Operations {
+		for _, id := range ids {
+			if op.ID() == id {
+				result = append(result, op)
+				break
+			}
+		}
+	}
+
+	return result
+}
+
+// PackageNames returns a list of all package names in the plan.
+// Returns an empty slice if PackageOperations is not set.
+func (p Plan) PackageNames() []string {
+	if p.PackageOperations == nil {
+		return []string{}
+	}
+
+	names := make([]string, 0, len(p.PackageOperations))
+	for name := range p.PackageOperations {
+		names = append(names, name)
+	}
+
+	return names
+}
+
+// HasPackage returns true if the plan contains operations for the specified package.
+func (p Plan) HasPackage(pkg string) bool {
+	if p.PackageOperations == nil {
+		return false
+	}
+
+	_, exists := p.PackageOperations[pkg]
+	return exists
+}
+
+// OperationCountForPackage returns the number of operations for the specified package.
+// Returns 0 if the package is not in the plan or if PackageOperations is not set.
+func (p Plan) OperationCountForPackage(pkg string) int {
+	if p.PackageOperations == nil {
+		return 0
+	}
+
+	return len(p.PackageOperations[pkg])
 }
 
 // PlanMetadata contains statistics and diagnostic information about a plan.

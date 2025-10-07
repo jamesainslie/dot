@@ -45,9 +45,9 @@ func generateFileExistsSuggestions(c Conflict) []Suggestion {
 func generateWrongLinkSuggestions(c Conflict) []Suggestion {
 	return []Suggestion{
 		{
-			Action:      "Unstow the other package first",
+			Action:      "Unmanage the other package first",
 			Explanation: "Removes conflicting symlink from different package",
-			Example:     "dot unstow <other-package>",
+			Example:     "dot unmanage <other-package>",
 		},
 		{
 			Action:      "Use --overwrite to replace the link",

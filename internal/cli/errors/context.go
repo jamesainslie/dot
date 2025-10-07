@@ -16,10 +16,10 @@ type ErrorContext struct {
 
 // ConfigSummary contains relevant configuration information for error context.
 type ConfigSummary struct {
-	StowDir   string
-	TargetDir string
-	DryRun    bool
-	Verbose   int
+	PackageDir string
+	TargetDir  string
+	DryRun     bool
+	Verbose    int
 }
 
 // Extract pulls context from various sources.

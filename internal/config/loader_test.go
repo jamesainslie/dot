@@ -17,7 +17,7 @@ func TestLoadFromFile_WithYAML(t *testing.T) {
 	// Create config file
 	configContent := `
 directories:
-  stow: /test/dotfiles
+  package: /test/dotfiles
   target: /test/home
 
 logging:
@@ -30,7 +30,7 @@ logging:
 	cfg, err := config.LoadExtendedFromFile(configPath)
 	require.NoError(t, err)
 
-	assert.Equal(t, "/test/dotfiles", cfg.Directories.Stow)
+	assert.Equal(t, "/test/dotfiles", cfg.Directories.Package)
 	assert.Equal(t, "/test/home", cfg.Directories.Target)
 	assert.Equal(t, "DEBUG", cfg.Logging.Level)
 	assert.Equal(t, "json", cfg.Logging.Format)
@@ -86,7 +86,7 @@ func TestLoader_LoadWithFlags(t *testing.T) {
 	// Create config file
 	configContent := `
 directories:
-  stow: /file/dotfiles
+  package: /file/dotfiles
   target: /file/home
 
 output:
@@ -107,7 +107,7 @@ output:
 	require.NoError(t, err)
 
 	// Flags should override file
-	assert.Equal(t, "/flag/dotfiles", cfg.Directories.Stow)
+	assert.Equal(t, "/flag/dotfiles", cfg.Directories.Package)
 	assert.Equal(t, 2, cfg.Output.Verbosity)
 	assert.Equal(t, "always", cfg.Output.Color)
 	// File value for non-overridden
@@ -121,7 +121,7 @@ func TestLoader_Precedence(t *testing.T) {
 	// Create config file
 	configContent := `
 directories:
-  stow: /file/dotfiles
+  package: /file/dotfiles
 
 logging:
   level: INFO
@@ -146,10 +146,10 @@ output:
 	require.NoError(t, err)
 
 	// Verify precedence: flags > env > file > default
-	assert.Equal(t, "/file/dotfiles", cfg.Directories.Stow) // from file
-	assert.Equal(t, "WARN", cfg.Logging.Level)              // from env (overrides file)
-	assert.Equal(t, 2, cfg.Output.Verbosity)                // from flags (highest)
-	assert.Equal(t, "text", cfg.Logging.Format)             // from file (no override)
+	assert.Equal(t, "/file/dotfiles", cfg.Directories.Package) // from file
+	assert.Equal(t, "WARN", cfg.Logging.Level)                 // from env (overrides file)
+	assert.Equal(t, 2, cfg.Output.Verbosity)                   // from flags (highest)
+	assert.Equal(t, "text", cfg.Logging.Format)                // from file (no override)
 }
 
 func TestLoader_ValidateOnLoad(t *testing.T) {
@@ -184,7 +184,7 @@ func TestLoader_FlagMapping(t *testing.T) {
 				"dir": "/custom/dotfiles",
 			},
 			validate: func(t *testing.T, cfg *config.ExtendedConfig) {
-				assert.Equal(t, "/custom/dotfiles", cfg.Directories.Stow)
+				assert.Equal(t, "/custom/dotfiles", cfg.Directories.Package)
 			},
 		},
 		{
@@ -268,7 +268,7 @@ func TestLoader_MultipleSourcesIntegration(t *testing.T) {
 	// Create config file with baseline values
 	configContent := `
 directories:
-  stow: /file/dotfiles
+  package: /file/dotfiles
   target: /file/home
 
 logging:
@@ -304,14 +304,14 @@ output:
 	require.NoError(t, err)
 
 	// Verify precedence: flags > env > file > defaults
-	assert.Equal(t, "/file/dotfiles", cfg.Directories.Stow) // from file (no override)
-	assert.Equal(t, "/file/home", cfg.Directories.Target)   // from file (no override)
-	assert.Equal(t, "WARN", cfg.Logging.Level)              // from env (overrides file)
-	assert.Equal(t, "text", cfg.Logging.Format)             // from file (no override)
-	assert.Equal(t, "absolute", cfg.Symlinks.Mode)          // from env (overrides file)
-	assert.True(t, cfg.Symlinks.Folding)                    // from file (no override)
-	assert.Equal(t, 3, cfg.Output.Verbosity)                // from flags (highest priority)
-	assert.Equal(t, "never", cfg.Output.Color)              // from flags (highest priority)
+	assert.Equal(t, "/file/dotfiles", cfg.Directories.Package) // from file (no override)
+	assert.Equal(t, "/file/home", cfg.Directories.Target)      // from file (no override)
+	assert.Equal(t, "WARN", cfg.Logging.Level)                 // from env (overrides file)
+	assert.Equal(t, "text", cfg.Logging.Format)                // from file (no override)
+	assert.Equal(t, "absolute", cfg.Symlinks.Mode)             // from env (overrides file)
+	assert.True(t, cfg.Symlinks.Folding)                       // from file (no override)
+	assert.Equal(t, 3, cfg.Output.Verbosity)                   // from flags (highest priority)
+	assert.Equal(t, "never", cfg.Output.Color)                 // from flags (highest priority)
 }
 
 func TestLoader_AutoDetectFormat(t *testing.T) {
@@ -325,21 +325,21 @@ func TestLoader_AutoDetectFormat(t *testing.T) {
 			ext: ".yaml",
 			content: `
 directories:
-  stow: /test/dotfiles
+  package: /test/dotfiles
 `,
 		},
 		{
 			ext: ".json",
 			content: `{
   "directories": {
-    "stow": "/test/dotfiles"
+    "package": "/test/dotfiles"
   }
 }`,
 		},
 		{
 			ext: ".toml",
 			content: `[directories]
-stow = "/test/dotfiles"
+package = "/test/dotfiles"
 `,
 		},
 	}
@@ -353,7 +353,7 @@ stow = "/test/dotfiles"
 			loader := config.NewLoader("dot", configPath)
 			cfg, err := loader.Load()
 			require.NoError(t, err)
-			assert.Equal(t, "/test/dotfiles", cfg.Directories.Stow)
+			assert.Equal(t, "/test/dotfiles", cfg.Directories.Package)
 		})
 	}
 }

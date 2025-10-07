@@ -131,12 +131,12 @@ func TestFormatter_Format_ExecutionFailed(t *testing.T) {
 func TestFormatter_Format_SourceNotFound(t *testing.T) {
 	f := NewFormatter(false, 0)
 	err := dot.ErrSourceNotFound{
-		Path: "/stow/vim/vimrc",
+		Path: "/packages/vim/vimrc",
 	}
 
 	result := f.Format(err)
 	assert.Contains(t, result, "Source Not Found")
-	assert.Contains(t, result, "/stow/vim/vimrc")
+	assert.Contains(t, result, "/packages/vim/vimrc")
 }
 
 func TestFormatter_Format_ParentNotFound(t *testing.T) {
@@ -239,10 +239,10 @@ func TestFormatter_FormatWithContext(t *testing.T) {
 		Command:   "dot manage",
 		Arguments: []string{"vim"},
 		Config: ConfigSummary{
-			StowDir:   "/home/user/dotfiles",
-			TargetDir: "/home/user",
-			DryRun:    false,
-			Verbose:   1,
+			PackageDir: "/home/user/dotfiles",
+			TargetDir:  "/home/user",
+			DryRun:     false,
+			Verbose:    1,
 		},
 	}
 

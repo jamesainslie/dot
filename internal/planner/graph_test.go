@@ -19,7 +19,7 @@ func TestBuildGraph_Empty(t *testing.T) {
 }
 
 func TestBuildGraph_SingleOperation(t *testing.T) {
-	source := mustParsePath("/stow/package/file")
+	source := mustParsePath("/packages/package/file")
 	target := mustParsePath("/home/user/.config/file")
 	op := dot.NewLinkCreate("link1", source, target)
 
@@ -34,12 +34,12 @@ func TestBuildGraph_SingleOperation(t *testing.T) {
 func TestBuildGraph_IndependentOperations(t *testing.T) {
 	op1 := dot.NewLinkCreate(
 		"link1",
-		mustParsePath("/stow/pkg/file1"),
+		mustParsePath("/packages/pkg/file1"),
 		mustParsePath("/home/user/file1"),
 	)
 	op2 := dot.NewLinkCreate(
 		"link2",
-		mustParsePath("/stow/pkg/file2"),
+		mustParsePath("/packages/pkg/file2"),
 		mustParsePath("/home/user/file2"),
 	)
 
@@ -65,7 +65,7 @@ func TestBuildGraph_LinearDependencies(t *testing.T) {
 
 	linkOp := dot.NewLinkCreate(
 		"link1",
-		mustParsePath("/stow/pkg/config"),
+		mustParsePath("/packages/pkg/config"),
 		mustParsePath("/home/user/.config/app.conf"),
 	)
 
@@ -98,7 +98,7 @@ func TestBuildGraph_DiamondPattern(t *testing.T) {
 	opC := dot.NewDirCreate("dir3", mustParsePath("/home/user/.config/app2"))
 	opD := dot.NewLinkCreate(
 		"link1",
-		mustParsePath("/stow/pkg/file"),
+		mustParsePath("/packages/pkg/file"),
 		mustParsePath("/home/user/.config/file"),
 	)
 

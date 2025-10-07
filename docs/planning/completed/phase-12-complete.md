@@ -134,7 +134,7 @@ import (
 
 func main() {
     cfg := dot.Config{
-        StowDir:   "/home/user/dotfiles",
+        PackageDir:   "/home/user/dotfiles",
         TargetDir: "/home/user",
         FS:        adapters.NewOSFilesystem(),
         Logger:    adapters.NewNoopLogger(),

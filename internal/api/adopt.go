@@ -47,9 +47,9 @@ func (c *client) Adopt(ctx context.Context, files []string, pkg string) error {
 
 // PlanAdopt computes the execution plan for adopting files.
 func (c *client) PlanAdopt(ctx context.Context, files []string, pkg string) (dot.Plan, error) {
-	stowPathResult := dot.NewPackagePath(c.config.StowDir)
-	if !stowPathResult.IsOk() {
-		return dot.Plan{}, stowPathResult.UnwrapErr()
+	packagePathResult := dot.NewPackagePath(c.config.PackageDir)
+	if !packagePathResult.IsOk() {
+		return dot.Plan{}, packagePathResult.UnwrapErr()
 	}
 
 	targetPathResult := dot.NewTargetPath(c.config.TargetDir)
@@ -58,7 +58,7 @@ func (c *client) PlanAdopt(ctx context.Context, files []string, pkg string) (dot
 	}
 
 	// Verify package directory exists
-	pkgPath := filepath.Join(c.config.StowDir, pkg)
+	pkgPath := filepath.Join(c.config.PackageDir, pkg)
 	exists := c.config.FS.Exists(ctx, pkgPath)
 	if !exists {
 		return dot.Plan{}, dot.ErrPackageNotFound{Package: pkg}

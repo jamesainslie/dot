@@ -15,16 +15,16 @@ func TestExtract_WithCommand(t *testing.T) {
 	cmd.SetArgs([]string{"vim", "tmux"})
 
 	cfg := &ConfigSummary{
-		StowDir:   "/home/user/dotfiles",
-		TargetDir: "/home/user",
-		DryRun:    false,
-		Verbose:   1,
+		PackageDir: "/home/user/dotfiles",
+		TargetDir:  "/home/user",
+		DryRun:     false,
+		Verbose:    1,
 	}
 
 	ctx := Extract(cmd, cfg)
 
 	assert.Contains(t, ctx.Command, "manage")
-	assert.Equal(t, "/home/user/dotfiles", ctx.Config.StowDir)
+	assert.Equal(t, "/home/user/dotfiles", ctx.Config.PackageDir)
 	assert.Equal(t, "/home/user", ctx.Config.TargetDir)
 	assert.False(t, ctx.Config.DryRun)
 	assert.Equal(t, 1, ctx.Config.Verbose)
@@ -33,15 +33,15 @@ func TestExtract_WithCommand(t *testing.T) {
 
 func TestExtract_WithNilCommand(t *testing.T) {
 	cfg := &ConfigSummary{
-		StowDir:   "/home/user/dotfiles",
-		TargetDir: "/home/user",
+		PackageDir: "/home/user/dotfiles",
+		TargetDir:  "/home/user",
 	}
 
 	ctx := Extract(nil, cfg)
 
 	assert.Equal(t, "", ctx.Command)
 	assert.Nil(t, ctx.Arguments)
-	assert.Equal(t, "/home/user/dotfiles", ctx.Config.StowDir)
+	assert.Equal(t, "/home/user/dotfiles", ctx.Config.PackageDir)
 	assert.False(t, ctx.Timestamp.IsZero())
 }
 
@@ -53,7 +53,7 @@ func TestExtract_WithNilConfig(t *testing.T) {
 	ctx := Extract(cmd, nil)
 
 	assert.Contains(t, ctx.Command, "status")
-	assert.Equal(t, "", ctx.Config.StowDir)
+	assert.Equal(t, "", ctx.Config.PackageDir)
 	assert.Equal(t, "", ctx.Config.TargetDir)
 	assert.False(t, ctx.Timestamp.IsZero())
 }
@@ -63,7 +63,7 @@ func TestExtract_WithNilBoth(t *testing.T) {
 
 	assert.Equal(t, "", ctx.Command)
 	assert.Nil(t, ctx.Arguments)
-	assert.Equal(t, "", ctx.Config.StowDir)
+	assert.Equal(t, "", ctx.Config.PackageDir)
 	assert.False(t, ctx.Timestamp.IsZero())
 }
 
@@ -75,22 +75,22 @@ func TestExtractCommand(t *testing.T) {
 	ctx := ExtractCommand(cmd)
 
 	assert.Contains(t, ctx.Command, "list")
-	assert.Equal(t, "", ctx.Config.StowDir)
+	assert.Equal(t, "", ctx.Config.PackageDir)
 	assert.False(t, ctx.Timestamp.IsZero())
 }
 
 func TestExtractConfig(t *testing.T) {
 	cfg := &ConfigSummary{
-		StowDir:   "/stow",
-		TargetDir: "/target",
-		DryRun:    true,
-		Verbose:   2,
+		PackageDir: "/packages",
+		TargetDir:  "/target",
+		DryRun:     true,
+		Verbose:    2,
 	}
 
 	ctx := ExtractConfig(cfg)
 
 	assert.Equal(t, "", ctx.Command)
-	assert.Equal(t, "/stow", ctx.Config.StowDir)
+	assert.Equal(t, "/packages", ctx.Config.PackageDir)
 	assert.Equal(t, "/target", ctx.Config.TargetDir)
 	assert.True(t, ctx.Config.DryRun)
 	assert.Equal(t, 2, ctx.Config.Verbose)
@@ -99,13 +99,13 @@ func TestExtractConfig(t *testing.T) {
 
 func TestConfigSummary_AllFields(t *testing.T) {
 	cfg := ConfigSummary{
-		StowDir:   "/home/user/dotfiles",
-		TargetDir: "/home/user",
-		DryRun:    true,
-		Verbose:   3,
+		PackageDir: "/home/user/dotfiles",
+		TargetDir:  "/home/user",
+		DryRun:     true,
+		Verbose:    3,
 	}
 
-	assert.Equal(t, "/home/user/dotfiles", cfg.StowDir)
+	assert.Equal(t, "/home/user/dotfiles", cfg.PackageDir)
 	assert.Equal(t, "/home/user", cfg.TargetDir)
 	assert.True(t, cfg.DryRun)
 	assert.Equal(t, 3, cfg.Verbose)
@@ -118,13 +118,13 @@ func TestErrorContext_AllFields(t *testing.T) {
 	cmd.SetArgs([]string{"vim"})
 
 	cfg := &ConfigSummary{
-		StowDir: "/stow",
+		PackageDir: "/packages",
 	}
 
 	ctx := Extract(cmd, cfg)
 
 	require.NotNil(t, ctx)
 	assert.NotEmpty(t, ctx.Command)
-	assert.NotEmpty(t, ctx.Config.StowDir)
+	assert.NotEmpty(t, ctx.Config.PackageDir)
 	assert.False(t, ctx.Timestamp.IsZero())
 }

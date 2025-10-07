@@ -42,7 +42,7 @@ func TestWriter_WriteYAML(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	cfg := config.DefaultExtended()
-	cfg.Directories.Stow = "/test/dotfiles"
+	cfg.Directories.Package = "/test/dotfiles"
 	cfg.Logging.Level = "DEBUG"
 
 	writer := config.NewWriter(configPath)
@@ -55,7 +55,7 @@ func TestWriter_WriteYAML(t *testing.T) {
 	// Load and verify
 	loaded, err := config.LoadExtendedFromFile(configPath)
 	require.NoError(t, err)
-	assert.Equal(t, "/test/dotfiles", loaded.Directories.Stow)
+	assert.Equal(t, "/test/dotfiles", loaded.Directories.Package)
 	assert.Equal(t, "DEBUG", loaded.Logging.Level)
 }
 
@@ -114,13 +114,13 @@ func TestWriter_Update(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update a value
-	err = writer.Update("directories.stow", "/new/dotfiles")
+	err = writer.Update("directories.package", "/new/dotfiles")
 	require.NoError(t, err)
 
 	// Load and verify
 	loaded, err := config.LoadExtendedFromFile(configPath)
 	require.NoError(t, err)
-	assert.Equal(t, "/new/dotfiles", loaded.Directories.Stow)
+	assert.Equal(t, "/new/dotfiles", loaded.Directories.Package)
 }
 
 func TestWriter_UpdateNonExistentFile(t *testing.T) {
@@ -198,7 +198,7 @@ func TestWriter_WriteWithComments(t *testing.T) {
 	contentStr := string(content)
 	assert.Contains(t, contentStr, "# Dot Configuration File")
 	assert.Contains(t, contentStr, "# Core Directories")
-	assert.Contains(t, contentStr, "# Stow directory containing packages")
+	assert.Contains(t, contentStr, "# Package directory containing packages")
 	assert.Contains(t, contentStr, "# Logging Configuration")
 	assert.Contains(t, contentStr, "# Symlink Behavior")
 }

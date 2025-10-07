@@ -20,10 +20,10 @@ func init() {
 
 // client implements the dot.Client interface.
 type client struct {
-	config   dot.Config
-	stowPipe *pipeline.ManagePipeline
-	executor *executor.Executor
-	manifest manifest.ManifestStore
+	config     dot.Config
+	managePipe *pipeline.ManagePipeline
+	executor   *executor.Executor
+	manifest   manifest.ManifestStore
 }
 
 // newClient creates a new client implementation.
@@ -45,7 +45,7 @@ func newClient(cfg dot.Config) (dot.Client, error) {
 	}
 
 	// Create manage pipeline
-	stowPipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
+	managePipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
 		FS:        cfg.FS,
 		IgnoreSet: ignoreSet,
 		Policies:  policies,
@@ -62,10 +62,10 @@ func newClient(cfg dot.Config) (dot.Client, error) {
 	manifestStore := manifest.NewFSManifestStore(cfg.FS)
 
 	return &client{
-		config:   cfg,
-		stowPipe: stowPipe,
-		executor: exec,
-		manifest: manifestStore,
+		config:     cfg,
+		managePipe: managePipe,
+		executor:   exec,
+		manifest:   manifestStore,
 	}, nil
 }
 

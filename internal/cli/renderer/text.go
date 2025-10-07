@@ -171,32 +171,46 @@ func (r *TextRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 func (r *TextRenderer) renderOperation(w io.Writer, op dot.Operation) {
 	symbol := r.colorText(r.scheme.Success) + "+" + r.resetColor()
 
-	switch op.Kind() {
-	case dot.OpKindDirCreate:
-		dirOp := op.(dot.DirCreate)
-		fmt.Fprintf(w, "  %s Create directory: %s\n", symbol, dirOp.Path.String())
+	switch typed := op.(type) {
+	case dot.DirCreate:
+		fmt.Fprintf(w, "  %s Create directory: %s\n", symbol, typed.Path.String())
 
-	case dot.OpKindLinkCreate:
-		linkOp := op.(dot.LinkCreate)
-		fmt.Fprintf(w, "  %s Create symlink: %s -> %s\n", symbol, linkOp.Target.String(), linkOp.Source.String())
+	case *dot.DirCreate:
+		fmt.Fprintf(w, "  %s Create directory: %s\n", symbol, typed.Path.String())
 
-	case dot.OpKindFileMove:
-		moveOp := op.(dot.FileMove)
-		fmt.Fprintf(w, "  %s Move file: %s -> %s\n", symbol, moveOp.Source.String(), moveOp.Dest.String())
+	case dot.LinkCreate:
+		fmt.Fprintf(w, "  %s Create symlink: %s -> %s\n", symbol, typed.Target.String(), typed.Source.String())
 
-	case dot.OpKindFileBackup:
-		backupOp := op.(dot.FileBackup)
-		fmt.Fprintf(w, "  %s Backup file: %s -> %s\n", symbol, backupOp.Source.String(), backupOp.Backup.String())
+	case *dot.LinkCreate:
+		fmt.Fprintf(w, "  %s Create symlink: %s -> %s\n", symbol, typed.Target.String(), typed.Source.String())
 
-	case dot.OpKindDirDelete:
+	case dot.FileMove:
+		fmt.Fprintf(w, "  %s Move file: %s -> %s\n", symbol, typed.Source.String(), typed.Dest.String())
+
+	case *dot.FileMove:
+		fmt.Fprintf(w, "  %s Move file: %s -> %s\n", symbol, typed.Source.String(), typed.Dest.String())
+
+	case dot.FileBackup:
+		fmt.Fprintf(w, "  %s Backup file: %s -> %s\n", symbol, typed.Source.String(), typed.Backup.String())
+
+	case *dot.FileBackup:
+		fmt.Fprintf(w, "  %s Backup file: %s -> %s\n", symbol, typed.Source.String(), typed.Backup.String())
+
+	case dot.DirDelete:
 		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
-		dirOp := op.(dot.DirDelete)
-		fmt.Fprintf(w, "  %s Delete directory: %s\n", deleteSymbol, dirOp.Path.String())
+		fmt.Fprintf(w, "  %s Delete directory: %s\n", deleteSymbol, typed.Path.String())
 
-	case dot.OpKindLinkDelete:
+	case *dot.DirDelete:
 		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
-		linkOp := op.(dot.LinkDelete)
-		fmt.Fprintf(w, "  %s Delete symlink: %s\n", deleteSymbol, linkOp.Target.String())
+		fmt.Fprintf(w, "  %s Delete directory: %s\n", deleteSymbol, typed.Path.String())
+
+	case dot.LinkDelete:
+		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
+		fmt.Fprintf(w, "  %s Delete symlink: %s\n", deleteSymbol, typed.Target.String())
+
+	case *dot.LinkDelete:
+		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
+		fmt.Fprintf(w, "  %s Delete symlink: %s\n", deleteSymbol, typed.Target.String())
 
 	default:
 		fmt.Fprintf(w, "  %s Unknown operation: %s\n", symbol, op.Kind().String())

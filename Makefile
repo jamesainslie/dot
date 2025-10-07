@@ -28,7 +28,7 @@ help:
 
 ## build: Build the application binary
 build:
-	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/$(BINARY_NAME)
+	go build -buildvcs=false $(LDFLAGS) -o $(BINARY_NAME) ./cmd/$(BINARY_NAME)
 
 ## test: Run all tests with race detection and coverage
 test:
@@ -63,7 +63,7 @@ clean:
 
 ## install: Install the binary
 install: build
-	go install $(LDFLAGS) ./cmd/$(BINARY_NAME)
+	go install -buildvcs=false $(LDFLAGS) ./cmd/$(BINARY_NAME)
 
 ## check: Run tests and linting (machine-readable output for CI/AI agents)
 check: test lint vet
@@ -127,9 +127,9 @@ release:
 
 ## build-all: Build for all platforms
 build-all:
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-amd64 ./cmd/$(BINARY_NAME)
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-arm64 ./cmd/$(BINARY_NAME)
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-amd64 ./cmd/$(BINARY_NAME)
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-arm64 ./cmd/$(BINARY_NAME)
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o dist/$(BINARY_NAME)-windows-amd64.exe ./cmd/$(BINARY_NAME)
+	GOOS=linux GOARCH=amd64 go build -buildvcs=false $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-amd64 ./cmd/$(BINARY_NAME)
+	GOOS=linux GOARCH=arm64 go build -buildvcs=false $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-arm64 ./cmd/$(BINARY_NAME)
+	GOOS=darwin GOARCH=amd64 go build -buildvcs=false $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-amd64 ./cmd/$(BINARY_NAME)
+	GOOS=darwin GOARCH=arm64 go build -buildvcs=false $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-arm64 ./cmd/$(BINARY_NAME)
+	GOOS=windows GOARCH=amd64 go build -buildvcs=false $(LDFLAGS) -o dist/$(BINARY_NAME)-windows-amd64.exe ./cmd/$(BINARY_NAME)
 

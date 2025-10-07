@@ -144,3 +144,125 @@ func (r *TableRenderer) colorText(color string) string {
 	}
 	return ""
 }
+
+// operationDisplay holds display information for an operation.
+type operationDisplay struct {
+	Action  string
+	Type    string
+	Details string
+}
+
+// formatOperationForTable extracts display information from an operation.
+func formatOperationForTable(op dot.Operation) operationDisplay {
+	// Normalize: dereference pointers to get value type for switching
+	normalized := normalizeOperation(op)
+
+	display := operationDisplay{Action: "Create"}
+
+	switch typed := normalized.(type) {
+	case dot.DirCreate:
+		display.Type = "Directory"
+		display.Details = typed.Path.String()
+
+	case dot.LinkCreate:
+		display.Type = "Symlink"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
+
+	case dot.FileMove:
+		display.Action = "Move"
+		display.Type = "File"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
+
+	case dot.FileBackup:
+		display.Action = "Backup"
+		display.Type = "File"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
+
+	case dot.DirDelete:
+		display.Action = "Delete"
+		display.Type = "Directory"
+		display.Details = typed.Path.String()
+
+	case dot.LinkDelete:
+		display.Action = "Delete"
+		display.Type = "Symlink"
+		display.Details = typed.Target.String()
+
+	default:
+		// Handle unknown operation types with clear, informative display
+		display.Action = "Unknown"
+		display.Type = fmt.Sprintf("%T", op)
+		display.Details = op.String()
+	}
+
+	return display
+}
+
+// RenderPlan renders an execution plan as a table.
+func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+	fmt.Fprintf(w, "%sDry run mode - no changes will be applied%s\n\n", r.colorText(r.scheme.Warning), r.resetColor())
+
+	if len(plan.Operations) == 0 {
+		fmt.Fprintln(w, "No operations required")
+		return nil
+	}
+
+	// Build table of operations
+	headers := []string{"#", "Action", "Type", "Details"}
+	rows := make([][]string, 0, len(plan.Operations))
+
+	for i, op := range plan.Operations {
+		display := formatOperationForTable(op)
+
+		// Truncate details if too long
+		if len(display.Details) > 60 {
+			display.Details = display.Details[:57] + "..."
+		}
+
+		rows = append(rows, []string{
+			fmt.Sprintf("%d", i+1),
+			display.Action,
+			display.Type,
+			display.Details,
+		})
+	}
+
+	if err := r.renderTable(w, headers, rows); err != nil {
+		return err
+	}
+
+	// Summary
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Summary:")
+
+	// Count all operation kinds in a single pass
+	counts := make(map[dot.OperationKind]int)
+	for _, op := range plan.Operations {
+		counts[op.Kind()]++
+	}
+
+	// Display counts with semantic labels for each operation kind
+	if count := counts[dot.OpKindDirCreate]; count > 0 {
+		fmt.Fprintf(w, "  Directories created: %d\n", count)
+	}
+	if count := counts[dot.OpKindLinkCreate]; count > 0 {
+		fmt.Fprintf(w, "  Symlinks created: %d\n", count)
+	}
+	if count := counts[dot.OpKindFileMove]; count > 0 {
+		fmt.Fprintf(w, "  Files moved: %d\n", count)
+	}
+	if count := counts[dot.OpKindFileBackup]; count > 0 {
+		fmt.Fprintf(w, "  Backups created: %d\n", count)
+	}
+	if count := counts[dot.OpKindDirDelete]; count > 0 {
+		fmt.Fprintf(w, "  Directories deleted: %d\n", count)
+	}
+	if count := counts[dot.OpKindLinkDelete]; count > 0 {
+		fmt.Fprintf(w, "  Symlinks deleted: %d\n", count)
+	}
+
+	// Always show conflicts count
+	fmt.Fprintf(w, "  Conflicts: %d\n", len(plan.Metadata.Conflicts))
+
+	return nil
+}

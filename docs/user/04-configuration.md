@@ -526,7 +526,7 @@ dot config validate ~/custom-config.yaml
 Expected output:
 ```
 Configuration valid
-- Stow directory exists
+- Package directory exists
 - Target directory exists
 - All paths are absolute
 - No conflicting options

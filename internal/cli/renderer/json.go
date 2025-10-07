@@ -30,3 +30,8 @@ func (r *JSONRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 func (r *JSONRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
 	return r.newEncoder(w).Encode(report)
 }
+
+// RenderPlan renders an execution plan as JSON.
+func (r *JSONRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+	return r.newEncoder(w).Encode(plan)
+}

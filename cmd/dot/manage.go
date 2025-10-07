@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/jamesainslie/dot/internal/cli/renderer"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
@@ -42,13 +44,32 @@ func runManage(cmd *cobra.Command, args []string) error {
 
 	packages := args
 
+	// If dry-run mode, render the plan instead of executing
+	if cfg.DryRun {
+		plan, err := client.PlanManage(ctx, packages...)
+		if err != nil {
+			return formatError(err)
+		}
+
+		// Create renderer and render the plan
+		rend, err := renderer.NewRenderer("text", true)
+		if err != nil {
+			return formatError(err)
+		}
+
+		if err := rend.RenderPlan(os.Stdout, plan); err != nil {
+			return formatError(err)
+		}
+
+		return nil
+	}
+
+	// Normal execution
 	if err := client.Manage(ctx, packages...); err != nil {
 		return formatError(err)
 	}
 
-	if !cfg.DryRun {
-		fmt.Printf("Successfully managed %d package(s)\n", len(packages))
-	}
+	fmt.Printf("Successfully managed %d package(s)\n", len(packages))
 
 	return nil
 }

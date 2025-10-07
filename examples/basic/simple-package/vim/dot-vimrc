@@ -1,0 +1,9 @@
+" Example vim configuration for dot
+set number
+set relativenumber
+set expandtab
+set tabstop=4
+set shiftwidth=4
+syntax on
+colorscheme desert
+

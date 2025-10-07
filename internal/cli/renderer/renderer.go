@@ -17,6 +17,7 @@ import (
 type Renderer interface {
 	RenderStatus(w io.Writer, status dot.Status) error
 	RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error
+	RenderPlan(w io.Writer, plan dot.Plan) error
 }
 
 // ColorScheme defines semantic colors for terminal output.

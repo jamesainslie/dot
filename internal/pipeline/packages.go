@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/planner"
@@ -107,6 +108,9 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 	}
 	sorted := sortResult.Unwrap()
 
+	// Build package-operation mapping by matching operations to package source paths
+	packageOps := buildPackageOperationMapping(packages, sorted)
+
 	// Build final plan with metadata including any warnings
 	plan := dot.Plan{
 		Operations: sorted,
@@ -118,6 +122,7 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 			Conflicts:      nil, // No conflicts in success path
 			Warnings:       convertWarnings(resolved.Warnings),
 		},
+		PackageOperations: packageOps,
 	}
 
 	return dot.Ok(plan)
@@ -132,4 +137,60 @@ func countOperationsByKind(ops []dot.Operation, kind dot.OperationKind) int {
 		}
 	}
 	return count
+}
+
+// buildPackageOperationMapping creates a mapping from package names to operation IDs
+// by matching operation source paths to package paths.
+func buildPackageOperationMapping(packages []dot.Package, operations []dot.Operation) map[string][]dot.OperationID {
+	packageOps := make(map[string][]dot.OperationID)
+
+	// For each package, find operations that reference files from that package
+	for _, pkg := range packages {
+		pkgPath := pkg.Path.String()
+		ops := make([]dot.OperationID, 0)
+
+		for _, op := range operations {
+			// Check if this operation's source is from this package
+			if operationBelongsToPackage(op, pkgPath) {
+				ops = append(ops, op.ID())
+			}
+		}
+
+		if len(ops) > 0 {
+			packageOps[pkg.Name] = ops
+		}
+	}
+
+	return packageOps
+}
+
+// operationBelongsToPackage checks if an operation's source is from the given package path.
+func operationBelongsToPackage(op dot.Operation, pkgPath string) bool {
+	switch o := op.(type) {
+	case dot.LinkCreate:
+		// LinkCreate source is the file in the package
+		return isUnderPath(o.Source.String(), pkgPath)
+	case dot.FileMove:
+		// FileMove destination is the file in the package
+		return isUnderPath(o.Dest.String(), pkgPath)
+	default:
+		// Other operations (DirCreate, LinkDelete, etc.) don't belong to a specific package
+		return false
+	}
+}
+
+// isUnderPath checks if path is under basePath.
+func isUnderPath(path, basePath string) bool {
+	// Clean both paths for consistent comparison
+	cleanPath := filepath.Clean(path)
+	cleanBase := filepath.Clean(basePath)
+
+	// Check if path starts with basePath
+	rel, err := filepath.Rel(cleanBase, cleanPath)
+	if err != nil {
+		return false
+	}
+
+	// If relative path doesn't go up (..), it's under basePath
+	return rel != "." && !filepath.IsAbs(rel) && len(rel) > 0 && rel[0] != '.'
 }

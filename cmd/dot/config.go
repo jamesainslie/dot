@@ -219,6 +219,8 @@ func getConfigValue(cfg *config.ExtendedConfig, key string) (string, error) {
 		return cfg.Symlinks.Mode, nil
 	case "symlinks.backup_suffix":
 		return cfg.Symlinks.BackupSuffix, nil
+	case "symlinks.backup_dir":
+		return cfg.Symlinks.BackupDir, nil
 	case "dotfile.prefix":
 		return cfg.Dotfile.Prefix, nil
 	case "output.format":

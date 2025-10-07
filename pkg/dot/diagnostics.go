@@ -131,3 +131,81 @@ type DiagnosticStats struct {
 	OrphanedLinks int `json:"orphaned_links" yaml:"orphaned_links"`
 	ManagedLinks  int `json:"managed_links" yaml:"managed_links"`
 }
+
+// ScanMode controls orphaned link detection behavior.
+type ScanMode int
+
+const (
+	// ScanOff disables orphaned link detection (fastest, current default).
+	ScanOff ScanMode = iota
+	// ScanScoped only scans directories containing managed links (recommended).
+	ScanScoped
+	// ScanDeep performs full recursive scan with depth limits (slowest).
+	ScanDeep
+)
+
+// String returns the string representation of scan mode.
+func (s ScanMode) String() string {
+	switch s {
+	case ScanOff:
+		return "off"
+	case ScanScoped:
+		return "scoped"
+	case ScanDeep:
+		return "deep"
+	default:
+		return "unknown"
+	}
+}
+
+// ScanConfig controls orphaned link detection behavior.
+type ScanConfig struct {
+	// Mode determines the scanning strategy.
+	Mode ScanMode
+
+	// MaxDepth limits directory recursion depth.
+	// Values <= 0 are normalized to 10 by constructor helpers.
+	// Default: 10
+	MaxDepth int
+
+	// ScopeToDirs limits scanning to specific directories.
+	// Empty means auto-detect from manifest (for ScanScoped) or target dir (for ScanDeep).
+	ScopeToDirs []string
+
+	// SkipPatterns are directory names/patterns to skip during scanning.
+	// Default constructors include: [".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"]
+	SkipPatterns []string
+}
+
+// DefaultScanConfig returns the default scan configuration (off).
+func DefaultScanConfig() ScanConfig {
+	return ScanConfig{
+		Mode:         ScanOff,
+		MaxDepth:     10,
+		ScopeToDirs:  nil,
+		SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},
+	}
+}
+
+// ScopedScanConfig returns a scan configuration for scoped scanning.
+func ScopedScanConfig() ScanConfig {
+	return ScanConfig{
+		Mode:         ScanScoped,
+		MaxDepth:     10,
+		ScopeToDirs:  nil,
+		SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},
+	}
+}
+
+// DeepScanConfig returns a scan configuration for deep scanning.
+func DeepScanConfig(maxDepth int) ScanConfig {
+	if maxDepth <= 0 {
+		maxDepth = 10
+	}
+	return ScanConfig{
+		Mode:         ScanDeep,
+		MaxDepth:     maxDepth,
+		ScopeToDirs:  nil,
+		SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},
+	}
+}

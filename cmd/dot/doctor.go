@@ -24,6 +24,8 @@ func newDoctorCommand() *cobra.Command {
 		// Get flags
 		format, _ := cmd.Flags().GetString("format")
 		color, _ := cmd.Flags().GetString("color")
+		scanMode, _ := cmd.Flags().GetString("scan-mode")
+		maxDepth, _ := cmd.Flags().GetInt("max-depth")
 
 		// Create client
 		client, err := dot.NewClient(cfg)
@@ -31,8 +33,21 @@ func newDoctorCommand() *cobra.Command {
 			return formatError(err)
 		}
 
+		// Build scan config based on flags
+		var scanCfg dot.ScanConfig
+		switch scanMode {
+		case "off", "":
+			scanCfg = dot.DefaultScanConfig()
+		case "scoped":
+			scanCfg = dot.ScopedScanConfig()
+		case "deep":
+			scanCfg = dot.DeepScanConfig(maxDepth)
+		default:
+			return fmt.Errorf("invalid scan-mode: %s (must be off, scoped, or deep)", scanMode)
+		}
+
 		// Run diagnostics
-		report, err := client.Doctor(cmd.Context())
+		report, err := client.Doctor(cmd.Context(), scanCfg)
 		if err != nil {
 			return formatError(err)
 		}
@@ -100,6 +115,8 @@ Exit codes:
 
 	cmd.Flags().StringVarP(&format, "format", "f", "text", "Output format (text, json, yaml, table)")
 	cmd.Flags().StringVar(&color, "color", "auto", "Colorize output (auto, always, never)")
+	cmd.Flags().String("scan-mode", "off", "Orphan detection mode (off, scoped, deep)")
+	cmd.Flags().Int("max-depth", 10, "Maximum recursion depth for deep scan")
 
 	return cmd
 }

@@ -119,3 +119,14 @@ func (c *client) updateManifest(ctx context.Context, packages []string, plan dot
 	// Save manifest
 	return c.manifest.Save(ctx, targetPath, m)
 }
+
+// countLinksInPlan returns the number of LinkCreate operations in a plan.
+func countLinksInPlan(plan dot.Plan) int {
+	count := 0
+	for _, op := range plan.Operations {
+		if op.Kind() == dot.OpKindLinkCreate {
+			count++
+		}
+	}
+	return count
+}

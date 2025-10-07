@@ -239,10 +239,10 @@ func TestFormatter_FormatWithContext(t *testing.T) {
 		Command:   "dot manage",
 		Arguments: []string{"vim"},
 		Config: ConfigSummary{
-			StowDir:   "/home/user/dotfiles",
-			TargetDir: "/home/user",
-			DryRun:    false,
-			Verbose:   1,
+			PackageDir: "/home/user/dotfiles",
+			TargetDir:  "/home/user",
+			DryRun:     false,
+			Verbose:    1,
 		},
 	}
 

@@ -1,4 +1,4 @@
-## dot v2 (Go Symlink Manager) — Refined Technical Architecture
+## dot (Go Symlink Manager) — Refined Technical Architecture
 
 ### Design Principles
 
@@ -216,18 +216,18 @@ type Path[T PathKind] struct {
 
 // Path kind markers
 type PathKind interface{ pathKind() }
-type StowDirKind struct{}
+type PackageDirKind struct{}
 type TargetDirKind struct{}
 type PackageDirKind struct{}
 type FileDirKind struct{}
 
-func (StowDirKind) pathKind()    {}
+func (PackageDirKind) pathKind()    {}
 func (TargetDirKind) pathKind()  {}
 func (PackageDirKind) pathKind() {}
 func (FileDirKind) pathKind()    {}
 
 // Type aliases for clarity
-type StowPath = Path[StowDirKind]
+type StowPath = Path[PackageDirKind]
 type TargetPath = Path[TargetDirKind]
 type PackagePath = Path[PackageDirKind]
 type FilePath = Path[FileDirKind]
@@ -237,7 +237,7 @@ func NewStowPath(s string) Result[StowPath] {
   if !filepath.IsAbs(s) {
     return Err[StowPath](ErrRelativePath{s})
   }
-  return Ok(Path[StowDirKind]{clean(s)})
+  return Ok(Path[PackageDirKind]{clean(s)})
 }
 
 // Type-safe path operations
@@ -562,7 +562,7 @@ func (p StowPipeline) Execute(ctx context.Context, input ScanInput) Result[Plan]
 
 ```go
 type ScanInput struct {
-  StowDir   StowPath
+  PackageDir   StowPath
   TargetDir TargetPath
   Packages  []string
   Ignore    IgnoreSet
@@ -584,7 +584,7 @@ func Scan(ctx context.Context, fs FS, input ScanInput) Result[ScanResult] {
     wg.Add(1)
     go func(idx int, name string) {
       defer wg.Done()
-      packageResults[idx] = scanPackage(ctx, fs, input.StowDir, name, input.Ignore)
+      packageResults[idx] = scanPackage(ctx, fs, input.PackageDir, name, input.Ignore)
     }(i, pkgName)
   }
   wg.Wait()
@@ -602,8 +602,8 @@ func Scan(ctx context.Context, fs FS, input ScanInput) Result[ScanResult] {
   })
 }
 
-func scanPackage(ctx context.Context, fs FS, stowDir StowPath, name string, ignore IgnoreSet) Result[Package] {
-  pkgPath := stowDir.Join(name)
+func scanPackage(ctx context.Context, fs FS, packageDir StowPath, name string, ignore IgnoreSet) Result[Package] {
+  pkgPath := packageDir.Join(name)
   
   tree := scanTree(ctx, fs, pkgPath, ignore)
   if !tree.IsOk() {
@@ -1619,7 +1619,7 @@ type Client struct {
 }
 
 type Config struct {
-  StowDir   string
+  PackageDir   string
   TargetDir string
   LinkMode  LinkMode
   Folding   bool
@@ -1680,7 +1680,7 @@ func (c *Client) Stow(ctx context.Context, packages ...string) error {
 // PlanStow computes execution plan without applying
 func (c *Client) PlanStow(ctx context.Context, packages ...string) (Plan, error) {
   input := scanner.ScanInput{
-    StowDir:   mustParsePath(c.config.StowDir),
+    PackageDir:   mustParsePath(c.config.PackageDir),
     TargetDir: mustParsePath(c.config.TargetDir),
     Packages:  packages,
   }
@@ -1692,7 +1692,7 @@ func (c *Client) PlanStow(ctx context.Context, packages ...string) (Plan, error)
 // StowStream returns streaming plan for large operations
 func (c *Client) StowStream(ctx context.Context, packages ...string) <-chan Result[Operation] {
   input := scanner.ScanInput{
-    StowDir:   mustParsePath(c.config.StowDir),
+    PackageDir:   mustParsePath(c.config.PackageDir),
     TargetDir: mustParsePath(c.config.TargetDir),
     Packages:  packages,
   }
@@ -1718,7 +1718,7 @@ func (c *Client) Unstow(ctx context.Context, packages ...string) error {
 // PlanUnstow computes removal plan
 func (c *Client) PlanUnstow(ctx context.Context, packages ...string) (Plan, error) {
   input := scanner.ScanInput{
-    StowDir:   mustParsePath(c.config.StowDir),
+    PackageDir:   mustParsePath(c.config.PackageDir),
     TargetDir: mustParsePath(c.config.TargetDir),
     Packages:  packages,
   }
@@ -1746,7 +1746,7 @@ func (c *Client) Restow(ctx context.Context, packages ...string) error {
 // PlanRestow computes incremental restow plan
 func (c *Client) PlanRestow(ctx context.Context, packages ...string) (Plan, error) {
   input := scanner.ScanInput{
-    StowDir:   mustParsePath(c.config.StowDir),
+    PackageDir:   mustParsePath(c.config.PackageDir),
     TargetDir: mustParsePath(c.config.TargetDir),
     Packages:  packages,
   }
@@ -1775,7 +1775,7 @@ func (c *Client) PlanAdopt(ctx context.Context, pkg string, files ...string) (Pl
   input := adopt.AdoptInput{
     Package:   pkg,
     Files:     files,
-    StowDir:   mustParsePath(c.config.StowDir),
+    PackageDir:   mustParsePath(c.config.PackageDir),
     TargetDir: mustParsePath(c.config.TargetDir),
   }
   
@@ -1786,7 +1786,7 @@ func (c *Client) PlanAdopt(ctx context.Context, pkg string, files ...string) (Pl
 // Status reports current installation state
 func (c *Client) Status(ctx context.Context, packages ...string) (Status, error) {
   input := scanner.ScanInput{
-    StowDir:   mustParsePath(c.config.StowDir),
+    PackageDir:   mustParsePath(c.config.PackageDir),
     TargetDir: mustParsePath(c.config.TargetDir),
     Packages:  packages,
   }
@@ -1798,7 +1798,7 @@ func (c *Client) Status(ctx context.Context, packages ...string) (Status, error)
 // Doctor validates installation consistency
 func (c *Client) Doctor(ctx context.Context) (DiagnosticReport, error) {
   input := doctor.DoctorInput{
-    StowDir:   mustParsePath(c.config.StowDir),
+    PackageDir:   mustParsePath(c.config.PackageDir),
     TargetDir: mustParsePath(c.config.TargetDir),
   }
   
@@ -1851,7 +1851,7 @@ func NewRootCommand() *cobra.Command {
   }
   
   // Global flags
-  root.PersistentFlags().StringVarP(&cfg.StowDir, "dir", "d", ".", "Stow directory")
+  root.PersistentFlags().StringVarP(&cfg.PackageDir, "dir", "d", ".", "Stow directory")
   root.PersistentFlags().StringVarP(&cfg.TargetDir, "target", "t", os.Getenv("HOME"), "Target directory")
   root.PersistentFlags().BoolVarP(&cfg.DryRun, "dry-run", "n", false, "Show what would be done")
   root.PersistentFlags().CountVarP(&cfg.Verbosity, "verbose", "v", "Increase verbosity")
@@ -1983,7 +1983,7 @@ func NewLoader() *Loader {
   v.AutomaticEnv()
   
   // Defaults
-  v.SetDefault("stowDir", ".")
+  v.SetDefault("packageDir", ".")
   v.SetDefault("targetDir", os.Getenv("HOME"))
   v.SetDefault("linkMode", "relative")
   v.SetDefault("folding", true)
@@ -2010,7 +2010,7 @@ func (l *Loader) Load() (Config, error) {
 }
 
 type Config struct {
-  StowDir   string   `mapstructure:"stowDir"`
+  PackageDir   string   `mapstructure:"packageDir"`
   TargetDir string   `mapstructure:"targetDir"`
   LinkMode  string   `mapstructure:"linkMode"`
   Folding   bool     `mapstructure:"folding"`
@@ -2021,8 +2021,8 @@ type Config struct {
 }
 
 func (c Config) Validate() error {
-  if !filepath.IsAbs(c.StowDir) {
-    return ErrInvalidConfig{Field: "stowDir", Reason: "must be absolute path"}
+  if !filepath.IsAbs(c.PackageDir) {
+    return ErrInvalidConfig{Field: "packageDir", Reason: "must be absolute path"}
   }
   
   if !filepath.IsAbs(c.TargetDir) {
@@ -2056,8 +2056,8 @@ func (c Config) Merge(other Config, strategy MergeStrategy) Config {
   merged := c
   
   // Scalar fields: always replace
-  if other.StowDir != "" {
-    merged.StowDir = other.StowDir
+  if other.PackageDir != "" {
+    merged.PackageDir = other.PackageDir
   }
   if other.TargetDir != "" {
     merged.TargetDir = other.TargetDir
@@ -2288,7 +2288,7 @@ func genFileContent() gopter.Gen {
 func (p *StowPipeline) Execute(ctx context.Context, input ScanInput) Result[Plan] {
   ctx, span := p.tracer.Start(ctx, "pipeline.Stow",
     trace.WithAttributes(
-      attribute.String("stow.dir", input.StowDir.String()),
+      attribute.String("stow.dir", input.PackageDir.String()),
       attribute.String("target.dir", input.TargetDir.String()),
       attribute.Int("package.count", len(input.Packages)),
     ),
@@ -2517,7 +2517,7 @@ func RenderUserError(err error) string {
     return fmt.Sprintf("Invalid path: %s\nPath must be absolute.", e.Path)
   
   case ErrPackageNotFound:
-    return fmt.Sprintf("Package not found: %s\nCheck that the package exists in the stow directory.", e.Package)
+    return fmt.Sprintf("Package not found: %s\nCheck that the package exists in the package directory.", e.Package)
   
   case ErrConflict:
     return formatConflict(e.Conflict)

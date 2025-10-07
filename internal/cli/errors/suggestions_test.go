@@ -78,7 +78,7 @@ func TestSuggestionEngine_Generate_PackageNotFound_WithContext(t *testing.T) {
 	engine := SuggestionEngine{
 		context: ErrorContext{
 			Config: ConfigSummary{
-				StowDir: "/home/user/dotfiles",
+				PackageDir: "/home/user/dotfiles",
 			},
 		},
 	}
@@ -266,7 +266,7 @@ func TestSuggestionEngine_Generate_SourceNotFound_WithContext(t *testing.T) {
 	engine := SuggestionEngine{
 		context: ErrorContext{
 			Config: ConfigSummary{
-				StowDir: "/home/user/dotfiles",
+				PackageDir: "/home/user/dotfiles",
 			},
 		},
 	}
@@ -345,7 +345,7 @@ func TestSuggestionEngine_ContextInfluence(t *testing.T) {
 			name: "package not found with stow dir",
 			context: ErrorContext{
 				Config: ConfigSummary{
-					StowDir: "/custom/stow",
+					PackageDir: "/custom/stow",
 				},
 			},
 			err: dot.ErrPackageNotFound{Package: "vim"},

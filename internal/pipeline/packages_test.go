@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewStowPipeline(t *testing.T) {
+func TestNewManagePipeline(t *testing.T) {
 	fs := adapters.NewOSFilesystem()
 	ignoreSet := ignore.NewIgnoreSet()
 	policies := planner.DefaultPolicies()
 
-	pipeline := NewStowPipeline(StowPipelineOpts{
+	pipeline := NewManagePipeline(ManagePipelineOpts{
 		FS:        fs,
 		IgnoreSet: ignoreSet,
 		Policies:  policies,
@@ -29,12 +29,12 @@ func TestNewStowPipeline(t *testing.T) {
 	assert.Equal(t, policies, pipeline.opts.Policies)
 }
 
-func TestStowPipeline_Execute(t *testing.T) {
+func TestManagePipeline_Execute(t *testing.T) {
 	t.Run("empty package list", func(t *testing.T) {
 		fs := adapters.NewOSFilesystem()
 		ignoreSet := ignore.NewIgnoreSet()
 
-		pipeline := NewStowPipeline(StowPipelineOpts{
+		pipeline := NewManagePipeline(ManagePipelineOpts{
 			FS:        fs,
 			IgnoreSet: ignoreSet,
 			Policies:  planner.DefaultPolicies(),
@@ -48,10 +48,10 @@ func TestStowPipeline_Execute(t *testing.T) {
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")
 		targetPath := targetPathResult.Unwrap()
 
-		result := pipeline.Execute(context.Background(), StowInput{
-			StowDir:   stowPath,
-			TargetDir: targetPath,
-			Packages:  []string{},
+		result := pipeline.Execute(context.Background(), ManageInput{
+			PackageDir: stowPath,
+			TargetDir:  targetPath,
+			Packages:   []string{},
 		})
 
 		require.True(t, result.IsOk())
@@ -69,7 +69,7 @@ func TestStowPipeline_Execute(t *testing.T) {
 		fs := adapters.NewOSFilesystem()
 		ignoreSet := ignore.NewIgnoreSet()
 
-		pipeline := NewStowPipeline(StowPipelineOpts{
+		pipeline := NewManagePipeline(ManagePipelineOpts{
 			FS:        fs,
 			IgnoreSet: ignoreSet,
 			Policies:  planner.DefaultPolicies(),
@@ -83,10 +83,10 @@ func TestStowPipeline_Execute(t *testing.T) {
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")
 		targetPath := targetPathResult.Unwrap()
 
-		result := pipeline.Execute(context.Background(), StowInput{
-			StowDir:   stowPath,
-			TargetDir: targetPath,
-			Packages:  []string{"nonexistent"},
+		result := pipeline.Execute(context.Background(), ManageInput{
+			PackageDir: stowPath,
+			TargetDir:  targetPath,
+			Packages:   []string{"nonexistent"},
 		})
 
 		require.False(t, result.IsOk())

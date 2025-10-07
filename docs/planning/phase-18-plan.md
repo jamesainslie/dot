@@ -1243,7 +1243,7 @@ func scanPackagesStream(ctx context.Context, input ScanInput) <-chan Result[Pack
                 defer wg.Done()
                 defer func() { <-sem }()
                 
-                pkg := scanPackage(ctx, input.FS, input.StowDir, name, input.Ignore)
+                pkg := scanPackage(ctx, input.FS, input.PackageDir, name, input.Ignore)
                 
                 select {
                 case ch <- pkg:

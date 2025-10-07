@@ -88,9 +88,9 @@ func (e *SuggestionEngine) suggestForPackageNotFound(err dot.ErrPackageNotFound)
 		"Check available packages with: dot list",
 	}
 
-	if e.context.Config.StowDir != "" {
+	if e.context.Config.PackageDir != "" {
 		suggestions = append(suggestions,
-			fmt.Sprintf("Verify stow directory: %s", e.context.Config.StowDir))
+			fmt.Sprintf("Verify stow directory: %s", e.context.Config.PackageDir))
 	}
 
 	suggestions = append(suggestions,
@@ -183,9 +183,9 @@ func (e *SuggestionEngine) suggestForSourceNotFound(err dot.ErrSourceNotFound) [
 		"Verify the source file exists in the package",
 	}
 
-	if e.context.Config.StowDir != "" {
+	if e.context.Config.PackageDir != "" {
 		suggestions = append(suggestions,
-			fmt.Sprintf("Check package directory: %s", e.context.Config.StowDir))
+			fmt.Sprintf("Check package directory: %s", e.context.Config.PackageDir))
 	}
 
 	suggestions = append(suggestions,

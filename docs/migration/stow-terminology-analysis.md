@@ -11,9 +11,9 @@ This document summarizes the analysis of "stow" terminology usage in the dot pro
 Search for "stow" (case-insensitive) revealed **779 total occurrences** across the codebase:
 
 **By Type**:
-- `StowDir` (field/variable): 170 occurrences in 37 files
+- `PackageDir` (field/variable): 170 occurrences in 37 files
 - `StowPath` (type): 29 occurrences in 4 files
-- `stowDir` (local variable): 42 occurrences in 9 files
+- `packageDir` (local variable): 42 occurrences in 9 files
 - `StowPipeline`, `StowInput`, etc.: Multiple occurrences in pipeline layer
 - Comments and documentation: Hundreds of additional references
 
@@ -21,7 +21,7 @@ Search for "stow" (case-insensitive) revealed **779 total occurrences** across t
 
 | Layer | Files Affected | Key Items |
 |-------|----------------|-----------|
-| Domain (`pkg/dot/`) | 6 files | Config.StowDir field, documentation |
+| Domain (`pkg/dot/`) | 6 files | Config.PackageDir field, documentation |
 | Configuration (`internal/config/`) | 8 files | DirectoriesConfig.Stow, loaders, writers |
 | Pipeline (`internal/pipeline/`) | 4 files | StowPipeline, StowInput, stow.go |
 | API (`internal/api/`) | 13 files | Client implementations, tests |
@@ -55,7 +55,7 @@ The project has **explicitly documented** its terminology choices:
 | stow | manage | ✓ Implemented |
 | unstow | unmanage | ✓ Implemented |
 | restow | remanage | ✓ Implemented |
-| stow directory | **package directory** | ✗ Not fully implemented |
+| package directory | **package directory** | ✗ Not fully implemented |
 | $STOW_DIR | ??? | ✗ Not addressed |
 
 **Gap Identified**: Commands use new terminology, but **directory naming remains old**.
@@ -81,7 +81,7 @@ directories:
 **And code uses old terminology**:
 ```go
 type Config struct {
-    StowDir   string    // ✗ Should be PackageDir
+    PackageDir   string    // ✗ Should be PackageDir
     TargetDir string
 }
 ```
@@ -91,7 +91,7 @@ type Config struct {
 This inconsistency confuses users:
 
 1. **Command implies one thing**: "I'm managing packages"
-2. **Config says another**: "This is a stow directory"
+2. **Config says another**: "This is a package directory"
 3. **Mental model conflict**: "Is this a GNU Stow wrapper or independent tool?"
 
 ### Maintenance Issues
@@ -155,7 +155,7 @@ Developers face similar confusion:
 ```go
 // Before
 type Config struct {
-    StowDir   string    // Public field
+    PackageDir   string    // Public field
     TargetDir string
     // ...
 }
@@ -248,7 +248,7 @@ v.BindEnv("directories.stow", "DOT_DIRECTORIES_STOW")  // Legacy
 ```go
 type Config struct {
     // Deprecated: Use PackageDir instead. Will be removed in v0.2.0
-    StowDir    string
+    PackageDir    string
     
     PackageDir string
     TargetDir  string
@@ -259,7 +259,7 @@ type Config struct {
 
 ### Files Requiring Changes
 
-**Critical Path** (37 files with `StowDir`):
+**Critical Path** (37 files with `PackageDir`):
 1. Domain layer: 6 files
 2. Configuration system: 8 files
 3. Pipeline system: 4 files
@@ -302,7 +302,7 @@ type Config struct {
 
 ### Risk: Third-Party Code Breakage
 
-**Impact**: Any code importing `pkg/dot` and using `Config.StowDir`
+**Impact**: Any code importing `pkg/dot` and using `Config.PackageDir`
 
 **Mitigation**:
 1. Deprecation warnings in Go docs
@@ -315,7 +315,7 @@ type Config struct {
 **Impact**: Missing some occurrences leaves inconsistency
 
 **Mitigation**:
-1. Comprehensive search for all variants (StowDir, stowDir, stow, STOW)
+1. Comprehensive search for all variants (PackageDir, packageDir, stow, STOW)
 2. Detailed checklist in refactoring plan
 3. Automated checks in CI for "stow" occurrences
 4. Code review before merge

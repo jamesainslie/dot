@@ -11,7 +11,7 @@ import (
 
 func TestConfig_Validate_EmptyTargetDir(t *testing.T) {
 	cfg := dot.Config{
-		StowDir: "/stow",
+		PackageDir: "/stow",
 		// TargetDir is empty
 		FS:     adapters.NewMemFS(),
 		Logger: adapters.NewNoopLogger(),
@@ -24,10 +24,10 @@ func TestConfig_Validate_EmptyTargetDir(t *testing.T) {
 
 func TestConfig_Validate_RelativeTargetDir(t *testing.T) {
 	cfg := dot.Config{
-		StowDir:   "/stow",
-		TargetDir: "relative/path",
-		FS:        adapters.NewMemFS(),
-		Logger:    adapters.NewNoopLogger(),
+		PackageDir: "/stow",
+		TargetDir:  "relative/path",
+		FS:         adapters.NewMemFS(),
+		Logger:     adapters.NewNoopLogger(),
 	}
 
 	err := cfg.Validate()
@@ -37,9 +37,9 @@ func TestConfig_Validate_RelativeTargetDir(t *testing.T) {
 
 func TestConfig_Validate_MissingLogger(t *testing.T) {
 	cfg := dot.Config{
-		StowDir:   "/stow",
-		TargetDir: "/target",
-		FS:        adapters.NewMemFS(),
+		PackageDir: "/stow",
+		TargetDir:  "/target",
+		FS:         adapters.NewMemFS(),
 		// Logger is nil
 	}
 
@@ -50,7 +50,7 @@ func TestConfig_Validate_MissingLogger(t *testing.T) {
 
 func TestConfig_Validate_NegativeConcurrency(t *testing.T) {
 	cfg := dot.Config{
-		StowDir:     "/stow",
+		PackageDir:  "/stow",
 		TargetDir:   "/target",
 		FS:          adapters.NewMemFS(),
 		Logger:      adapters.NewNoopLogger(),

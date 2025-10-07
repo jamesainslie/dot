@@ -34,7 +34,7 @@ func TestDefaultExtended_AllFieldsSet(t *testing.T) {
 	cfg := config.DefaultExtended()
 
 	// Verify all sections initialized
-	assert.NotEmpty(t, cfg.Directories.Stow)
+	assert.NotEmpty(t, cfg.Directories.Package)
 	assert.NotEmpty(t, cfg.Directories.Target)
 	assert.NotEmpty(t, cfg.Directories.Manifest)
 	assert.NotEmpty(t, cfg.Logging.Level)

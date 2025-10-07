@@ -58,7 +58,7 @@ Foundation setup following constitutional standards.
 Pure domain model with no I/O dependencies. Enables property-based testing.
 
 #### 1.1: Phantom-Typed Paths
-- [ ] Define PathKind interface and type markers (PackageDirKind, TargetDirKind, PackageDirKind, FileDirKind)
+- [ ] Define PathKind interface and type markers (PackageDirKind, TargetDirKind, FileDirKind)
 - [ ] Implement Path[T PathKind] generic type
 - [ ] Create smart constructors with validation (NewStowPath, NewTargetPath, etc.)
 - [ ] Add type-safe path operations (Join, Parent, String)

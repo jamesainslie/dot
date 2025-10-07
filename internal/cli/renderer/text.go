@@ -119,3 +119,118 @@ func (r *TextRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticRepor
 
 	return nil
 }
+
+// RenderPlan renders an execution plan as plain text.
+func (r *TextRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+	// Header
+	fmt.Fprintf(w, "%sDry run mode - no changes will be applied%s\n\n", r.colorText(r.scheme.Warning), r.resetColor())
+
+	// Plan operations
+	fmt.Fprintln(w, "Plan:")
+	if len(plan.Operations) == 0 {
+		fmt.Fprintln(w, "  No operations required")
+	} else {
+		for _, op := range plan.Operations {
+			r.renderOperation(w, op)
+		}
+	}
+	fmt.Fprintln(w)
+
+	// Summary counts
+	fmt.Fprintln(w, "Summary:")
+	counts := r.countOperations(plan)
+	if counts.DirCreate > 0 {
+		fmt.Fprintf(w, "  Directories: %d\n", counts.DirCreate)
+	}
+	if counts.LinkCreate > 0 {
+		fmt.Fprintf(w, "  Symlinks: %d\n", counts.LinkCreate)
+	}
+	if counts.FileMove > 0 {
+		fmt.Fprintf(w, "  File moves: %d\n", counts.FileMove)
+	}
+	if counts.FileBackup > 0 {
+		fmt.Fprintf(w, "  Backups: %d\n", counts.FileBackup)
+	}
+	if counts.DirDelete > 0 {
+		fmt.Fprintf(w, "  Directory deletions: %d\n", counts.DirDelete)
+	}
+	if counts.LinkDelete > 0 {
+		fmt.Fprintf(w, "  Symlink deletions: %d\n", counts.LinkDelete)
+	}
+
+	if len(plan.Metadata.Conflicts) > 0 {
+		fmt.Fprintf(w, "  %sConflicts: %d%s\n", r.colorText(r.scheme.Error), len(plan.Metadata.Conflicts), r.resetColor())
+	} else {
+		fmt.Fprintf(w, "  Conflicts: 0\n")
+	}
+
+	return nil
+}
+
+// renderOperation renders a single operation.
+func (r *TextRenderer) renderOperation(w io.Writer, op dot.Operation) {
+	symbol := r.colorText(r.scheme.Success) + "+" + r.resetColor()
+
+	// Normalize: dereference pointers to get value type for switching
+	normalized := normalizeOperation(op)
+
+	switch typed := normalized.(type) {
+	case dot.DirCreate:
+		fmt.Fprintf(w, "  %s Create directory: %s\n", symbol, typed.Path.String())
+
+	case dot.LinkCreate:
+		fmt.Fprintf(w, "  %s Create symlink: %s -> %s\n", symbol, typed.Target.String(), typed.Source.String())
+
+	case dot.FileMove:
+		fmt.Fprintf(w, "  %s Move file: %s -> %s\n", symbol, typed.Source.String(), typed.Dest.String())
+
+	case dot.FileBackup:
+		fmt.Fprintf(w, "  %s Backup file: %s -> %s\n", symbol, typed.Source.String(), typed.Backup.String())
+
+	case dot.DirDelete:
+		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
+		fmt.Fprintf(w, "  %s Delete directory: %s\n", deleteSymbol, typed.Path.String())
+
+	case dot.LinkDelete:
+		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
+		fmt.Fprintf(w, "  %s Delete symlink: %s\n", deleteSymbol, typed.Target.String())
+
+	default:
+		// Handle unknown operation types with clear, informative output
+		fmt.Fprintf(w, "  %s Unknown operation: %T - %s\n", symbol, op, op.String())
+	}
+}
+
+// operationCounts holds counts of different operation types.
+type operationCounts struct {
+	DirCreate  int
+	DirDelete  int
+	LinkCreate int
+	LinkDelete int
+	FileMove   int
+	FileBackup int
+}
+
+// countOperations counts operations by type.
+func (r *TextRenderer) countOperations(plan dot.Plan) operationCounts {
+	var counts operationCounts
+
+	for _, op := range plan.Operations {
+		switch op.Kind() {
+		case dot.OpKindDirCreate:
+			counts.DirCreate++
+		case dot.OpKindDirDelete:
+			counts.DirDelete++
+		case dot.OpKindLinkCreate:
+			counts.LinkCreate++
+		case dot.OpKindLinkDelete:
+			counts.LinkDelete++
+		case dot.OpKindFileMove:
+			counts.FileMove++
+		case dot.OpKindFileBackup:
+			counts.FileBackup++
+		}
+	}
+
+	return counts
+}

@@ -163,40 +163,62 @@ func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 		opType := ""
 		details := ""
 
-		switch op.Kind() {
-		case dot.OpKindDirCreate:
+		switch typed := op.(type) {
+		case dot.DirCreate:
 			opType = "Directory"
-			dirOp := op.(dot.DirCreate)
-			details = dirOp.Path.String()
+			details = typed.Path.String()
 
-		case dot.OpKindLinkCreate:
+		case *dot.DirCreate:
+			opType = "Directory"
+			details = typed.Path.String()
+
+		case dot.LinkCreate:
 			opType = "Symlink"
-			linkOp := op.(dot.LinkCreate)
-			details = fmt.Sprintf("%s -> %s", linkOp.Target.String(), linkOp.Source.String())
+			details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
 
-		case dot.OpKindFileMove:
+		case *dot.LinkCreate:
+			opType = "Symlink"
+			details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
+
+		case dot.FileMove:
 			action = "Move"
 			opType = "File"
-			moveOp := op.(dot.FileMove)
-			details = fmt.Sprintf("%s -> %s", moveOp.Source.String(), moveOp.Dest.String())
+			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
 
-		case dot.OpKindFileBackup:
+		case *dot.FileMove:
+			action = "Move"
+			opType = "File"
+			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
+
+		case dot.FileBackup:
 			action = "Backup"
 			opType = "File"
-			backupOp := op.(dot.FileBackup)
-			details = fmt.Sprintf("%s -> %s", backupOp.Source.String(), backupOp.Backup.String())
+			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
 
-		case dot.OpKindDirDelete:
+		case *dot.FileBackup:
+			action = "Backup"
+			opType = "File"
+			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
+
+		case dot.DirDelete:
 			action = "Delete"
 			opType = "Directory"
-			dirOp := op.(dot.DirDelete)
-			details = dirOp.Path.String()
+			details = typed.Path.String()
 
-		case dot.OpKindLinkDelete:
+		case *dot.DirDelete:
+			action = "Delete"
+			opType = "Directory"
+			details = typed.Path.String()
+
+		case dot.LinkDelete:
 			action = "Delete"
 			opType = "Symlink"
-			linkOp := op.(dot.LinkDelete)
-			details = linkOp.Target.String()
+			details = typed.Target.String()
+
+		case *dot.LinkDelete:
+			action = "Delete"
+			opType = "Symlink"
+			details = typed.Target.String()
 		}
 
 		// Truncate details if too long

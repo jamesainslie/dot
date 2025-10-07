@@ -76,9 +76,9 @@ func TestCheckFileMovePreconditions_Success(t *testing.T) {
 
 	// Set up source and destination parent
 	source := dot.MustParsePath("/home/file")
-	dest := dot.MustParsePath("/stow/pkg/file")
+	dest := dot.MustParsePath("/packages/pkg/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 
 	op := dot.NewFileMove("move1", source, dest)
@@ -97,8 +97,8 @@ func TestCheckFileMovePreconditions_SourceNotFound(t *testing.T) {
 	})
 
 	source := dot.MustParsePath("/nonexistent")
-	dest := dot.MustParsePath("/stow/pkg/file")
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	dest := dot.MustParsePath("/packages/pkg/file")
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 
 	op := dot.NewFileMove("move1", source, dest)
 

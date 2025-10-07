@@ -90,12 +90,12 @@ func (e *SuggestionEngine) suggestForPackageNotFound(err dot.ErrPackageNotFound)
 
 	if e.context.Config.PackageDir != "" {
 		suggestions = append(suggestions,
-			fmt.Sprintf("Verify stow directory: %s", e.context.Config.PackageDir))
+			fmt.Sprintf("Verify package directory: %s", e.context.Config.PackageDir))
 	}
 
 	suggestions = append(suggestions,
 		"Check for typos in package name",
-		"Ensure the package directory exists in your stow directory")
+		"Ensure the package directory exists in your package directory")
 
 	return suggestions
 }

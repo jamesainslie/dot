@@ -131,12 +131,12 @@ func TestFormatter_Format_ExecutionFailed(t *testing.T) {
 func TestFormatter_Format_SourceNotFound(t *testing.T) {
 	f := NewFormatter(false, 0)
 	err := dot.ErrSourceNotFound{
-		Path: "/stow/vim/vimrc",
+		Path: "/packages/vim/vimrc",
 	}
 
 	result := f.Format(err)
 	assert.Contains(t, result, "Source Not Found")
-	assert.Contains(t, result, "/stow/vim/vimrc")
+	assert.Contains(t, result, "/packages/vim/vimrc")
 }
 
 func TestFormatter_Format_ParentNotFound(t *testing.T) {

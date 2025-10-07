@@ -89,9 +89,9 @@ func TestInstrumentedExecutor_Success(t *testing.T) {
 	exec := NewInstrumented(inner, metrics)
 
 	// Create simple plan
-	source := dot.MustParsePath("/stow/pkg/file")
+	source := dot.MustParsePath("/packages/pkg/file")
 	target := dot.MustParsePath("/home/file")
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 
@@ -163,9 +163,9 @@ func TestInstrumentedExecutor_WithRollback(t *testing.T) {
 	// after some operations succeed. Since prepare validates everything,
 	// we'll create a plan that will pass prepare but fail during parallel execute.
 
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 
@@ -199,12 +199,12 @@ func TestInstrumentedExecutor_ParallelMetrics(t *testing.T) {
 	exec := NewInstrumented(inner, metrics)
 
 	// Create plan with parallel batches
-	source1 := dot.MustParsePath("/stow/pkg/file1")
+	source1 := dot.MustParsePath("/packages/pkg/file1")
 	target1 := dot.MustParsePath("/home/file1")
-	source2 := dot.MustParsePath("/stow/pkg/file2")
+	source2 := dot.MustParsePath("/packages/pkg/file2")
 	target2 := dot.MustParsePath("/home/file2")
 
-	require.NoError(t, fs.MkdirAll(ctx, "/stow/pkg", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 	require.NoError(t, fs.WriteFile(ctx, source2.String(), []byte("content2"), 0644))

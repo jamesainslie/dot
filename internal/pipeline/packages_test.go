@@ -40,9 +40,9 @@ func TestManagePipeline_Execute(t *testing.T) {
 			Policies:  planner.DefaultPolicies(),
 		})
 
-		stowPathResult := dot.NewPackagePath("/stow")
-		require.True(t, stowPathResult.IsOk(), "failed to create stow path")
-		stowPath := stowPathResult.Unwrap()
+		packagePathResult := dot.NewPackagePath("/packages")
+		require.True(t, packagePathResult.IsOk(), "failed to create package path")
+		stowPath := packagePathResult.Unwrap()
 
 		targetPathResult := dot.NewTargetPath("/target")
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")
@@ -75,9 +75,9 @@ func TestManagePipeline_Execute(t *testing.T) {
 			Policies:  planner.DefaultPolicies(),
 		})
 
-		stowPathResult := dot.NewPackagePath("/stow")
-		require.True(t, stowPathResult.IsOk(), "failed to create stow path")
-		stowPath := stowPathResult.Unwrap()
+		packagePathResult := dot.NewPackagePath("/packages")
+		require.True(t, packagePathResult.IsOk(), "failed to create package path")
+		stowPath := packagePathResult.Unwrap()
 
 		targetPathResult := dot.NewTargetPath("/target")
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")

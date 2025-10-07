@@ -11,7 +11,7 @@ import (
 
 func TestConfig_Validate_Valid(t *testing.T) {
 	cfg := dot.Config{
-		PackageDir: "/stow",
+		PackageDir: "/packages",
 		TargetDir:  "/target",
 		FS:         adapters.NewMemFS(),
 		Logger:     adapters.NewNoopLogger(),
@@ -48,7 +48,7 @@ func TestConfig_Validate_RelativePackageDir(t *testing.T) {
 
 func TestConfig_Validate_MissingFS(t *testing.T) {
 	cfg := dot.Config{
-		PackageDir: "/stow",
+		PackageDir: "/packages",
 		TargetDir:  "/target",
 		Logger:     adapters.NewNoopLogger(),
 	}
@@ -60,7 +60,7 @@ func TestConfig_Validate_MissingFS(t *testing.T) {
 
 func TestConfig_Validate_NegativeVerbosity(t *testing.T) {
 	cfg := dot.Config{
-		PackageDir: "/stow",
+		PackageDir: "/packages",
 		TargetDir:  "/target",
 		FS:         adapters.NewMemFS(),
 		Logger:     adapters.NewNoopLogger(),

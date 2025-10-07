@@ -81,7 +81,7 @@ func TestExtractCommand(t *testing.T) {
 
 func TestExtractConfig(t *testing.T) {
 	cfg := &ConfigSummary{
-		PackageDir: "/stow",
+		PackageDir: "/packages",
 		TargetDir:  "/target",
 		DryRun:     true,
 		Verbose:    2,
@@ -90,7 +90,7 @@ func TestExtractConfig(t *testing.T) {
 	ctx := ExtractConfig(cfg)
 
 	assert.Equal(t, "", ctx.Command)
-	assert.Equal(t, "/stow", ctx.Config.PackageDir)
+	assert.Equal(t, "/packages", ctx.Config.PackageDir)
 	assert.Equal(t, "/target", ctx.Config.TargetDir)
 	assert.True(t, ctx.Config.DryRun)
 	assert.Equal(t, 2, ctx.Config.Verbose)
@@ -118,7 +118,7 @@ func TestErrorContext_AllFields(t *testing.T) {
 	cmd.SetArgs([]string{"vim"})
 
 	cfg := &ConfigSummary{
-		PackageDir: "/stow",
+		PackageDir: "/packages",
 	}
 
 	ctx := Extract(cmd, cfg)

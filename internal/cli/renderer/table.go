@@ -145,6 +145,78 @@ func (r *TableRenderer) colorText(color string) string {
 	return ""
 }
 
+// operationDisplay holds display information for an operation.
+type operationDisplay struct {
+	Action  string
+	Type    string
+	Details string
+}
+
+// formatOperationForTable extracts display information from an operation.
+func formatOperationForTable(op dot.Operation) operationDisplay {
+	display := operationDisplay{Action: "Create"}
+
+	switch typed := op.(type) {
+	case dot.DirCreate:
+		display.Type = "Directory"
+		display.Details = typed.Path.String()
+
+	case *dot.DirCreate:
+		display.Type = "Directory"
+		display.Details = typed.Path.String()
+
+	case dot.LinkCreate:
+		display.Type = "Symlink"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
+
+	case *dot.LinkCreate:
+		display.Type = "Symlink"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
+
+	case dot.FileMove:
+		display.Action = "Move"
+		display.Type = "File"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
+
+	case *dot.FileMove:
+		display.Action = "Move"
+		display.Type = "File"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
+
+	case dot.FileBackup:
+		display.Action = "Backup"
+		display.Type = "File"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
+
+	case *dot.FileBackup:
+		display.Action = "Backup"
+		display.Type = "File"
+		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
+
+	case dot.DirDelete:
+		display.Action = "Delete"
+		display.Type = "Directory"
+		display.Details = typed.Path.String()
+
+	case *dot.DirDelete:
+		display.Action = "Delete"
+		display.Type = "Directory"
+		display.Details = typed.Path.String()
+
+	case dot.LinkDelete:
+		display.Action = "Delete"
+		display.Type = "Symlink"
+		display.Details = typed.Target.String()
+
+	case *dot.LinkDelete:
+		display.Action = "Delete"
+		display.Type = "Symlink"
+		display.Details = typed.Target.String()
+	}
+
+	return display
+}
+
 // RenderPlan renders an execution plan as a table.
 func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 	fmt.Fprintf(w, "%sDry run mode - no changes will be applied%s\n\n", r.colorText(r.scheme.Warning), r.resetColor())
@@ -159,78 +231,18 @@ func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 	rows := make([][]string, 0, len(plan.Operations))
 
 	for i, op := range plan.Operations {
-		action := "Create"
-		opType := ""
-		details := ""
-
-		switch typed := op.(type) {
-		case dot.DirCreate:
-			opType = "Directory"
-			details = typed.Path.String()
-
-		case *dot.DirCreate:
-			opType = "Directory"
-			details = typed.Path.String()
-
-		case dot.LinkCreate:
-			opType = "Symlink"
-			details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
-
-		case *dot.LinkCreate:
-			opType = "Symlink"
-			details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
-
-		case dot.FileMove:
-			action = "Move"
-			opType = "File"
-			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
-
-		case *dot.FileMove:
-			action = "Move"
-			opType = "File"
-			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
-
-		case dot.FileBackup:
-			action = "Backup"
-			opType = "File"
-			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
-
-		case *dot.FileBackup:
-			action = "Backup"
-			opType = "File"
-			details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
-
-		case dot.DirDelete:
-			action = "Delete"
-			opType = "Directory"
-			details = typed.Path.String()
-
-		case *dot.DirDelete:
-			action = "Delete"
-			opType = "Directory"
-			details = typed.Path.String()
-
-		case dot.LinkDelete:
-			action = "Delete"
-			opType = "Symlink"
-			details = typed.Target.String()
-
-		case *dot.LinkDelete:
-			action = "Delete"
-			opType = "Symlink"
-			details = typed.Target.String()
-		}
+		display := formatOperationForTable(op)
 
 		// Truncate details if too long
-		if len(details) > 60 {
-			details = details[:57] + "..."
+		if len(display.Details) > 60 {
+			display.Details = display.Details[:57] + "..."
 		}
 
 		rows = append(rows, []string{
 			fmt.Sprintf("%d", i+1),
-			action,
-			opType,
-			details,
+			display.Action,
+			display.Type,
+			display.Details,
 		})
 	}
 

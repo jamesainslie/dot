@@ -17,6 +17,7 @@ import (
 type globalConfig struct {
 	packageDir string
 	targetDir  string
+	backupDir  string
 	dryRun     bool
 	verbose    int
 	quiet      bool
@@ -56,6 +57,8 @@ comprehensive conflict detection, and incremental updates.`,
 
 	rootCmd.PersistentFlags().StringVarP(&globalCfg.targetDir, "target", "t", defaultTarget,
 		"Target directory for symlinks")
+	rootCmd.PersistentFlags().StringVar(&globalCfg.backupDir, "backup-dir", "",
+		"Directory for backup files (default: <target>/.dot-backup)")
 	rootCmd.PersistentFlags().BoolVarP(&globalCfg.dryRun, "dry-run", "n", false,
 		"Show what would be done without applying changes")
 	rootCmd.PersistentFlags().CountVarP(&globalCfg.verbose, "verbose", "v",
@@ -100,13 +103,14 @@ func buildConfig() (dot.Config, error) {
 	cfg := dot.Config{
 		PackageDir: packageDir,
 		TargetDir:  targetDir,
+		BackupDir:  globalCfg.backupDir,
 		DryRun:     globalCfg.dryRun,
 		Verbosity:  globalCfg.verbose,
 		FS:         fs,
 		Logger:     logger,
 	}
 
-	return cfg, nil
+	return cfg.WithDefaults(), nil
 }
 
 // createLogger creates appropriate logger based on flags.

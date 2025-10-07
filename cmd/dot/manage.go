@@ -1,7 +1,12 @@
 package main
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/spf13/cobra"
+
+	"github.com/jamesainslie/dot/pkg/dot"
 )
 
 // newManageCommand creates the manage command.
@@ -12,11 +17,38 @@ func newManageCommand() *cobra.Command {
 		Long: `Install one or more packages by creating symlinks from the package 
 directory to the target directory.`,
 		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: Implement
-			return nil
-		},
+		RunE: runManage,
 	}
 
 	return cmd
+}
+
+// runManage handles the manage command execution.
+func runManage(cmd *cobra.Command, args []string) error {
+	cfg, err := buildConfig()
+	if err != nil {
+		return formatError(err)
+	}
+
+	client, err := dot.NewClient(cfg)
+	if err != nil {
+		return formatError(err)
+	}
+
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	packages := args
+
+	if err := client.Manage(ctx, packages...); err != nil {
+		return formatError(err)
+	}
+
+	if !cfg.DryRun {
+		fmt.Printf("Successfully managed %d package(s)\n", len(packages))
+	}
+
+	return nil
 }

@@ -42,30 +42,60 @@ type TargetPath = Path[TargetDirKind]
 type FilePath = Path[FileDirKind]
 
 // NewPackagePath creates a new package path with validation.
-// Returns error if path is not absolute.
+// Returns error if path is not absolute or contains traversal sequences.
 func NewPackagePath(s string) Result[PackagePath] {
-	if !filepath.IsAbs(s) {
-		return Err[PackagePath](ErrInvalidPath{Path: s, Reason: "path must be absolute"})
+	// Clean path first to normalize format
+	cleaned := clean(s)
+
+	validators := []PathValidator{
+		&NonEmptyPathValidator{},
+		&AbsolutePathValidator{},
+		&TraversalFreeValidator{},
 	}
-	return Ok(Path[PackageDirKind]{path: clean(s)})
+
+	if err := ValidateWithValidators(cleaned, validators); err != nil {
+		return Err[PackagePath](err)
+	}
+
+	return Ok(Path[PackageDirKind]{path: cleaned})
 }
 
 // NewTargetPath creates a new target path with validation.
-// Returns error if path is not absolute.
+// Returns error if path is not absolute or contains traversal sequences.
 func NewTargetPath(s string) Result[TargetPath] {
-	if !filepath.IsAbs(s) {
-		return Err[TargetPath](ErrInvalidPath{Path: s, Reason: "path must be absolute"})
+	// Clean path first to normalize format
+	cleaned := clean(s)
+
+	validators := []PathValidator{
+		&NonEmptyPathValidator{},
+		&AbsolutePathValidator{},
+		&TraversalFreeValidator{},
 	}
-	return Ok(Path[TargetDirKind]{path: clean(s)})
+
+	if err := ValidateWithValidators(cleaned, validators); err != nil {
+		return Err[TargetPath](err)
+	}
+
+	return Ok(Path[TargetDirKind]{path: cleaned})
 }
 
 // NewFilePath creates a new file path with validation.
-// Returns error if path is not absolute.
+// Returns error if path is not absolute or contains traversal sequences.
 func NewFilePath(s string) Result[FilePath] {
-	if !filepath.IsAbs(s) {
-		return Err[FilePath](ErrInvalidPath{Path: s, Reason: "path must be absolute"})
+	// Clean path first to normalize format
+	cleaned := clean(s)
+
+	validators := []PathValidator{
+		&NonEmptyPathValidator{},
+		&AbsolutePathValidator{},
+		&TraversalFreeValidator{},
 	}
-	return Ok(Path[FileDirKind]{path: clean(s)})
+
+	if err := ValidateWithValidators(cleaned, validators); err != nil {
+		return Err[FilePath](err)
+	}
+
+	return Ok(Path[FileDirKind]{path: cleaned})
 }
 
 // String returns the string representation of the path.

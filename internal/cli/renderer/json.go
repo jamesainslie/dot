@@ -28,7 +28,7 @@ func (r *JSONRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 }
 
 // RenderDiagnostics renders diagnostic report as JSON.
-func (r *JSONRenderer) RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error {
+func (r *JSONRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
 	return r.newEncoder(w).Encode(report)
 }
 

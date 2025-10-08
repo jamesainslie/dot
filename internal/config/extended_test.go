@@ -40,6 +40,7 @@ func TestExtendedConfig_Default(t *testing.T) {
 	// Dotfile
 	assert.True(t, cfg.Dotfile.Translate)
 	assert.Equal(t, "dot-", cfg.Dotfile.Prefix)
+	assert.True(t, cfg.Dotfile.PackageNameMapping)
 
 	// Output
 	assert.Equal(t, "text", cfg.Output.Format)
@@ -103,6 +104,7 @@ ignore:
 dotfile:
   translate: false
   prefix: dot_
+  package_name_mapping: false
 
 output:
   format: table
@@ -146,6 +148,9 @@ experimental:
 	assert.False(t, cfg.Symlinks.Folding)
 	assert.True(t, cfg.Symlinks.Overwrite)
 	assert.Equal(t, []string{"*.swp", "*.tmp"}, cfg.Ignore.Patterns)
+	assert.False(t, cfg.Dotfile.Translate)
+	assert.Equal(t, "dot_", cfg.Dotfile.Prefix)
+	assert.False(t, cfg.Dotfile.PackageNameMapping)
 	assert.Equal(t, "table", cfg.Output.Format)
 	assert.Equal(t, 2, cfg.Output.Verbosity)
 	assert.True(t, cfg.Operations.DryRun)

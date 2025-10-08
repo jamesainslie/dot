@@ -43,9 +43,10 @@ func TestManageCommand_Integration_Execute(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 
-	// Verify links created
-	vimrcLink := filepath.Join(targetDir, ".vimrc")
-	vimColorsLink := filepath.Join(targetDir, ".vim-colors")
+	// Verify links created (with package name mapping enabled)
+	// Package "vim" → files go to target/vim/
+	vimrcLink := filepath.Join(targetDir, "vim", ".vimrc")
+	vimColorsLink := filepath.Join(targetDir, "vim", ".vim-colors")
 
 	assert.FileExists(t, vimrcLink)
 	assert.FileExists(t, vimColorsLink)
@@ -84,8 +85,8 @@ func TestManageCommand_Integration_DryRun(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 
-	// Verify no links created
-	vimrcLink := filepath.Join(targetDir, ".vimrc")
+	// Verify no links created (with package name mapping)
+	vimrcLink := filepath.Join(targetDir, "vim", ".vimrc")
 	assert.NoFileExists(t, vimrcLink)
 }
 
@@ -122,9 +123,9 @@ func TestManageCommand_Integration_MultiplePackages(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 
-	// Verify both packages installed
-	assert.FileExists(t, filepath.Join(targetDir, ".vimrc"))
-	assert.FileExists(t, filepath.Join(targetDir, ".zshrc"))
+	// Verify both packages installed (with package name mapping)
+	assert.FileExists(t, filepath.Join(targetDir, "vim", ".vimrc"))
+	assert.FileExists(t, filepath.Join(targetDir, "zsh", ".zshrc"))
 }
 
 func TestManageCommand_Integration_PackageNotFound(t *testing.T) {

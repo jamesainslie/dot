@@ -632,18 +632,24 @@ func (c *Client) DoctorWithScan(ctx context.Context, scanCfg ScanConfig) (Diagno
 	issues := make([]Issue, 0)
 	stats := DiagnosticStats{}
 	if !manifestResult.IsOk() {
-		// No manifest - report as info
-		issues = append(issues, Issue{
-			Severity:   SeverityInfo,
-			Type:       IssueManifestInconsistency,
-			Message:    "No manifest found - no packages are currently managed",
-			Suggestion: "Run 'dot manage' to install packages",
-		})
-		return DiagnosticReport{
-			OverallHealth: HealthOK,
-			Issues:        issues,
-			Statistics:    stats,
-		}, nil
+		err := manifestResult.UnwrapErr()
+		// Check if this is a not-found error vs other errors
+		if isManifestNotFoundError(err) {
+			// No manifest - report as info
+			issues = append(issues, Issue{
+				Severity:   SeverityInfo,
+				Type:       IssueManifestInconsistency,
+				Message:    "No manifest found - no packages are currently managed",
+				Suggestion: "Run 'dot manage' to install packages",
+			})
+			return DiagnosticReport{
+				OverallHealth: HealthOK,
+				Issues:        issues,
+				Statistics:    stats,
+			}, nil
+		}
+		// Other errors (corrupt manifest, permission errors, etc.) should propagate
+		return DiagnosticReport{}, err
 	}
 	m := manifestResult.Unwrap()
 	// Check each package in the manifest

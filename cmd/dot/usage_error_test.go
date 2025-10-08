@@ -93,8 +93,14 @@ func TestRuntimeErrorDoesNotShowUsage(t *testing.T) {
 	output := outBuf.String() + errBuf.String()
 
 	// Runtime errors should not show usage
-	// (This test may need adjustment based on actual error handling)
-	_ = output // Placeholder for now
+	assert.NotContains(t, output, "Usage:")
+	assert.NotContains(t, output, "usage")
+
+	// Should contain the runtime error details
+	errMsg := err.Error()
+	assert.True(t,
+		strings.Contains(errMsg, "nonexistent") || strings.Contains(errMsg, "not found"),
+		"error should mention nonexistent package or directory not found, got: %s", errMsg)
 }
 
 func TestHelpFlagShowsUsage(t *testing.T) {

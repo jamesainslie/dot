@@ -21,10 +21,11 @@ func TestCLI_VersionCommand(t *testing.T) {
 	cmd := exec.Command("go", "run", "../../cmd/dot", "version")
 	output, err := cmd.CombinedOutput()
 
-	// Command should execute without error
 	if err != nil {
-		t.Logf("version command output: %s", output)
+		t.Skipf("CLI execution not available in this environment: %v, output: %s", err, output)
 	}
+
+	t.Logf("version command output: %s", output)
 }
 
 // TestCLI_HelpCommand tests the help command.
@@ -35,11 +36,9 @@ func TestCLI_HelpCommand(t *testing.T) {
 
 	cmd := exec.Command("go", "run", "../../cmd/dot", "help")
 	output, err := cmd.CombinedOutput()
+	skipIfCLIUnavailable(t, output, err)
 
-	// Help should execute successfully
-	if err == nil {
-		assert.Contains(t, string(output), "Usage")
-	}
+	assert.Contains(t, string(output), "Usage")
 }
 
 // TestCLI_StatusCommand tests status command execution.
@@ -56,10 +55,9 @@ func TestCLI_StatusCommand(t *testing.T) {
 		"--target-dir", env.TargetDir)
 
 	output, err := cmd.CombinedOutput()
-	t.Logf("status output: %s", output)
+	skipIfCLIUnavailable(t, output, err)
 
-	// Status should run (may return no packages)
-	_ = err
+	t.Logf("status output: %s", output)
 }
 
 // TestCLI_ManageCommand tests basic manage command.
@@ -81,13 +79,13 @@ func TestCLI_ManageCommand(t *testing.T) {
 		"--target-dir", env.TargetDir)
 
 	output, err := cmd.CombinedOutput()
+	skipIfCLIUnavailable(t, output, err)
+
 	t.Logf("manage output: %s", output)
 
-	if err == nil {
-		// Verify link created
-		vimrcLink := filepath.Join(env.TargetDir, ".vimrc")
-		testutil.AssertLinkContains(t, vimrcLink, "dot-vimrc")
-	}
+	// Verify link created
+	vimrcLink := filepath.Join(env.TargetDir, ".vimrc")
+	testutil.AssertLinkContains(t, vimrcLink, "dot-vimrc")
 }
 
 // TestCLI_DryRunFlag tests the --dry-run flag.
@@ -113,14 +111,13 @@ func TestCLI_DryRunFlag(t *testing.T) {
 		"--dry-run")
 
 	output, err := cmd.CombinedOutput()
+	skipIfCLIUnavailable(t, output, err)
+
 	t.Logf("dry-run output: %s", output)
 
 	// Verify no changes made
 	after := testutil.CaptureState(t, env.TargetDir)
-
-	if err == nil {
-		testutil.AssertStateUnchanged(t, before, after)
-	}
+	testutil.AssertStateUnchanged(t, before, after)
 }
 
 // TestCLI_VerboseFlag tests the --verbose flag.
@@ -143,10 +140,9 @@ func TestCLI_VerboseFlag(t *testing.T) {
 		"--verbose")
 
 	output, err := cmd.CombinedOutput()
-	t.Logf("verbose output: %s", output)
+	skipIfCLIUnavailable(t, output, err)
 
-	// Verbose should produce more output
-	_ = err
+	t.Logf("verbose output: %s", output)
 }
 
 // TestCLI_ListCommand tests the list command.
@@ -172,11 +168,10 @@ func TestCLI_ListCommand(t *testing.T) {
 		"--target-dir", env.TargetDir)
 
 	output, err := cmd.CombinedOutput()
-	t.Logf("list output: %s", output)
+	skipIfCLIUnavailable(t, output, err)
 
-	if err == nil {
-		assert.Contains(t, string(output), "vim")
-	}
+	t.Logf("list output: %s", output)
+	assert.Contains(t, string(output), "vim")
 }
 
 // TestCLI_DoctorCommand tests the doctor command.
@@ -193,10 +188,9 @@ func TestCLI_DoctorCommand(t *testing.T) {
 		"--target-dir", env.TargetDir)
 
 	output, err := cmd.CombinedOutput()
-	t.Logf("doctor output: %s", output)
+	skipIfCLIUnavailable(t, output, err)
 
-	// Doctor should run successfully
-	_ = err
+	t.Logf("doctor output: %s", output)
 }
 
 // TestCLI_MultiplePackages tests managing multiple packages via CLI.
@@ -222,12 +216,12 @@ func TestCLI_MultiplePackages(t *testing.T) {
 		"--target-dir", env.TargetDir)
 
 	output, err := cmd.CombinedOutput()
+	skipIfCLIUnavailable(t, output, err)
+
 	t.Logf("multiple packages output: %s", output)
 
-	if err == nil {
-		testutil.AssertLinkContains(t, filepath.Join(env.TargetDir, ".vimrc"), "dot-vimrc")
-		testutil.AssertLinkContains(t, filepath.Join(env.TargetDir, ".zshrc"), "dot-zshrc")
-	}
+	testutil.AssertLinkContains(t, filepath.Join(env.TargetDir, ".vimrc"), "dot-vimrc")
+	testutil.AssertLinkContains(t, filepath.Join(env.TargetDir, ".zshrc"), "dot-zshrc")
 }
 
 // TestCLI_InvalidArguments tests error handling of invalid arguments.
@@ -241,7 +235,7 @@ func TestCLI_InvalidArguments(t *testing.T) {
 	output, err := cmd.CombinedOutput()
 
 	// Should return error
-	assert.Error(t, err)
+	require.Error(t, err, "expected command to fail but got success, output: %s", output)
 	t.Logf("invalid command output: %s", output)
 }
 
@@ -256,8 +250,8 @@ func TestCLI_MissingRequiredFlags(t *testing.T) {
 	output, err := cmd.CombinedOutput()
 
 	t.Logf("missing flags output: %s", output)
-	// May return error or show help
-	_ = err
+	// Should return error for missing arguments
+	require.Error(t, err, "expected error for missing package name, output: %s", output)
 }
 
 // TestCLI_ConfigFile tests reading from config file.
@@ -282,9 +276,9 @@ target_dir: ` + env.TargetDir + `
 		"--config", configPath)
 
 	output, err := cmd.CombinedOutput()
-	t.Logf("config file output: %s", output)
+	skipIfCLIUnavailable(t, output, err)
 
-	_ = err
+	t.Logf("config file output: %s", output)
 }
 
 // TestCLI_OutputFormats tests different output format flags.
@@ -305,9 +299,9 @@ func TestCLI_OutputFormats(t *testing.T) {
 				"--format", format)
 
 			output, err := cmd.CombinedOutput()
-			t.Logf("%s format output: %s", format, output)
+			skipIfCLIUnavailable(t, output, err)
 
-			_ = err
+			t.Logf("%s format output: %s", format, output)
 		})
 	}
 }
@@ -329,9 +323,11 @@ func TestCLI_PipelineInput(t *testing.T) {
 	cmd.Stderr = &out
 
 	err := cmd.Run()
-	t.Logf("pipeline output: %s", out.String())
+	if err != nil {
+		t.Skipf("CLI execution not available in this environment: %v, output: %s", err, out.String())
+	}
 
-	_ = err
+	t.Logf("pipeline output: %s", out.String())
 }
 
 // TestCLI_ExitCodes tests proper exit code handling.
@@ -361,10 +357,12 @@ func TestCLI_ExitCodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			args := append([]string{"run", "../../cmd/dot"}, tt.args...)
 			cmd := exec.Command("go", args...)
-			err := cmd.Run()
+			output, err := cmd.CombinedOutput()
 
 			if tt.wantExit {
-				assert.Error(t, err)
+				require.Error(t, err, "expected command to fail, output: %s", output)
+			} else {
+				skipIfCLIUnavailable(t, output, err)
 			}
 		})
 	}
@@ -383,10 +381,8 @@ func TestCLI_SignalHandling(t *testing.T) {
 		"--package-dir", env.PackageDir,
 		"--target-dir", env.TargetDir)
 
-	err := cmd.Run()
-
-	// Should complete normally
-	_ = err
+	output, err := cmd.CombinedOutput()
+	skipIfCLIUnavailable(t, output, err)
 }
 
 // TestCLI_EnvironmentVariables tests environment variable support.
@@ -404,9 +400,9 @@ func TestCLI_EnvironmentVariables(t *testing.T) {
 	)
 
 	output, err := cmd.CombinedOutput()
-	t.Logf("env vars output: %s", output)
+	skipIfCLIUnavailable(t, output, err)
 
-	_ = err
+	t.Logf("env vars output: %s", output)
 }
 
 // TestCLI_ColorOutput tests color output control.
@@ -424,11 +420,10 @@ func TestCLI_ColorOutput(t *testing.T) {
 	cmd.Env = append(cmd.Env, "NO_COLOR=1")
 
 	output, err := cmd.CombinedOutput()
+	skipIfCLIUnavailable(t, output, err)
 
 	// Output should not contain color codes
 	assert.NotContains(t, string(output), "\x1b[")
-
-	_ = err
 }
 
 // TestCLI_LongRunningOperation tests handling of longer operations.
@@ -466,9 +461,9 @@ func TestCLI_LongRunningOperation(t *testing.T) {
 
 	cmd := exec.Command("go", args...)
 	output, err := cmd.CombinedOutput()
+	skipIfCLIUnavailable(t, output, err)
 
 	t.Logf("long operation output: %s", output)
-	_ = err
 }
 
 // TestCLI_InteractivePrompts tests handling when prompts might appear.
@@ -488,7 +483,7 @@ func TestCLI_InteractivePrompts(t *testing.T) {
 	cmd.Stdin = strings.NewReader("")
 
 	output, err := cmd.CombinedOutput()
-	t.Logf("non-interactive output: %s", output)
+	skipIfCLIUnavailable(t, output, err)
 
-	_ = err
+	t.Logf("non-interactive output: %s", output)
 }

@@ -75,7 +75,7 @@ func TestCheckFileMovePreconditions_Success(t *testing.T) {
 	})
 
 	// Set up source and destination parent
-	source := domain.MustParsePath("/home/file")
+	source := domain.MustParseTargetPath("/home/file")
 	dest := domain.MustParsePath("/packages/pkg/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
@@ -96,7 +96,7 @@ func TestCheckFileMovePreconditions_SourceNotFound(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	source := domain.MustParsePath("/nonexistent")
+	source := domain.MustParseTargetPath("/nonexistent")
 	dest := domain.MustParsePath("/packages/pkg/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 
@@ -116,7 +116,7 @@ func TestCheckFileMovePreconditions_DestParentNotFound(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	source := domain.MustParsePath("/home/file")
+	source := domain.MustParseTargetPath("/home/file")
 	dest := domain.MustParsePath("/nonexistent/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
@@ -137,7 +137,7 @@ func TestCheckPreconditions_LinkDelete(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	target := domain.MustParsePath("/home/file")
+	target := domain.MustParseTargetPath("/home/file")
 	op := domain.NewLinkDelete("link1", target)
 
 	// LinkDelete has no preconditions - should return nil

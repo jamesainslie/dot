@@ -43,3 +43,12 @@ func NewFilePath(s string) Result[FilePath] {
 func MustParsePath(s string) FilePath {
 	return domain.MustParsePath(s)
 }
+
+// MustParseTargetPath creates a TargetPath from a string, panicking on error.
+func MustParseTargetPath(s string) TargetPath {
+	r := domain.NewTargetPath(s)
+	if !r.IsOk() {
+		panic(r.UnwrapErr())
+	}
+	return r.Unwrap()
+}

@@ -89,6 +89,24 @@ func (r Result[T]) UnwrapOr(defaultValue T) T {
 	return defaultValue
 }
 
+// OrElse returns the contained value or executes fallback function.
+// The fallback is only called if the Result is Err.
+func (r Result[T]) OrElse(fn func() T) T {
+	if r.isOk {
+		return r.value
+	}
+	return fn()
+}
+
+// OrDefault returns the contained value or zero value for the type.
+func (r Result[T]) OrDefault() T {
+	if r.isOk {
+		return r.value
+	}
+	var zero T
+	return zero
+}
+
 // Map applies a function to the contained value if Ok, otherwise propagates the error.
 // This is the functorial map operation.
 func Map[T, U any](r Result[T], fn func(T) U) Result[U] {

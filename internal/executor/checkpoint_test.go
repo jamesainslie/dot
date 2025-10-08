@@ -25,7 +25,7 @@ func TestCheckpoint_Record(t *testing.T) {
 	checkpoint := store.Create(ctx)
 
 	source := domain.MustParsePath("/source")
-	target := domain.MustParsePath("/target")
+	target := domain.MustParseTargetPath("/target")
 	op := domain.NewLinkCreate("link1", source, target)
 
 	checkpoint.Record("link1", op)
@@ -54,7 +54,7 @@ func TestMemoryCheckpointStore_Restore(t *testing.T) {
 
 	// Add operation
 	source := domain.MustParsePath("/source")
-	target := domain.MustParsePath("/target")
+	target := domain.MustParseTargetPath("/target")
 	op := domain.NewLinkCreate("link1", source, target)
 	checkpoint.Record("link1", op)
 

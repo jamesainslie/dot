@@ -19,7 +19,7 @@ func TestTopologicalSort_EmptyGraph(t *testing.T) {
 }
 
 func TestTopologicalSort_SingleNode(t *testing.T) {
-	op := domain.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
+	op := domain.NewLinkCreate("link-auto", mustParsePath("/a"), mustParseTargetPath("/b"))
 	graph := BuildGraph([]domain.Operation{op})
 
 	sorted, err := graph.TopologicalSort()
@@ -30,8 +30,8 @@ func TestTopologicalSort_SingleNode(t *testing.T) {
 }
 
 func TestTopologicalSort_IndependentNodes(t *testing.T) {
-	op1 := domain.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
-	op2 := domain.NewLinkCreate("link-auto", mustParsePath("/c"), mustParsePath("/d"))
+	op1 := domain.NewLinkCreate("link-auto", mustParsePath("/a"), mustParseTargetPath("/b"))
+	op2 := domain.NewLinkCreate("link-auto", mustParsePath("/c"), mustParseTargetPath("/d"))
 	graph := BuildGraph([]domain.Operation{op1, op2})
 
 	sorted, err := graph.TopologicalSort()
@@ -51,7 +51,7 @@ func TestTopologicalSort_LinearChain(t *testing.T) {
 		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   domain.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/dir1/dir2/file")),
+		op:   domain.NewLinkCreate("link-auto", mustParsePath("/src"), mustParseTargetPath("/dir1/dir2/file")),
 		deps: []domain.Operation{opB},
 	}
 
@@ -83,7 +83,7 @@ func TestTopologicalSort_DiamondPattern(t *testing.T) {
 		deps: []domain.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   domain.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/root/file")),
+		op:   domain.NewLinkCreate("link-auto", mustParsePath("/src"), mustParseTargetPath("/root/file")),
 		deps: []domain.Operation{opB, opC},
 	}
 

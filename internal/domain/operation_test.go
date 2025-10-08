@@ -9,7 +9,7 @@ import (
 
 func TestLinkCreateOperation(t *testing.T) {
 	source := domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	op := domain.NewLinkCreate("link1", source, target)
 
@@ -26,7 +26,7 @@ func TestLinkCreateOperation(t *testing.T) {
 }
 
 func TestLinkDeleteOperation(t *testing.T) {
-	target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	op := domain.NewLinkDelete("link1", target)
 
@@ -71,7 +71,7 @@ func TestDirDeleteOperation(t *testing.T) {
 }
 
 func TestFileMoveOperation(t *testing.T) {
-	source := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	source := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dest := domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
 
 	op := domain.NewFileMove("move1", source, dest)
@@ -104,7 +104,7 @@ func TestFileBackupOperation(t *testing.T) {
 
 func TestOperationEquality(t *testing.T) {
 	source := domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	op1 := domain.NewLinkCreate("link1", source, target)
 	op2 := domain.NewLinkCreate("link2", source, target)
@@ -116,7 +116,7 @@ func TestOperationEquality(t *testing.T) {
 
 func TestLinkCreateEquals(t *testing.T) {
 	source1 := domain.NewFilePath("/home/user/.dotfiles/vimrc").Unwrap()
-	target1 := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	target1 := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	source2 := domain.NewFilePath("/home/user/.dotfiles/bashrc").Unwrap()
 
 	op1 := domain.NewLinkCreate("link1", source1, target1)
@@ -130,13 +130,14 @@ func TestLinkCreateEquals(t *testing.T) {
 }
 
 func TestLinkDeleteEquals(t *testing.T) {
-	target1 := domain.NewFilePath("/home/user/.vimrc").Unwrap()
-	target2 := domain.NewFilePath("/home/user/.bashrc").Unwrap()
+	target1 := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
+	target2 := domain.NewTargetPath("/home/user/.bashrc").Unwrap()
+	dirPath := domain.NewFilePath("/home/user/.vim").Unwrap()
 
 	op1 := domain.NewLinkDelete("link1", target1)
 	op2 := domain.NewLinkDelete("link2", target1)
 	op3 := domain.NewLinkDelete("link3", target2)
-	op4 := domain.NewDirDelete("dir1", target1)
+	op4 := domain.NewDirDelete("dir1", dirPath)
 
 	assert.True(t, op1.Equals(op2), "same target should be equal")
 	assert.False(t, op1.Equals(op3), "different target should not be equal")
@@ -172,14 +173,15 @@ func TestDirDeleteEquals(t *testing.T) {
 }
 
 func TestFileMoveEquals(t *testing.T) {
-	source1 := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	source1 := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dest1 := domain.NewFilePath("/home/user/.dotfiles/vimrc").Unwrap()
-	source2 := domain.NewFilePath("/home/user/.bashrc").Unwrap()
+	source2 := domain.NewTargetPath("/home/user/.bashrc").Unwrap()
+	backupSource := domain.NewFilePath("/home/user/.vimrc").Unwrap()
 
 	op1 := domain.NewFileMove("move1", source1, dest1)
 	op2 := domain.NewFileMove("move2", source1, dest1)
 	op3 := domain.NewFileMove("move3", source2, dest1)
-	op4 := domain.NewFileBackup("backup1", source1, dest1)
+	op4 := domain.NewFileBackup("backup1", backupSource, dest1)
 
 	assert.True(t, op1.Equals(op2), "same source and dest should be equal")
 	assert.False(t, op1.Equals(op3), "different source should not be equal")
@@ -191,10 +193,12 @@ func TestFileBackupEquals(t *testing.T) {
 	backup1 := domain.NewFilePath("/home/user/.vimrc.backup").Unwrap()
 	source2 := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 
+	sourceTarget1 := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
+	dest1 := domain.NewFilePath("/home/user/.dotfiles/vimrc").Unwrap()
 	op1 := domain.NewFileBackup("backup1", source1, backup1)
 	op2 := domain.NewFileBackup("backup2", source1, backup1)
 	op3 := domain.NewFileBackup("backup3", source2, backup1)
-	op4 := domain.NewFileMove("move1", source1, backup1)
+	op4 := domain.NewFileMove("move1", sourceTarget1, dest1)
 
 	assert.True(t, op1.Equals(op2), "same source and backup should be equal")
 	assert.False(t, op1.Equals(op3), "different source should not be equal")
@@ -223,7 +227,7 @@ func TestOperationKindString(t *testing.T) {
 
 func TestLinkCreateOperationID(t *testing.T) {
 	source := domain.NewFilePath("/packages/vim/.vimrc").Unwrap()
-	dest := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	dest := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	op := domain.NewLinkCreate("link1", source, dest)
 
 	id := op.ID()
@@ -233,7 +237,7 @@ func TestLinkCreateOperationID(t *testing.T) {
 }
 
 func TestLinkDeleteOperationID(t *testing.T) {
-	link := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	link := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	op := domain.NewLinkDelete("link1", link)
 
 	id := op.ID()
@@ -260,7 +264,7 @@ func TestDirDeleteOperationID(t *testing.T) {
 }
 
 func TestFileMoveOperationID(t *testing.T) {
-	source := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	source := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dest := domain.NewFilePath("/packages/vim/.vimrc").Unwrap()
 	op := domain.NewFileMove("move1", source, dest)
 

@@ -235,3 +235,4 @@ Check GitHub Actions logs:
 - [Keep a Changelog](https://keepachangelog.com/)
 - [git-chglog Documentation](https://github.com/git-chglog/git-chglog)
 - [GoReleaser Documentation](https://goreleaser.com/)
+

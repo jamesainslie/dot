@@ -36,12 +36,11 @@ echo "✅ Coverage check passed: ${COVERAGE}% >= ${THRESHOLD}%"
 
 # Run linters
 echo "→ Running linters..."
-if ! make lint > /dev/null 2>&1; then
+if ! make lint; then
     echo ""
     echo "❌ COMMIT REJECTED: Linting failed"
     echo ""
-    echo "Run: make lint"
-    echo "Fix all linting issues before committing."
+    echo "Fix all linting issues shown above before committing."
     rm -f coverage.out
     exit 1
 fi

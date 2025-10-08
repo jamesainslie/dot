@@ -16,7 +16,7 @@ func newAdoptCommand() *cobra.Command {
 		Short: "Move existing files into package then link",
 		Long: `Move one or more existing files from the target directory into 
 a package, then create symlinks back to the original locations.`,
-		Args: cobra.MinimumNArgs(2),
+		Args: argsWithUsage(cobra.MinimumNArgs(2)),
 		RunE: runAdopt,
 	}
 

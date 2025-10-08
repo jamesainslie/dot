@@ -16,7 +16,7 @@ func newRemanageCommand() *cobra.Command {
 		Short: "Reinstall packages with incremental updates",
 		Long: `Reinstall one or more packages by removing old symlinks and 
 creating new ones.`,
-		Args: cobra.MinimumNArgs(1),
+		Args: argsWithUsage(cobra.MinimumNArgs(1)),
 		RunE: runRemanage,
 	}
 

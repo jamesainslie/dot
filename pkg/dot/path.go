@@ -19,6 +19,30 @@ type FileDirKind = domain.FileDirKind
 // Re-exported from internal/domain.
 type Path[K PathKind] domain.Path[K]
 
+// String returns the string representation of the path.
+func (p Path[K]) String() string {
+	return domain.Path[K](p).String()
+}
+
+// Join appends a path component, returning a FilePath.
+func (p Path[K]) Join(elem string) FilePath {
+	return domain.Path[K](p).Join(elem)
+}
+
+// Parent returns the parent directory of this path.
+func (p Path[K]) Parent() Result[Path[K]] {
+	r := domain.Path[K](p).Parent()
+	if r.IsErr() {
+		return Err[Path[K]](r.UnwrapErr())
+	}
+	return Ok(Path[K](r.Unwrap()))
+}
+
+// Equals checks if two paths are equal.
+func (p Path[K]) Equals(other Path[K]) bool {
+	return domain.Path[K](p).Equals(domain.Path[K](other))
+}
+
 // PackagePath is a path to a package directory.
 type PackagePath = domain.PackagePath
 

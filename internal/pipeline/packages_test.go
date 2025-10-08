@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/jamesainslie/dot/internal/adapters"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/planner"
-	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,11 +40,11 @@ func TestManagePipeline_Execute(t *testing.T) {
 			Policies:  planner.DefaultPolicies(),
 		})
 
-		packagePathResult := dot.NewPackagePath("/packages")
+		packagePathResult := domain.NewPackagePath("/packages")
 		require.True(t, packagePathResult.IsOk(), "failed to create package path")
 		packagePath := packagePathResult.Unwrap()
 
-		targetPathResult := dot.NewTargetPath("/target")
+		targetPathResult := domain.NewTargetPath("/target")
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")
 		targetPath := targetPathResult.Unwrap()
 
@@ -75,11 +75,11 @@ func TestManagePipeline_Execute(t *testing.T) {
 			Policies:  planner.DefaultPolicies(),
 		})
 
-		packagePathResult := dot.NewPackagePath("/packages")
+		packagePathResult := domain.NewPackagePath("/packages")
 		require.True(t, packagePathResult.IsOk(), "failed to create package path")
 		packagePath := packagePathResult.Unwrap()
 
-		targetPathResult := dot.NewTargetPath("/target")
+		targetPathResult := domain.NewTargetPath("/target")
 		require.True(t, targetPathResult.IsOk(), "failed to create target path")
 		targetPath := targetPathResult.Unwrap()
 
@@ -92,7 +92,7 @@ func TestManagePipeline_Execute(t *testing.T) {
 		require.False(t, result.IsOk())
 		err := result.UnwrapErr()
 
-		var pkgErr dot.ErrPackageNotFound
+		var pkgErr domain.ErrPackageNotFound
 		assert.ErrorAs(t, err, &pkgErr)
 	})
 }

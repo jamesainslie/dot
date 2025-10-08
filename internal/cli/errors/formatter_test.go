@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +20,7 @@ func TestNewFormatter(t *testing.T) {
 
 func TestFormatter_Format_InvalidPath(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "/invalid/path",
 		Reason: "contains invalid characters",
 	}
@@ -34,7 +34,7 @@ func TestFormatter_Format_InvalidPath(t *testing.T) {
 
 func TestFormatter_Format_PackageNotFound(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrPackageNotFound{
+	err := domain.ErrPackageNotFound{
 		Package: "vim",
 	}
 
@@ -47,7 +47,7 @@ func TestFormatter_Format_PackageNotFound(t *testing.T) {
 
 func TestFormatter_Format_Conflict(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrConflict{
+	err := domain.ErrConflict{
 		Path:   "/home/user/.vimrc",
 		Reason: "file already exists",
 	}
@@ -61,7 +61,7 @@ func TestFormatter_Format_Conflict(t *testing.T) {
 
 func TestFormatter_Format_CyclicDependency(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrCyclicDependency{
+	err := domain.ErrCyclicDependency{
 		Cycle: []string{"A", "B", "C", "A"},
 	}
 
@@ -73,7 +73,7 @@ func TestFormatter_Format_CyclicDependency(t *testing.T) {
 
 func TestFormatter_Format_PermissionDenied(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrPermissionDenied{
+	err := domain.ErrPermissionDenied{
 		Path:      "/root/file",
 		Operation: "write",
 	}
@@ -87,7 +87,7 @@ func TestFormatter_Format_PermissionDenied(t *testing.T) {
 
 func TestFormatter_Format_FilesystemOperation(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrFilesystemOperation{
+	err := domain.ErrFilesystemOperation{
 		Operation: "symlink",
 		Path:      "/home/user/.vimrc",
 		Err:       errors.New("no such file or directory"),
@@ -102,7 +102,7 @@ func TestFormatter_Format_FilesystemOperation(t *testing.T) {
 
 func TestFormatter_Format_EmptyPlan(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrEmptyPlan{}
+	err := domain.ErrEmptyPlan{}
 
 	result := f.Format(err)
 	assert.Contains(t, result, "Empty Plan")
@@ -111,7 +111,7 @@ func TestFormatter_Format_EmptyPlan(t *testing.T) {
 
 func TestFormatter_Format_ExecutionFailed(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrExecutionFailed{
+	err := domain.ErrExecutionFailed{
 		Executed:   5,
 		Failed:     2,
 		RolledBack: 2,
@@ -130,7 +130,7 @@ func TestFormatter_Format_ExecutionFailed(t *testing.T) {
 
 func TestFormatter_Format_SourceNotFound(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrSourceNotFound{
+	err := domain.ErrSourceNotFound{
 		Path: "/packages/vim/vimrc",
 	}
 
@@ -141,7 +141,7 @@ func TestFormatter_Format_SourceNotFound(t *testing.T) {
 
 func TestFormatter_Format_ParentNotFound(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrParentNotFound{
+	err := domain.ErrParentNotFound{
 		Path: "/home/user/.config/nvim/init.vim",
 	}
 
@@ -152,7 +152,7 @@ func TestFormatter_Format_ParentNotFound(t *testing.T) {
 
 func TestFormatter_Format_CheckpointNotFound(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrCheckpointNotFound{
+	err := domain.ErrCheckpointNotFound{
 		ID: "checkpoint-123",
 	}
 
@@ -164,7 +164,7 @@ func TestFormatter_Format_CheckpointNotFound(t *testing.T) {
 
 func TestFormatter_Format_NotImplemented(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrNotImplemented{
+	err := domain.ErrNotImplemented{
 		Feature: "parallel execution",
 	}
 
@@ -176,11 +176,11 @@ func TestFormatter_Format_NotImplemented(t *testing.T) {
 
 func TestFormatter_Format_MultipleErrors(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrMultiple{
+	err := domain.ErrMultiple{
 		Errors: []error{
-			dot.ErrPackageNotFound{Package: "vim"},
-			dot.ErrPackageNotFound{Package: "tmux"},
-			dot.ErrPackageNotFound{Package: "zsh"},
+			domain.ErrPackageNotFound{Package: "vim"},
+			domain.ErrPackageNotFound{Package: "tmux"},
+			domain.ErrPackageNotFound{Package: "zsh"},
 		},
 	}
 
@@ -196,9 +196,9 @@ func TestFormatter_Format_MultipleErrors(t *testing.T) {
 
 func TestFormatter_Format_MultipleErrors_SingleError(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrMultiple{
+	err := domain.ErrMultiple{
 		Errors: []error{
-			dot.ErrPackageNotFound{Package: "vim"},
+			domain.ErrPackageNotFound{Package: "vim"},
 		},
 	}
 
@@ -211,7 +211,7 @@ func TestFormatter_Format_MultipleErrors_SingleError(t *testing.T) {
 
 func TestFormatter_Format_MultipleErrors_Empty(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrMultiple{
+	err := domain.ErrMultiple{
 		Errors: []error{},
 	}
 
@@ -246,7 +246,7 @@ func TestFormatter_FormatWithContext(t *testing.T) {
 		},
 	}
 
-	err := dot.ErrPackageNotFound{Package: "vim"}
+	err := domain.ErrPackageNotFound{Package: "vim"}
 	result := f.FormatWithContext(err, ctx)
 
 	assert.Contains(t, result, "Package Not Found")
@@ -257,7 +257,7 @@ func TestFormatter_FormatWithContext(t *testing.T) {
 
 func TestFormatter_Format_WithColor(t *testing.T) {
 	f := NewFormatter(true, 0)
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "/invalid",
 		Reason: "test",
 	}
@@ -270,7 +270,7 @@ func TestFormatter_Format_WithColor(t *testing.T) {
 
 func TestFormatter_Format_WithoutColor(t *testing.T) {
 	f := NewFormatter(false, 0)
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "/invalid",
 		Reason: "test",
 	}
@@ -292,7 +292,7 @@ func TestFormatter_Format_VerbosityLevels(t *testing.T) {
 		{"level 3", 3},
 	}
 
-	err := dot.ErrPackageNotFound{Package: "vim"}
+	err := domain.ErrPackageNotFound{Package: "vim"}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -313,7 +313,7 @@ func TestFormatter_Format_WideTerminal(t *testing.T) {
 
 	// Create an error with a very long description to test wrapping
 	longReason := "contains many invalid characters and other problems that would cause wrapping on narrow terminals but should remain on fewer lines with a wide terminal width"
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "/a/very/long/path/that/would/normally/wrap/on/narrow/terminals",
 		Reason: longReason,
 	}
@@ -333,7 +333,7 @@ func TestFormatter_Format_NarrowTerminal(t *testing.T) {
 		width:        40,
 	}
 
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "/a/very/long/path",
 		Reason: "contains many invalid characters",
 	}

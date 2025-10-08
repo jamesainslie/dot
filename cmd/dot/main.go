@@ -2,8 +2,6 @@ package main
 
 import (
 	"os"
-
-	_ "github.com/jamesainslie/dot/internal/api" // Register Client implementation
 )
 
 // Version information (set via ldflags at build time)

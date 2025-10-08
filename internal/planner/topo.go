@@ -1,6 +1,6 @@
 package planner
 
-import "github.com/jamesainslie/dot/pkg/dot"
+import "github.com/jamesainslie/dot/internal/domain"
 
 // TopologicalSort returns operations in dependency order using depth-first search.
 // Operations with no dependencies come first, and each operation appears after
@@ -11,18 +11,18 @@ import "github.com/jamesainslie/dot/pkg/dot"
 //
 // Time complexity: O(n + e) where n is the number of operations and e is
 // the number of dependency edges.
-func (g *DependencyGraph) TopologicalSort() ([]dot.Operation, error) {
+func (g *DependencyGraph) TopologicalSort() ([]domain.Operation, error) {
 	// First check for cycles
 	if cycle := g.FindCycle(); cycle != nil {
-		return nil, dot.ErrCyclicDependency{Cycle: formatCycle(cycle)}
+		return nil, domain.ErrCyclicDependency{Cycle: formatCycle(cycle)}
 	}
 
-	visited := make(map[dot.Operation]bool, len(g.ops))
-	var result []dot.Operation
+	visited := make(map[domain.Operation]bool, len(g.ops))
+	var result []domain.Operation
 
 	// Visit function performs DFS post-order traversal
-	var visit func(dot.Operation) error
-	visit = func(op dot.Operation) error {
+	var visit func(domain.Operation) error
+	visit = func(op domain.Operation) error {
 		if visited[op] {
 			return nil
 		}
@@ -62,14 +62,14 @@ func (g *DependencyGraph) TopologicalSort() ([]dot.Operation, error) {
 //
 // Time complexity: O(n + e) where n is the number of operations and e is
 // the number of dependency edges.
-func (g *DependencyGraph) FindCycle() []dot.Operation {
-	visited := make(map[dot.Operation]bool, len(g.ops))
-	recStack := make(map[dot.Operation]bool, len(g.ops))
-	parent := make(map[dot.Operation]dot.Operation, len(g.ops))
+func (g *DependencyGraph) FindCycle() []domain.Operation {
+	visited := make(map[domain.Operation]bool, len(g.ops))
+	recStack := make(map[domain.Operation]bool, len(g.ops))
+	parent := make(map[domain.Operation]domain.Operation, len(g.ops))
 
 	// DFS function to detect back edges (cycles)
-	var dfs func(dot.Operation) []dot.Operation
-	dfs = func(op dot.Operation) []dot.Operation {
+	var dfs func(domain.Operation) []domain.Operation
+	dfs = func(op domain.Operation) []domain.Operation {
 		visited[op] = true
 		recStack[op] = true
 
@@ -106,13 +106,13 @@ func (g *DependencyGraph) FindCycle() []dot.Operation {
 // current is the node where we detected the back edge
 // cycleStart is the node we're going back to (the beginning of the cycle)
 // parent maps each node to its parent in the DFS tree
-func reconstructCycle(current, cycleStart dot.Operation, parent map[dot.Operation]dot.Operation) []dot.Operation {
+func reconstructCycle(current, cycleStart domain.Operation, parent map[domain.Operation]domain.Operation) []domain.Operation {
 	// Handle self-loop case
 	if current.Equals(cycleStart) {
-		return []dot.Operation{cycleStart}
+		return []domain.Operation{cycleStart}
 	}
 
-	cycle := []dot.Operation{cycleStart}
+	cycle := []domain.Operation{cycleStart}
 
 	// Walk backwards from current to cycleStart using parent pointers
 	node := current
@@ -138,7 +138,7 @@ func reconstructCycle(current, cycleStart dot.Operation, parent map[dot.Operatio
 }
 
 // formatCycle converts a cycle of operations into string descriptions.
-func formatCycle(cycle []dot.Operation) []string {
+func formatCycle(cycle []domain.Operation) []string {
 	if len(cycle) == 0 {
 		return nil
 	}

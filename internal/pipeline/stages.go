@@ -4,47 +4,47 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/planner"
 	"github.com/jamesainslie/dot/internal/scanner"
-	"github.com/jamesainslie/dot/pkg/dot"
 )
 
 // ScanInput contains the input for scanning packages
 type ScanInput struct {
-	PackageDir dot.PackagePath
-	TargetDir  dot.TargetPath
+	PackageDir domain.PackagePath
+	TargetDir  domain.TargetPath
 	Packages   []string
 	IgnoreSet  *ignore.IgnoreSet
-	FS         dot.FS
+	FS         domain.FS
 }
 
 // ScanStage creates a pipeline stage that scans packages.
 // Returns a slice of scanned packages with their file trees.
-func ScanStage() Pipeline[ScanInput, []dot.Package] {
-	return func(ctx context.Context, input ScanInput) dot.Result[[]dot.Package] {
+func ScanStage() Pipeline[ScanInput, []domain.Package] {
+	return func(ctx context.Context, input ScanInput) domain.Result[[]domain.Package] {
 		// Early cancellation check
 		select {
 		case <-ctx.Done():
-			return dot.Err[[]dot.Package](ctx.Err())
+			return domain.Err[[]domain.Package](ctx.Err())
 		default:
 		}
 
-		packages := make([]dot.Package, 0, len(input.Packages))
+		packages := make([]domain.Package, 0, len(input.Packages))
 
 		for _, pkgName := range input.Packages {
 			// Check for cancellation before processing each package
 			select {
 			case <-ctx.Done():
-				return dot.Err[[]dot.Package](ctx.Err())
+				return domain.Err[[]domain.Package](ctx.Err())
 			default:
 			}
 
 			// Create package path by joining package dir with package name
 			pkgPathStr := filepath.Join(input.PackageDir.String(), pkgName)
-			pkgPathResult := dot.NewPackagePath(pkgPathStr)
+			pkgPathResult := domain.NewPackagePath(pkgPathStr)
 			if pkgPathResult.IsErr() {
-				return dot.Err[[]dot.Package](pkgPathResult.UnwrapErr())
+				return domain.Err[[]domain.Package](pkgPathResult.UnwrapErr())
 			}
 			pkgPath := pkgPathResult.Unwrap()
 
@@ -52,30 +52,30 @@ func ScanStage() Pipeline[ScanInput, []dot.Package] {
 			pkgResult := scanner.ScanPackage(ctx, input.FS, pkgPath, pkgName, input.IgnoreSet)
 
 			if pkgResult.IsErr() {
-				return dot.Err[[]dot.Package](pkgResult.UnwrapErr())
+				return domain.Err[[]domain.Package](pkgResult.UnwrapErr())
 			}
 
 			packages = append(packages, pkgResult.Unwrap())
 		}
 
-		return dot.Ok(packages)
+		return domain.Ok(packages)
 	}
 }
 
 // PlanInput contains the input for planning operations
 type PlanInput struct {
-	Packages  []dot.Package
-	TargetDir dot.TargetPath
+	Packages  []domain.Package
+	TargetDir domain.TargetPath
 }
 
 // PlanStage creates a pipeline stage that computes desired state.
 // Takes scanned packages and computes what links should exist.
 func PlanStage() Pipeline[PlanInput, planner.DesiredState] {
-	return func(ctx context.Context, input PlanInput) dot.Result[planner.DesiredState] {
+	return func(ctx context.Context, input PlanInput) domain.Result[planner.DesiredState] {
 		// Early cancellation check before potentially long-running planning
 		select {
 		case <-ctx.Done():
-			return dot.Err[planner.DesiredState](ctx.Err())
+			return domain.Err[planner.DesiredState](ctx.Err())
 		default:
 		}
 
@@ -86,7 +86,7 @@ func PlanStage() Pipeline[PlanInput, planner.DesiredState] {
 // ResolveInput contains the input for conflict resolution
 type ResolveInput struct {
 	Desired   planner.DesiredState
-	FS        dot.FS
+	FS        domain.FS
 	Policies  planner.ResolutionPolicies
 	BackupDir string
 }
@@ -94,11 +94,11 @@ type ResolveInput struct {
 // ResolveStage creates a pipeline stage that resolves conflicts.
 // Takes desired state and current filesystem state to generate operations.
 func ResolveStage() Pipeline[ResolveInput, planner.ResolveResult] {
-	return func(ctx context.Context, input ResolveInput) dot.Result[planner.ResolveResult] {
+	return func(ctx context.Context, input ResolveInput) domain.Result[planner.ResolveResult] {
 		// Early cancellation check
 		select {
 		case <-ctx.Done():
-			return dot.Err[planner.ResolveResult](ctx.Err())
+			return domain.Err[planner.ResolveResult](ctx.Err())
 		default:
 		}
 
@@ -108,7 +108,7 @@ func ResolveStage() Pipeline[ResolveInput, planner.ResolveResult] {
 		// Check for cancellation before building current state
 		select {
 		case <-ctx.Done():
-			return dot.Err[planner.ResolveResult](ctx.Err())
+			return domain.Err[planner.ResolveResult](ctx.Err())
 		default:
 		}
 
@@ -123,40 +123,40 @@ func ResolveStage() Pipeline[ResolveInput, planner.ResolveResult] {
 		// Check for cancellation before potentially long-running conflict resolution
 		select {
 		case <-ctx.Done():
-			return dot.Err[planner.ResolveResult](ctx.Err())
+			return domain.Err[planner.ResolveResult](ctx.Err())
 		default:
 		}
 
 		// Resolve conflicts
 		result := planner.Resolve(operations, current, input.Policies, input.BackupDir)
-		return dot.Ok(result)
+		return domain.Ok(result)
 	}
 }
 
 // SortInput contains the input for topological sorting
 type SortInput struct {
-	Operations []dot.Operation
+	Operations []domain.Operation
 }
 
 // SortStage creates a pipeline stage that sorts operations.
 // Takes operations and returns them in dependency order.
-func SortStage() Pipeline[SortInput, []dot.Operation] {
-	return func(ctx context.Context, input SortInput) dot.Result[[]dot.Operation] {
+func SortStage() Pipeline[SortInput, []domain.Operation] {
+	return func(ctx context.Context, input SortInput) domain.Result[[]domain.Operation] {
 		// Early cancellation check
 		select {
 		case <-ctx.Done():
-			return dot.Err[[]dot.Operation](ctx.Err())
+			return domain.Err[[]domain.Operation](ctx.Err())
 		default:
 		}
 
 		if len(input.Operations) == 0 {
-			return dot.Ok([]dot.Operation{})
+			return domain.Ok([]domain.Operation{})
 		}
 
 		// Check for cancellation before building dependency graph
 		select {
 		case <-ctx.Done():
-			return dot.Err[[]dot.Operation](ctx.Err())
+			return domain.Err[[]domain.Operation](ctx.Err())
 		default:
 		}
 
@@ -165,14 +165,14 @@ func SortStage() Pipeline[SortInput, []dot.Operation] {
 		// Check for cancellation before potentially long-running topological sort
 		select {
 		case <-ctx.Done():
-			return dot.Err[[]dot.Operation](ctx.Err())
+			return domain.Err[[]domain.Operation](ctx.Err())
 		default:
 		}
 
 		sorted, err := graph.TopologicalSort()
 		if err != nil {
-			return dot.Err[[]dot.Operation](err)
+			return domain.Err[[]domain.Operation](err)
 		}
-		return dot.Ok(sorted)
+		return domain.Ok(sorted)
 	}
 }

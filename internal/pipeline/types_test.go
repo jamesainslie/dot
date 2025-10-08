@@ -5,18 +5,18 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCompose(t *testing.T) {
 	t.Run("success case", func(t *testing.T) {
-		p1 := func(ctx context.Context, n int) dot.Result[int] {
-			return dot.Ok(n + 1)
+		p1 := func(ctx context.Context, n int) domain.Result[int] {
+			return domain.Ok(n + 1)
 		}
-		p2 := func(ctx context.Context, n int) dot.Result[int] {
-			return dot.Ok(n * 2)
+		p2 := func(ctx context.Context, n int) domain.Result[int] {
+			return domain.Ok(n * 2)
 		}
 
 		composed := Compose(p1, p2)
@@ -29,12 +29,12 @@ func TestCompose(t *testing.T) {
 
 	t.Run("first stage error propagates", func(t *testing.T) {
 		expectedErr := errors.New("first error")
-		p1 := func(ctx context.Context, n int) dot.Result[int] {
-			return dot.Err[int](expectedErr)
+		p1 := func(ctx context.Context, n int) domain.Result[int] {
+			return domain.Err[int](expectedErr)
 		}
-		p2 := func(ctx context.Context, n int) dot.Result[int] {
+		p2 := func(ctx context.Context, n int) domain.Result[int] {
 			t.Fatal("should not be called")
-			return dot.Ok(n)
+			return domain.Ok(n)
 		}
 
 		composed := Compose(p1, p2)
@@ -46,11 +46,11 @@ func TestCompose(t *testing.T) {
 
 	t.Run("second stage error propagates", func(t *testing.T) {
 		expectedErr := errors.New("second error")
-		p1 := func(ctx context.Context, n int) dot.Result[int] {
-			return dot.Ok(n + 1)
+		p1 := func(ctx context.Context, n int) domain.Result[int] {
+			return domain.Ok(n + 1)
 		}
-		p2 := func(ctx context.Context, n int) dot.Result[int] {
-			return dot.Err[int](expectedErr)
+		p2 := func(ctx context.Context, n int) domain.Result[int] {
+			return domain.Err[int](expectedErr)
 		}
 
 		composed := Compose(p1, p2)
@@ -64,16 +64,16 @@ func TestCompose(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		p1 := func(ctx context.Context, n int) dot.Result[int] {
+		p1 := func(ctx context.Context, n int) domain.Result[int] {
 			select {
 			case <-ctx.Done():
-				return dot.Err[int](ctx.Err())
+				return domain.Err[int](ctx.Err())
 			default:
-				return dot.Ok(n + 1)
+				return domain.Ok(n + 1)
 			}
 		}
-		p2 := func(ctx context.Context, n int) dot.Result[int] {
-			return dot.Ok(n * 2)
+		p2 := func(ctx context.Context, n int) domain.Result[int] {
+			return domain.Ok(n * 2)
 		}
 
 		composed := Compose(p1, p2)
@@ -87,14 +87,14 @@ func TestCompose(t *testing.T) {
 func TestParallel(t *testing.T) {
 	t.Run("success case", func(t *testing.T) {
 		pipelines := []Pipeline[int, int]{
-			func(ctx context.Context, n int) dot.Result[int] {
-				return dot.Ok(n + 1)
+			func(ctx context.Context, n int) domain.Result[int] {
+				return domain.Ok(n + 1)
 			},
-			func(ctx context.Context, n int) dot.Result[int] {
-				return dot.Ok(n * 2)
+			func(ctx context.Context, n int) domain.Result[int] {
+				return domain.Ok(n * 2)
 			},
-			func(ctx context.Context, n int) dot.Result[int] {
-				return dot.Ok(n * 3)
+			func(ctx context.Context, n int) domain.Result[int] {
+				return domain.Ok(n * 3)
 			},
 		}
 
@@ -109,14 +109,14 @@ func TestParallel(t *testing.T) {
 	t.Run("one error fails all", func(t *testing.T) {
 		expectedErr := errors.New("parallel error")
 		pipelines := []Pipeline[int, int]{
-			func(ctx context.Context, n int) dot.Result[int] {
-				return dot.Ok(n + 1)
+			func(ctx context.Context, n int) domain.Result[int] {
+				return domain.Ok(n + 1)
 			},
-			func(ctx context.Context, n int) dot.Result[int] {
-				return dot.Err[int](expectedErr)
+			func(ctx context.Context, n int) domain.Result[int] {
+				return domain.Err[int](expectedErr)
 			},
-			func(ctx context.Context, n int) dot.Result[int] {
-				return dot.Ok(n * 3)
+			func(ctx context.Context, n int) domain.Result[int] {
+				return domain.Ok(n * 3)
 			},
 		}
 
@@ -145,12 +145,12 @@ func TestParallel(t *testing.T) {
 		cancel()
 
 		pipelines := []Pipeline[int, int]{
-			func(ctx context.Context, n int) dot.Result[int] {
+			func(ctx context.Context, n int) domain.Result[int] {
 				select {
 				case <-ctx.Done():
-					return dot.Err[int](ctx.Err())
+					return domain.Err[int](ctx.Err())
 				default:
-					return dot.Ok(n + 1)
+					return domain.Ok(n + 1)
 				}
 			},
 		}
@@ -190,8 +190,8 @@ func TestMap(t *testing.T) {
 
 func TestFlatMap(t *testing.T) {
 	t.Run("success case", func(t *testing.T) {
-		fn := func(n int) dot.Result[int] {
-			return dot.Ok(n * 2)
+		fn := func(n int) domain.Result[int] {
+			return domain.Ok(n * 2)
 		}
 
 		pipeline := FlatMap(fn)
@@ -203,8 +203,8 @@ func TestFlatMap(t *testing.T) {
 
 	t.Run("propagates error", func(t *testing.T) {
 		expectedErr := errors.New("flatmap error")
-		fn := func(n int) dot.Result[int] {
-			return dot.Err[int](expectedErr)
+		fn := func(n int) domain.Result[int] {
+			return domain.Err[int](expectedErr)
 		}
 
 		pipeline := FlatMap(fn)

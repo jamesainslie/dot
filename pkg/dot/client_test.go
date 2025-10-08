@@ -1,74 +1,40 @@
 package dot_test
 
 import (
-	"context"
 	"testing"
 
+	"github.com/jamesainslie/dot/internal/adapters"
 	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/stretchr/testify/require"
 )
 
-// mockClient implements the Client interface for testing
-type mockClient struct {
-	config dot.Config
+// TestNewClient verifies Client creation.
+func TestNewClient(t *testing.T) {
+	cfg := dot.Config{
+		PackageDir: "/test/packages",
+		TargetDir:  "/test/target",
+		FS:         adapters.NewMemFS(),
+		Logger:     adapters.NewNoopLogger(),
+	}
+
+	client, err := dot.NewClient(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, client)
+
+	// Verify config is stored
+	clientCfg := client.Config()
+	require.Equal(t, cfg.PackageDir, clientCfg.PackageDir)
+	require.Equal(t, cfg.TargetDir, clientCfg.TargetDir)
 }
 
-func (m *mockClient) Manage(ctx context.Context, packages ...string) error {
-	return nil
-}
+// TestNewClient_InvalidConfig verifies validation errors.
+func TestNewClient_InvalidConfig(t *testing.T) {
+	cfg := dot.Config{
+		PackageDir: "relative/path", // Invalid - not absolute
+	}
 
-func (m *mockClient) PlanManage(ctx context.Context, packages ...string) (dot.Plan, error) {
-	return dot.Plan{}, nil
+	client, err := dot.NewClient(cfg)
+	require.Error(t, err)
+	require.Nil(t, client)
+	require.Contains(t, err.Error(), "invalid configuration")
 }
-
-func (m *mockClient) Unmanage(ctx context.Context, packages ...string) error {
-	return nil
-}
-
-func (m *mockClient) PlanUnmanage(ctx context.Context, packages ...string) (dot.Plan, error) {
-	return dot.Plan{}, nil
-}
-
-func (m *mockClient) Remanage(ctx context.Context, packages ...string) error {
-	return nil
-}
-
-func (m *mockClient) PlanRemanage(ctx context.Context, packages ...string) (dot.Plan, error) {
-	return dot.Plan{}, nil
-}
-
-func (m *mockClient) Adopt(ctx context.Context, files []string, pkg string) error {
-	return nil
-}
-
-func (m *mockClient) PlanAdopt(ctx context.Context, files []string, pkg string) (dot.Plan, error) {
-	return dot.Plan{}, nil
-}
-
-func (m *mockClient) Status(ctx context.Context, packages ...string) (dot.Status, error) {
-	return dot.Status{}, nil
-}
-
-func (m *mockClient) List(ctx context.Context) ([]dot.PackageInfo, error) {
-	return nil, nil
-}
-
-func (m *mockClient) Doctor(ctx context.Context) (dot.DiagnosticReport, error) {
-	return dot.DiagnosticReport{}, nil
-}
-
-func (m *mockClient) DoctorWithScan(ctx context.Context, scanCfg dot.ScanConfig) (dot.DiagnosticReport, error) {
-	return dot.DiagnosticReport{}, nil
-}
-
-func (m *mockClient) Config() dot.Config {
-	return m.config
-}
-
-// TestClientInterface verifies that mockClient implements Client
-func TestClientInterface(t *testing.T) {
-	var _ dot.Client = &mockClient{}
-}
-
-// Note: TestRegisterClientImpl will be added once internal/api is implemented
-// and registered via init(). The registration mechanism is tested through
-// the integration tests in internal/api/client_test.go.

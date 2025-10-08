@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
@@ -19,10 +18,10 @@ func TestTextRenderer_RenderDiagnostics(t *testing.T) {
 		width:    80,
 	}
 
-	report := domain.DiagnosticReport{
-		OverallHealth: domain.HealthOK,
-		Issues:        []domain.Issue{},
-		Statistics: domain.DiagnosticStats{
+	report := dot.DiagnosticReport{
+		OverallHealth: dot.HealthOK,
+		Issues:        []dot.Issue{},
+		Statistics: dot.DiagnosticStats{
 			TotalLinks:   10,
 			ManagedLinks: 10,
 		},
@@ -45,18 +44,18 @@ func TestTextRenderer_RenderDiagnostics_WithIssues(t *testing.T) {
 		width:    80,
 	}
 
-	report := domain.DiagnosticReport{
-		OverallHealth: domain.HealthErrors,
-		Issues: []domain.Issue{
+	report := dot.DiagnosticReport{
+		OverallHealth: dot.HealthErrors,
+		Issues: []dot.Issue{
 			{
-				Severity:   domain.SeverityError,
-				Type:       domain.IssueBrokenLink,
+				Severity:   dot.SeverityError,
+				Type:       dot.IssueBrokenLink,
 				Path:       "/tmp/test",
 				Message:    "Link is broken",
 				Suggestion: "Fix the link",
 			},
 		},
-		Statistics: domain.DiagnosticStats{
+		Statistics: dot.DiagnosticStats{
 			TotalLinks:   10,
 			ManagedLinks: 10,
 			BrokenLinks:  1,

@@ -29,7 +29,7 @@ func (r *YAMLRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 }
 
 // RenderDiagnostics renders diagnostic report as YAML.
-func (r *YAMLRenderer) RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error {
+func (r *YAMLRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
 	encoder := r.newEncoder(w)
 	defer encoder.Close()
 	return encoder.Encode(report)

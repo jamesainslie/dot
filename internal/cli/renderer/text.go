@@ -61,14 +61,14 @@ func (r *TextRenderer) resetColor() string {
 }
 
 // RenderDiagnostics renders diagnostic report as plain text.
-func (r *TextRenderer) RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error {
+func (r *TextRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
 	// Show overall health
 	healthColor := r.scheme.Success
 	healthSymbol := "✓"
-	if report.OverallHealth == domain.HealthWarnings {
+	if report.OverallHealth == dot.HealthWarnings {
 		healthColor = r.scheme.Warning
 		healthSymbol = "⚠"
-	} else if report.OverallHealth == domain.HealthErrors {
+	} else if report.OverallHealth == dot.HealthErrors {
 		healthColor = r.scheme.Error
 		healthSymbol = "✗"
 	}
@@ -98,10 +98,10 @@ func (r *TextRenderer) RenderDiagnostics(w io.Writer, report domain.DiagnosticRe
 	for i, issue := range report.Issues {
 		severityColor := r.scheme.Info
 		severitySymbol := "ℹ"
-		if issue.Severity == domain.SeverityWarning {
+		if issue.Severity == dot.SeverityWarning {
 			severityColor = r.scheme.Warning
 			severitySymbol = "⚠"
-		} else if issue.Severity == domain.SeverityError {
+		} else if issue.Severity == dot.SeverityError {
 			severityColor = r.scheme.Error
 			severitySymbol = "✗"
 		}

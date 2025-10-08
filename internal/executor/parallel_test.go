@@ -23,11 +23,11 @@ func TestExecuteBatch_Concurrent(t *testing.T) {
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	source2 := domain.MustParsePath("/packages/pkg/file2")
-	target2 := domain.MustParsePath("/home/file2")
+	target2 := domain.MustParseTargetPath("/home/file2")
 	source3 := domain.MustParsePath("/packages/pkg/file3")
-	target3 := domain.MustParsePath("/home/file3")
+	target3 := domain.MustParseTargetPath("/home/file3")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 	require.NoError(t, fs.WriteFile(ctx, source2.String(), []byte("content2"), 0644))
@@ -65,9 +65,9 @@ func TestExecuteBatch_PartialFailure(t *testing.T) {
 
 	// Mix of success and failure
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	source3 := domain.MustParsePath("/packages/pkg/file3")
-	target3 := domain.MustParsePath("/home/file3")
+	target3 := domain.MustParseTargetPath("/home/file3")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 	require.NoError(t, fs.WriteFile(ctx, source3.String(), []byte("content3"), 0644))
@@ -75,7 +75,7 @@ func TestExecuteBatch_PartialFailure(t *testing.T) {
 	ops := []domain.Operation{
 		domain.NewLinkCreate("link1", source1, target1),
 		// This will fail because parent directory /nonexistent doesn't exist
-		domain.NewLinkCreate("link2", domain.MustParsePath("/packages/pkg/file3"), domain.MustParsePath("/nonexistent/file2")),
+		domain.NewLinkCreate("link2", domain.MustParsePath("/packages/pkg/file3"), domain.MustParseTargetPath("/nonexistent/file2")),
 		domain.NewLinkCreate("link3", source3, target3),
 	}
 
@@ -102,9 +102,9 @@ func TestExecute_ParallelBatches(t *testing.T) {
 	require.NoError(t, fs.MkdirAll(ctx, "/home/dir2", 0755))
 
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/dir1/file1")
+	target1 := domain.MustParseTargetPath("/home/dir1/file1")
 	source2 := domain.MustParsePath("/packages/pkg/file2")
-	target2 := domain.MustParsePath("/home/dir2/file2")
+	target2 := domain.MustParseTargetPath("/home/dir2/file2")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("c1"), 0644))
 	require.NoError(t, fs.WriteFile(ctx, source2.String(), []byte("c2"), 0644))
@@ -143,11 +143,11 @@ func TestExecuteParallel_Internal_MultipleBatches(t *testing.T) {
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	source2 := domain.MustParsePath("/packages/pkg/file2")
-	target2 := domain.MustParsePath("/home/file2")
+	target2 := domain.MustParseTargetPath("/home/file2")
 	source3 := domain.MustParsePath("/packages/pkg/file3")
-	target3 := domain.MustParsePath("/home/file3")
+	target3 := domain.MustParseTargetPath("/home/file3")
 
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
 	require.NoError(t, fs.WriteFile(ctx, source2.String(), []byte("content2"), 0644))

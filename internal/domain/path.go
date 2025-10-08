@@ -104,9 +104,9 @@ func (p Path[K]) String() string {
 }
 
 // Join appends a path component, returning a FilePath.
-func (p Path[K]) Join(elem string) FilePath {
+func (p Path[K]) Join(elem string) Path[K] {
 	joined := filepath.Join(p.path, elem)
-	return Path[FileDirKind]{path: joined}
+	return Path[K]{path: joined}
 }
 
 // Parent returns the parent directory of this path.

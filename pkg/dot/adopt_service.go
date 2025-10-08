@@ -102,28 +102,24 @@ func (s *AdoptService) PlanAdopt(ctx context.Context, files []string, pkg string
 		adoptedName := scanner.UntranslateDotfile(filepath.Base(file))
 		destFile := filepath.Join(pkgPath, adoptedName)
 
-		sourcePathResult := NewFilePath(sourceFile)
-		if !sourcePathResult.IsOk() {
-			return Plan{}, sourcePathResult.UnwrapErr()
+		sourceLinkPathResult := NewTargetPath(sourceFile)
+		if !sourceLinkPathResult.IsOk() {
+			return Plan{}, sourceLinkPathResult.UnwrapErr()
 		}
 		destPathResult := NewFilePath(destFile)
 		if !destPathResult.IsOk() {
 			return Plan{}, destPathResult.UnwrapErr()
 		}
-		targetLinkPathResult := NewFilePath(sourceFile)
-		if !targetLinkPathResult.IsOk() {
-			return Plan{}, targetLinkPathResult.UnwrapErr()
-		}
 
 		moveID := OperationID(fmt.Sprintf("adopt-move-%s", file))
 		operations = append(operations, FileMove{
 			OpID:   moveID,
-			Source: sourcePathResult.Unwrap(),
+			Source: sourceLinkPathResult.Unwrap(),
 			Dest:   destPathResult.Unwrap(),
 		})
 
 		linkID := OperationID(fmt.Sprintf("adopt-link-%s", file))
-		operations = append(operations, NewLinkCreate(linkID, destPathResult.Unwrap(), targetLinkPathResult.Unwrap()))
+		operations = append(operations, NewLinkCreate(linkID, destPathResult.Unwrap(), sourceLinkPathResult.Unwrap()))
 	}
 	return Plan{
 		Operations: operations,

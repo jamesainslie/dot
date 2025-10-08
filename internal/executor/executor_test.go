@@ -70,7 +70,7 @@ func TestExecute_SingleOperation_Success(t *testing.T) {
 
 	// Create source file with parent directories
 	source := domain.MustParsePath("/packages/pkg/file")
-	target := domain.MustParsePath("/home/file")
+	target := domain.MustParseTargetPath("/home/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
@@ -102,7 +102,7 @@ func TestExecute_OperationFailure(t *testing.T) {
 
 	// Create operation that will fail (source doesn't exist)
 	source := domain.MustParsePath("/nonexistent")
-	target := domain.MustParsePath("/home/file")
+	target := domain.MustParseTargetPath("/home/file")
 	op := domain.NewLinkCreate("link1", source, target)
 
 	plan := domain.Plan{
@@ -125,7 +125,7 @@ func TestExecute_MultipleOperations_PartialFailure(t *testing.T) {
 
 	// First operation succeeds
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
@@ -133,7 +133,7 @@ func TestExecute_MultipleOperations_PartialFailure(t *testing.T) {
 
 	// Second operation fails (source doesn't exist)
 	source2 := domain.MustParsePath("/nonexistent")
-	target2 := domain.MustParsePath("/home/file2")
+	target2 := domain.MustParseTargetPath("/home/file2")
 	op2 := domain.NewLinkCreate("link2", source2, target2)
 
 	plan := domain.Plan{

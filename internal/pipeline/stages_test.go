@@ -117,7 +117,7 @@ func TestSortStage_ContextCancellation(t *testing.T) {
 		sortStage := SortStage()
 
 		source := domain.NewFilePath("/packages/vim/vimrc").Unwrap()
-		target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+		target := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 		input := SortInput{
 			Operations: []domain.Operation{

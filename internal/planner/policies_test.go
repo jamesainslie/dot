@@ -78,11 +78,12 @@ func TestPolicyFail(t *testing.T) {
 // Task 7.2.6: Test PolicySkip
 func TestPolicySkip(t *testing.T) {
 	sourcePath := domain.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
-	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
+	targetPath := domain.NewTargetPath("/home/user/.bashrc").Unwrap()
 
 	op := domain.NewLinkCreate("link-auto", sourcePath, targetPath)
 
-	conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
+	targetFilePath := domain.NewFilePath(targetPath.String()).Unwrap()
+	conflict := NewConflict(ConflictFileExists, targetFilePath, "File exists")
 
 	outcome := applySkipPolicy(op, conflict)
 

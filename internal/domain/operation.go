@@ -83,11 +83,11 @@ type Operation interface {
 type LinkCreate struct {
 	OpID   OperationID
 	Source FilePath
-	Target FilePath
+	Target TargetPath
 }
 
 // NewLinkCreate creates a new link creation operation.
-func NewLinkCreate(id OperationID, source, target FilePath) LinkCreate {
+func NewLinkCreate(id OperationID, source FilePath, target TargetPath) LinkCreate {
 	return LinkCreate{
 		OpID:   id,
 		Source: source,
@@ -140,11 +140,11 @@ func (op LinkCreate) Equals(other Operation) bool {
 // LinkDelete removes a symbolic link at target.
 type LinkDelete struct {
 	OpID   OperationID
-	Target FilePath
+	Target TargetPath
 }
 
 // NewLinkDelete creates a new link deletion operation.
-func NewLinkDelete(id OperationID, target FilePath) LinkDelete {
+func NewLinkDelete(id OperationID, target TargetPath) LinkDelete {
 	return LinkDelete{
 		OpID:   id,
 		Target: target,
@@ -310,12 +310,12 @@ func (op DirDelete) Equals(other Operation) bool {
 // FileMove moves a file from source to destination.
 type FileMove struct {
 	OpID   OperationID
-	Source FilePath
+	Source TargetPath
 	Dest   FilePath
 }
 
 // NewFileMove creates a new file move operation.
-func NewFileMove(id OperationID, source, dest FilePath) FileMove {
+func NewFileMove(id OperationID, source TargetPath, dest FilePath) FileMove {
 	return FileMove{
 		OpID:   id,
 		Source: source,

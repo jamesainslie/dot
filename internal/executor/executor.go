@@ -161,7 +161,7 @@ func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op domain.L
 		return err
 	}
 
-	if info.Mode().Perm()&0200 == 0 {
+	if info.Mode().Perm()&domain.PermUserW == 0 {
 		return domain.ErrPermissionDenied{
 			Path:      parentPath.String(),
 			Operation: "write",

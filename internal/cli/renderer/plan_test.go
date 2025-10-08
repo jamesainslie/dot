@@ -15,7 +15,7 @@ func TestJSONRenderer_RenderPlan(t *testing.T) {
 
 	plan := dot.Plan{
 		Operations: []dot.Operation{
-			dot.NewLinkCreate("op1", dot.MustParsePath("/src/file"), dot.MustParsePath("/dst/file")),
+			dot.NewLinkCreate("op1", dot.MustParsePath("/src/file"), dot.MustParseTargetPath("/dst/file")),
 		},
 		Metadata: dot.PlanMetadata{
 			PackageCount:   1,
@@ -37,7 +37,7 @@ func TestYAMLRenderer_RenderPlan(t *testing.T) {
 
 	plan := dot.Plan{
 		Operations: []dot.Operation{
-			dot.NewLinkCreate("op1", dot.MustParsePath("/src"), dot.MustParsePath("/dst")),
+			dot.NewLinkCreate("op1", dot.MustParsePath("/src"), dot.MustParseTargetPath("/dst")),
 		},
 		Metadata: dot.PlanMetadata{
 			PackageCount:   1,
@@ -62,7 +62,7 @@ func TestTextRenderer_RenderPlan(t *testing.T) {
 
 	plan := dot.Plan{
 		Operations: []dot.Operation{
-			dot.NewLinkCreate("op1", dot.MustParsePath("/src/vimrc"), dot.MustParsePath("/target/.vimrc")),
+			dot.NewLinkCreate("op1", dot.MustParsePath("/src/vimrc"), dot.MustParseTargetPath("/target/.vimrc")),
 			dot.NewDirCreate("op2", dot.MustParsePath("/target/dir")),
 		},
 		Metadata: dot.PlanMetadata{
@@ -87,7 +87,7 @@ func TestTableRenderer_RenderPlan(t *testing.T) {
 
 	plan := dot.Plan{
 		Operations: []dot.Operation{
-			dot.NewLinkCreate("op1", dot.MustParsePath("/s"), dot.MustParsePath("/t")),
+			dot.NewLinkCreate("op1", dot.MustParsePath("/s"), dot.MustParseTargetPath("/t")),
 		},
 		Metadata: dot.PlanMetadata{
 			OperationCount: 1,

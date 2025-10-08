@@ -20,7 +20,7 @@ func TestRollback_SingleOperation(t *testing.T) {
 
 	// Set up filesystem and create link
 	source := domain.MustParsePath("/packages/pkg/file")
-	target := domain.MustParsePath("/home/file")
+	target := domain.MustParseTargetPath("/home/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
@@ -54,7 +54,7 @@ func TestRollback_ReverseOrder(t *testing.T) {
 	// Create operations in order: DirCreate, then LinkCreate
 	dirPath := domain.MustParsePath("/home/subdir")
 	source := domain.MustParsePath("/packages/pkg/file")
-	target := domain.MustParsePath("/home/subdir/file")
+	target := domain.MustParseTargetPath("/home/subdir/file")
 
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
@@ -92,9 +92,9 @@ func TestRollback_PartialRollbackOnError(t *testing.T) {
 
 	// Create two links
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	source2 := domain.MustParsePath("/packages/pkg/file2")
-	target2 := domain.MustParsePath("/home/file2")
+	target2 := domain.MustParseTargetPath("/home/file2")
 
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
@@ -132,7 +132,7 @@ func TestExecute_AutomaticRollback(t *testing.T) {
 	// Create a scenario where prepare passes but execute fails
 	// We'll test by directly calling executeSequential with a checkpoint
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
@@ -141,7 +141,7 @@ func TestExecute_AutomaticRollback(t *testing.T) {
 
 	// Second operation will fail during execution (parent doesn't exist)
 	source2 := domain.MustParsePath("/packages/pkg/file2")
-	target2 := domain.MustParsePath("/nonexistent/file2")
+	target2 := domain.MustParseTargetPath("/nonexistent/file2")
 	require.NoError(t, fs.WriteFile(ctx, source2.String(), []byte("content2"), 0644))
 
 	op2 := domain.NewLinkCreate("link2", source2, target2)

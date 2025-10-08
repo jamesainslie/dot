@@ -75,7 +75,7 @@ func TestOperationBelongsToPackage(t *testing.T) {
 			op: domain.NewLinkCreate(
 				domain.OperationID("test-1"),
 				mustFilePath("/packages/vim/dot-vimrc"),
-				mustFilePath("/home/user/.vimrc"),
+				mustTargetPath("/home/user/.vimrc"),
 			),
 			pkgPath: vimPkgPath,
 			want:    true,
@@ -85,7 +85,7 @@ func TestOperationBelongsToPackage(t *testing.T) {
 			op: domain.NewLinkCreate(
 				domain.OperationID("test-2"),
 				mustFilePath("/packages/zsh/dot-zshrc"),
-				mustFilePath("/home/user/.zshrc"),
+				mustTargetPath("/home/user/.zshrc"),
 			),
 			pkgPath: vimPkgPath,
 			want:    false,
@@ -103,7 +103,7 @@ func TestOperationBelongsToPackage(t *testing.T) {
 			name: "LinkDelete",
 			op: domain.NewLinkDelete(
 				domain.OperationID("test-4"),
-				mustFilePath("/home/user/.vimrc"),
+				mustTargetPath("/home/user/.vimrc"),
 			),
 			pkgPath: vimPkgPath,
 			want:    false,
@@ -136,17 +136,17 @@ func TestBuildPackageOperationMapping(t *testing.T) {
 		domain.NewLinkCreate(
 			domain.OperationID("vim-link-1"),
 			mustFilePath("/packages/vim/dot-vimrc"),
-			mustFilePath("/home/user/.vimrc"),
+			mustTargetPath("/home/user/.vimrc"),
 		),
 		domain.NewLinkCreate(
 			domain.OperationID("vim-link-2"),
 			mustFilePath("/packages/vim/dot-vim-colors"),
-			mustFilePath("/home/user/.vim-colors"),
+			mustTargetPath("/home/user/.vim-colors"),
 		),
 		domain.NewLinkCreate(
 			domain.OperationID("zsh-link-1"),
 			mustFilePath("/packages/zsh/dot-zshrc"),
-			mustFilePath("/home/user/.zshrc"),
+			mustTargetPath("/home/user/.zshrc"),
 		),
 		domain.NewDirCreate(
 			domain.OperationID("dir-1"),
@@ -179,7 +179,7 @@ func TestBuildPackageOperationMapping_EmptyPackages(t *testing.T) {
 		domain.NewLinkCreate(
 			domain.OperationID("link-1"),
 			mustFilePath("/packages/vim/dot-vimrc"),
-			mustFilePath("/home/user/.vimrc"),
+			mustTargetPath("/home/user/.vimrc"),
 		),
 	}
 
@@ -224,6 +224,14 @@ func mustFilePath(path string) domain.FilePath {
 	result := domain.NewFilePath(path)
 	if !result.IsOk() {
 		panic("invalid file path: " + path)
+	}
+	return result.Unwrap()
+}
+
+func mustTargetPath(path string) domain.TargetPath {
+	result := domain.NewTargetPath(path)
+	if !result.IsOk() {
+		panic("invalid target path: " + path)
 	}
 	return result.Unwrap()
 }

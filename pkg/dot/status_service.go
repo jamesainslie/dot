@@ -29,8 +29,12 @@ func (s *StatusService) Status(ctx context.Context, packages ...string) (Status,
 	// Load manifest
 	manifestResult := s.manifestSvc.Load(ctx, targetPath)
 	if !manifestResult.IsOk() {
-		// No manifest means nothing installed
-		return Status{Packages: []PackageInfo{}}, nil
+		err := manifestResult.UnwrapErr()
+		if isManifestNotFoundError(err) {
+			// No manifest means nothing installed
+			return Status{Packages: []PackageInfo{}}, nil
+		}
+		return Status{}, err
 	}
 
 	m := manifestResult.Unwrap()

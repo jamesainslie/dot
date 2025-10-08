@@ -13,14 +13,15 @@ func NewTestClient(t testing.TB, env *TestEnvironment) *dot.Client {
 	t.Helper()
 
 	cfg := dot.Config{
-		PackageDir: env.PackageDir,
-		TargetDir:  env.TargetDir,
-		FS:         adapters.NewOSFilesystem(),
-		Logger:     adapters.NewNoopLogger(),
-		LinkMode:   dot.LinkRelative,
-		Folding:    true,
-		DryRun:     false,
-		Verbosity:  0,
+		PackageDir:         env.PackageDir,
+		TargetDir:          env.TargetDir,
+		FS:                 adapters.NewOSFilesystem(),
+		Logger:             adapters.NewNoopLogger(),
+		LinkMode:           dot.LinkRelative,
+		Folding:            true,
+		DryRun:             false,
+		Verbosity:          0,
+		PackageNameMapping: false, // Tests use legacy behavior
 	}
 
 	client, err := dot.NewClient(cfg)
@@ -34,15 +35,16 @@ func NewTestClientWithOptions(t testing.TB, env *TestEnvironment, opts ClientOpt
 	t.Helper()
 
 	cfg := dot.Config{
-		PackageDir:  env.PackageDir,
-		TargetDir:   env.TargetDir,
-		FS:          opts.FS,
-		Logger:      opts.Logger,
-		LinkMode:    opts.LinkMode,
-		Folding:     opts.Folding,
-		DryRun:      opts.DryRun,
-		Verbosity:   opts.Verbosity,
-		Concurrency: opts.Concurrency,
+		PackageDir:         env.PackageDir,
+		TargetDir:          env.TargetDir,
+		FS:                 opts.FS,
+		Logger:             opts.Logger,
+		LinkMode:           opts.LinkMode,
+		Folding:            opts.Folding,
+		DryRun:             opts.DryRun,
+		Verbosity:          opts.Verbosity,
+		Concurrency:        opts.Concurrency,
+		PackageNameMapping: false, // Tests use legacy behavior
 	}
 
 	// Apply defaults

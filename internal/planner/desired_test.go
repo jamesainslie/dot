@@ -13,7 +13,7 @@ func TestComputeDesiredState_EmptyPackage(t *testing.T) {
 	packages := []domain.Package{}
 	target := domain.NewTargetPath("/home/user").Unwrap()
 
-	result := planner.ComputeDesiredState(packages, target)
+	result := planner.ComputeDesiredState(packages, target, false)
 	require.True(t, result.IsOk())
 
 	state := result.Unwrap()
@@ -38,7 +38,7 @@ func TestComputeDesiredState_SingleFile(t *testing.T) {
 		Tree: &fileNode,
 	}
 
-	result := planner.ComputeDesiredState([]domain.Package{pkg}, target)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, target, false)
 	require.True(t, result.IsOk())
 
 	state := result.Unwrap()
@@ -68,7 +68,7 @@ func TestComputeDesiredState_DotfileTranslation(t *testing.T) {
 		Tree: &fileNode,
 	}
 
-	result := planner.ComputeDesiredState([]domain.Package{pkg}, target)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, target, false)
 	require.True(t, result.IsOk())
 
 	state := result.Unwrap()
@@ -108,7 +108,7 @@ func TestComputeDesiredState_NestedFiles(t *testing.T) {
 		Tree: &rootNode,
 	}
 
-	result := planner.ComputeDesiredState([]domain.Package{pkg}, target)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, target, false)
 	require.True(t, result.IsOk())
 
 	state := result.Unwrap()
@@ -293,11 +293,177 @@ func TestComputeDesiredStateWithMultipleFiles(t *testing.T) {
 		Tree: tree,
 	}
 
-	result := planner.ComputeDesiredState([]domain.Package{pkg}, targetDir)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, targetDir, false)
 
 	assert.True(t, result.IsOk())
 	state := result.Unwrap()
 
 	// Should have 2 links
 	assert.Len(t, state.Links, 2)
+}
+
+func TestComputeDesiredState_PackageNameMapping(t *testing.T) {
+	t.Run("with package name mapping enabled", func(t *testing.T) {
+		// Package "dot-gnupg" with file "common.conf"
+		// Should produce target "~/.gnupg/common.conf"
+		pkgPath := domain.NewPackagePath("/home/user/dotfiles/dot-gnupg").Unwrap()
+		target := domain.NewTargetPath("/home/user").Unwrap()
+
+		fileNode := domain.Node{
+			Path: domain.NewFilePath("/home/user/dotfiles/dot-gnupg/common.conf").Unwrap(),
+			Type: domain.NodeFile,
+		}
+
+		pkg := domain.Package{
+			Name: "dot-gnupg",
+			Path: pkgPath,
+			Tree: &fileNode,
+		}
+
+		result := planner.ComputeDesiredState([]domain.Package{pkg}, target, true)
+		require.True(t, result.IsOk())
+
+		state := result.Unwrap()
+
+		// Should create link at ~/.gnupg/common.conf (not ~/common.conf)
+		linkSpec, exists := state.Links["/home/user/.gnupg/common.conf"]
+		require.True(t, exists, "Expected link at /home/user/.gnupg/common.conf")
+		assert.Equal(t, "/home/user/dotfiles/dot-gnupg/common.conf", linkSpec.Source.String())
+		assert.Equal(t, "/home/user/.gnupg/common.conf", linkSpec.Target.String())
+
+		// Should create parent directory .gnupg
+		_, dirExists := state.Dirs["/home/user/.gnupg"]
+		assert.True(t, dirExists, "Expected parent directory /home/user/.gnupg")
+	})
+
+	t.Run("with package name mapping disabled", func(t *testing.T) {
+		// Package "dot-gnupg" with file "common.conf"
+		// Should produce target "~/common.conf" (legacy behavior)
+		pkgPath := domain.NewPackagePath("/home/user/dotfiles/dot-gnupg").Unwrap()
+		target := domain.NewTargetPath("/home/user").Unwrap()
+
+		fileNode := domain.Node{
+			Path: domain.NewFilePath("/home/user/dotfiles/dot-gnupg/common.conf").Unwrap(),
+			Type: domain.NodeFile,
+		}
+
+		pkg := domain.Package{
+			Name: "dot-gnupg",
+			Path: pkgPath,
+			Tree: &fileNode,
+		}
+
+		result := planner.ComputeDesiredState([]domain.Package{pkg}, target, false)
+		require.True(t, result.IsOk())
+
+		state := result.Unwrap()
+
+		// Should create link at ~/common.conf (not ~/.gnupg/common.conf)
+		linkSpec, exists := state.Links["/home/user/common.conf"]
+		require.True(t, exists, "Expected link at /home/user/common.conf")
+		assert.Equal(t, "/home/user/dotfiles/dot-gnupg/common.conf", linkSpec.Source.String())
+	})
+
+	t.Run("nested directories with package name mapping", func(t *testing.T) {
+		// Package "dot-gnupg" with "public-keys.d/pubring.db"
+		// Should produce target "~/.gnupg/public-keys.d/pubring.db"
+		pkgPath := domain.NewPackagePath("/home/user/dotfiles/dot-gnupg").Unwrap()
+		target := domain.NewTargetPath("/home/user").Unwrap()
+
+		fileNode := domain.Node{
+			Path: domain.NewFilePath("/home/user/dotfiles/dot-gnupg/public-keys.d/pubring.db").Unwrap(),
+			Type: domain.NodeFile,
+		}
+
+		keysDir := domain.Node{
+			Path:     domain.NewFilePath("/home/user/dotfiles/dot-gnupg/public-keys.d").Unwrap(),
+			Type:     domain.NodeDir,
+			Children: []domain.Node{fileNode},
+		}
+
+		rootNode := domain.Node{
+			Path:     domain.NewFilePath("/home/user/dotfiles/dot-gnupg").Unwrap(),
+			Type:     domain.NodeDir,
+			Children: []domain.Node{keysDir},
+		}
+
+		pkg := domain.Package{
+			Name: "dot-gnupg",
+			Path: pkgPath,
+			Tree: &rootNode,
+		}
+
+		result := planner.ComputeDesiredState([]domain.Package{pkg}, target, true)
+		require.True(t, result.IsOk())
+
+		state := result.Unwrap()
+
+		// Should create link at ~/.gnupg/public-keys.d/pubring.db
+		linkSpec, exists := state.Links["/home/user/.gnupg/public-keys.d/pubring.db"]
+		require.True(t, exists, "Expected link at /home/user/.gnupg/public-keys.d/pubring.db")
+		assert.Equal(t, "/home/user/dotfiles/dot-gnupg/public-keys.d/pubring.db", linkSpec.Source.String())
+
+		// Should create parent directories
+		_, gnupgExists := state.Dirs["/home/user/.gnupg"]
+		assert.True(t, gnupgExists, "Expected directory /home/user/.gnupg")
+
+		_, keysExists := state.Dirs["/home/user/.gnupg/public-keys.d"]
+		assert.True(t, keysExists, "Expected directory /home/user/.gnupg/public-keys.d")
+	})
+
+	t.Run("non-prefixed package with mapping enabled", func(t *testing.T) {
+		// Package "vim" with file "init.lua"
+		// Should produce target "~/vim/init.lua"
+		pkgPath := domain.NewPackagePath("/home/user/dotfiles/vim").Unwrap()
+		target := domain.NewTargetPath("/home/user").Unwrap()
+
+		fileNode := domain.Node{
+			Path: domain.NewFilePath("/home/user/dotfiles/vim/init.lua").Unwrap(),
+			Type: domain.NodeFile,
+		}
+
+		pkg := domain.Package{
+			Name: "vim",
+			Path: pkgPath,
+			Tree: &fileNode,
+		}
+
+		result := planner.ComputeDesiredState([]domain.Package{pkg}, target, true)
+		require.True(t, result.IsOk())
+
+		state := result.Unwrap()
+
+		// Should create link at ~/vim/init.lua (no dot translation for package name)
+		linkSpec, exists := state.Links["/home/user/vim/init.lua"]
+		require.True(t, exists, "Expected link at /home/user/vim/init.lua")
+		assert.Equal(t, "/home/user/dotfiles/vim/init.lua", linkSpec.Source.String())
+	})
+
+	t.Run("file-level dot- translation with package mapping", func(t *testing.T) {
+		// Package "vim" with file "dot-vimrc"
+		// Should produce target "~/vim/.vimrc" (both package and file translation)
+		pkgPath := domain.NewPackagePath("/home/user/dotfiles/vim").Unwrap()
+		target := domain.NewTargetPath("/home/user").Unwrap()
+
+		fileNode := domain.Node{
+			Path: domain.NewFilePath("/home/user/dotfiles/vim/dot-vimrc").Unwrap(),
+			Type: domain.NodeFile,
+		}
+
+		pkg := domain.Package{
+			Name: "vim",
+			Path: pkgPath,
+			Tree: &fileNode,
+		}
+
+		result := planner.ComputeDesiredState([]domain.Package{pkg}, target, true)
+		require.True(t, result.IsOk())
+
+		state := result.Unwrap()
+
+		// Should create link at ~/vim/.vimrc (file-level translation applied)
+		linkSpec, exists := state.Links["/home/user/vim/.vimrc"]
+		require.True(t, exists, "Expected link at /home/user/vim/.vimrc")
+		assert.Equal(t, "/home/user/dotfiles/vim/dot-vimrc", linkSpec.Source.String())
+	})
 }

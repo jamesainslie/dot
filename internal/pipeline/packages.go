@@ -11,10 +11,11 @@ import (
 
 // ManagePipelineOpts contains options for the Manage pipeline
 type ManagePipelineOpts struct {
-	FS        domain.FS
-	IgnoreSet *ignore.IgnoreSet
-	Policies  planner.ResolutionPolicies
-	BackupDir string
+	FS                 domain.FS
+	IgnoreSet          *ignore.IgnoreSet
+	Policies           planner.ResolutionPolicies
+	BackupDir          string
+	PackageNameMapping bool
 }
 
 // ManageInput contains the input for manage operations
@@ -57,8 +58,9 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) domain.
 
 	// Stage 2: Compute desired state
 	planInput := PlanInput{
-		Packages:  packages,
-		TargetDir: input.TargetDir,
+		Packages:           packages,
+		TargetDir:          input.TargetDir,
+		PackageNameMapping: p.opts.PackageNameMapping,
 	}
 
 	planResult := PlanStage()(ctx, planInput)

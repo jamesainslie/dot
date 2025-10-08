@@ -56,10 +56,11 @@ func NewClient(cfg Config) (*Client, error) {
 
 	// Create manage pipeline
 	managePipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
-		FS:        cfg.FS,
-		IgnoreSet: ignoreSet,
-		Policies:  policies,
-		BackupDir: cfg.BackupDir,
+		FS:                 cfg.FS,
+		IgnoreSet:          ignoreSet,
+		Policies:           policies,
+		BackupDir:          cfg.BackupDir,
+		PackageNameMapping: cfg.PackageNameMapping,
 	})
 
 	// Create executor

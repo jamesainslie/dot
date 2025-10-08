@@ -17,8 +17,9 @@ const (
 	DefaultSymlinkBackupSuffix = ".bak"     // Default backup file suffix
 
 	// Dotfile translation defaults
-	DefaultDotfileTranslate = true   // Enable dot- to . translation
-	DefaultDotfilePrefix    = "dot-" // Prefix for dotfile translation
+	DefaultDotfileTranslate          = true   // Enable dot- to . translation
+	DefaultDotfilePrefix             = "dot-" // Prefix for dotfile translation
+	DefaultDotfilePackageNameMapping = true   // Enable package name to target directory mapping (pre-1.0 breaking change)
 
 	// Output defaults
 	DefaultOutputFormat    = "text" // Default output format (text, json, yaml, table)

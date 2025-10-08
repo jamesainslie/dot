@@ -64,8 +64,9 @@ func ScanStage() Pipeline[ScanInput, []domain.Package] {
 
 // PlanInput contains the input for planning operations
 type PlanInput struct {
-	Packages  []domain.Package
-	TargetDir domain.TargetPath
+	Packages           []domain.Package
+	TargetDir          domain.TargetPath
+	PackageNameMapping bool
 }
 
 // PlanStage creates a pipeline stage that computes desired state.
@@ -79,7 +80,7 @@ func PlanStage() Pipeline[PlanInput, planner.DesiredState] {
 		default:
 		}
 
-		return planner.ComputeDesiredState(input.Packages, input.TargetDir)
+		return planner.ComputeDesiredState(input.Packages, input.TargetDir, input.PackageNameMapping)
 	}
 }
 

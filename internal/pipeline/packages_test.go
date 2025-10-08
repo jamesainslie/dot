@@ -18,9 +18,10 @@ func TestNewManagePipeline(t *testing.T) {
 	policies := planner.DefaultPolicies()
 
 	pipeline := NewManagePipeline(ManagePipelineOpts{
-		FS:        fs,
-		IgnoreSet: ignoreSet,
-		Policies:  policies,
+		FS:                 fs,
+		IgnoreSet:          ignoreSet,
+		Policies:           policies,
+		PackageNameMapping: false,
 	})
 
 	require.NotNil(t, pipeline)
@@ -35,9 +36,10 @@ func TestManagePipeline_Execute(t *testing.T) {
 		ignoreSet := ignore.NewIgnoreSet()
 
 		pipeline := NewManagePipeline(ManagePipelineOpts{
-			FS:        fs,
-			IgnoreSet: ignoreSet,
-			Policies:  planner.DefaultPolicies(),
+			FS:                 fs,
+			IgnoreSet:          ignoreSet,
+			Policies:           planner.DefaultPolicies(),
+			PackageNameMapping: false,
 		})
 
 		packagePathResult := domain.NewPackagePath("/packages")
@@ -70,9 +72,10 @@ func TestManagePipeline_Execute(t *testing.T) {
 		ignoreSet := ignore.NewIgnoreSet()
 
 		pipeline := NewManagePipeline(ManagePipelineOpts{
-			FS:        fs,
-			IgnoreSet: ignoreSet,
-			Policies:  planner.DefaultPolicies(),
+			FS:                 fs,
+			IgnoreSet:          ignoreSet,
+			Policies:           planner.DefaultPolicies(),
+			PackageNameMapping: false,
 		})
 
 		packagePathResult := domain.NewPackagePath("/packages")

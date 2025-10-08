@@ -90,6 +90,11 @@ type DotfileConfig struct {
 
 	// Prefix for dotfile translation
 	Prefix string `mapstructure:"prefix" json:"prefix" yaml:"prefix" toml:"prefix"`
+
+	// PackageNameMapping enables package name to target directory mapping.
+	// When enabled, package "dot-gnupg" targets ~/.gnupg/ instead of ~/.
+	// Default: true (project is pre-1.0, breaking change acceptable)
+	PackageNameMapping bool `mapstructure:"package_name_mapping" json:"package_name_mapping" yaml:"package_name_mapping" toml:"package_name_mapping"`
 }
 
 // OutputConfig contains output formatting configuration.
@@ -193,8 +198,9 @@ func DefaultExtended() *ExtendedConfig {
 			Overrides:   []string{},
 		},
 		Dotfile: DotfileConfig{
-			Translate: true,
-			Prefix:    "dot-",
+			Translate:          true,
+			Prefix:             "dot-",
+			PackageNameMapping: true,
 		},
 		Output: OutputConfig{
 			Format:    "text",

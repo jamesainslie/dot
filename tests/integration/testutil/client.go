@@ -9,7 +9,7 @@ import (
 )
 
 // NewTestClient creates a dot client configured for the test environment.
-func NewTestClient(t *testing.T, env *TestEnvironment) *dot.Client {
+func NewTestClient(t testing.TB, env *TestEnvironment) *dot.Client {
 	t.Helper()
 
 	cfg := dot.Config{
@@ -30,7 +30,7 @@ func NewTestClient(t *testing.T, env *TestEnvironment) *dot.Client {
 }
 
 // NewTestClientWithOptions creates a client with custom configuration.
-func NewTestClientWithOptions(t *testing.T, env *TestEnvironment, opts ClientOptions) *dot.Client {
+func NewTestClientWithOptions(t testing.TB, env *TestEnvironment, opts ClientOptions) *dot.Client {
 	t.Helper()
 
 	cfg := dot.Config{

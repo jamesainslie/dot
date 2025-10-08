@@ -10,12 +10,12 @@ import (
 
 // FixtureBuilder provides methods for building test fixtures.
 type FixtureBuilder struct {
-	t       *testing.T
+	t       testing.TB
 	baseDir string
 }
 
 // NewFixtureBuilder creates a new fixture builder.
-func NewFixtureBuilder(t *testing.T, baseDir string) *FixtureBuilder {
+func NewFixtureBuilder(t testing.TB, baseDir string) *FixtureBuilder {
 	t.Helper()
 	return &FixtureBuilder{
 		t:       t,

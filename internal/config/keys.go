@@ -55,6 +55,7 @@ const (
 	KeyDoctorCheckManifest      = "doctor.check_manifest"
 	KeyDoctorCheckBrokenLinks   = "doctor.check_broken_links"
 	KeyDoctorCheckOrphaned      = "doctor.check_orphaned"
+	KeyDoctorCheckPermissions   = "doctor.check_permissions"
 	KeyDoctorOrphanScanMode     = "doctor.orphan_scan_mode"
 	KeyDoctorOrphanScanDepth    = "doctor.orphan_scan_depth"
 	KeyDoctorOrphanSkipPatterns = "doctor.orphan_skip_patterns"

@@ -85,8 +85,7 @@ Comprehensive guide to using dot for dotfile and configuration management.
 
 ### For Developers
 
-- [Architecture Documentation](../architecture/architecture.md)
-- [API Reference](../developer/api-reference.md)
+- [Release Workflow](../developer/release-workflow.md)
 - [Contributing Guide](../../CONTRIBUTING.md)
 
 ### Examples
@@ -94,11 +93,12 @@ Comprehensive guide to using dot for dotfile and configuration management.
 - [Basic Examples](../../examples/basic/)
 - [Configuration Examples](../../examples/configuration/)
 - [Workflow Examples](../../examples/workflows/)
+- [Examples README](../../examples/README.md)
 
 ### Reference
 
 - [Migration from GNU Stow](migration-from-stow.md)
-- [Configuration Schema](../reference/config-schema.yaml)
+- [Homebrew Installation](installation-homebrew.md)
 
 ## Getting Help
 

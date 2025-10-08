@@ -36,3 +36,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Planning and historical documentation (kept locally, not in git)
+docs/architecture/
+docs/archive/
+docs/planning/
+PHASE-*.md

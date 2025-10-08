@@ -12,7 +12,7 @@ import (
 
 // TestEnvironment provides an isolated environment for integration tests.
 type TestEnvironment struct {
-	t          *testing.T
+	t          testing.TB
 	tmpDir     string
 	PackageDir string
 	TargetDir  string
@@ -22,7 +22,7 @@ type TestEnvironment struct {
 }
 
 // NewTestEnvironment creates a new isolated test environment.
-func NewTestEnvironment(t *testing.T) *TestEnvironment {
+func NewTestEnvironment(t testing.TB) *TestEnvironment {
 	t.Helper()
 
 	tmpDir := t.TempDir()
@@ -111,7 +111,7 @@ func (te *TestEnvironment) CreateSimplePackage(name, filename, content string) s
 }
 
 // WithTimeout creates a new environment with custom timeout.
-func WithTimeout(t *testing.T, timeout time.Duration) *TestEnvironment {
+func WithTimeout(t testing.TB, timeout time.Duration) *TestEnvironment {
 	t.Helper()
 
 	tmpDir := t.TempDir()

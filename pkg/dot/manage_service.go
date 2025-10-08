@@ -17,6 +17,7 @@ type ManageService struct {
 	managePipe  *pipeline.ManagePipeline
 	executor    *executor.Executor
 	manifestSvc *ManifestService
+	unmanageSvc *UnmanageService
 	packageDir  string
 	targetDir   string
 	dryRun      bool
@@ -29,6 +30,7 @@ func newManageService(
 	managePipe *pipeline.ManagePipeline,
 	exec *executor.Executor,
 	manifestSvc *ManifestService,
+	unmanageSvc *UnmanageService,
 	packageDir string,
 	targetDir string,
 	dryRun bool,
@@ -39,6 +41,7 @@ func newManageService(
 		managePipe:  managePipe,
 		executor:    exec,
 		manifestSvc: manifestSvc,
+		unmanageSvc: unmanageSvc,
 		packageDir:  packageDir,
 		targetDir:   targetDir,
 		dryRun:      dryRun,
@@ -221,19 +224,33 @@ func (s *ManageService) planNewPackageInstall(ctx context.Context, pkg string) (
 
 // planFullRemanage plans full unmanage + manage for a package.
 func (s *ManageService) planFullRemanage(ctx context.Context, pkg string) ([]Operation, map[string][]OperationID, error) {
-	// Note: This needs UnmanageService.PlanUnmanage - we'll fix after extraction
-	// For now, create empty unmanage operations
+	// Get unmanage operations first
+	unmanagePlan, err := s.unmanageSvc.PlanUnmanage(ctx, pkg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get manage operations
 	managePlan, err := s.PlanManage(ctx, pkg)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Concatenate operations (unmanage first, then manage)
+	ops := make([]Operation, 0, len(unmanagePlan.Operations)+len(managePlan.Operations))
+	ops = append(ops, unmanagePlan.Operations...)
+	ops = append(ops, managePlan.Operations...)
+
+	// Merge package operations
 	packageOps := make(map[string][]OperationID)
-	if managePlan.PackageOperations != nil {
-		if pkgOps, hasPkg := managePlan.PackageOperations[pkg]; hasPkg {
-			packageOps[pkg] = pkgOps
-		}
-	}
-	return managePlan.Operations, packageOps, nil
+	unmanageOps := unmanagePlan.PackageOperations[pkg]
+	manageOps := managePlan.PackageOperations[pkg]
+	mergedOps := make([]OperationID, 0, len(unmanageOps)+len(manageOps))
+	mergedOps = append(mergedOps, unmanageOps...)
+	mergedOps = append(mergedOps, manageOps...)
+	packageOps[pkg] = mergedOps
+
+	return ops, packageOps, nil
 }
 
 // getPackagePath constructs and validates package path.

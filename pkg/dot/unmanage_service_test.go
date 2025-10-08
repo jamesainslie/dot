@@ -39,7 +39,8 @@ func TestUnmanageService_Unmanage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		manageSvc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, packageDir, targetDir, false)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		manageSvc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
 		err := manageSvc.Manage(ctx, "test-pkg")
 		require.NoError(t, err)
@@ -48,7 +49,6 @@ func TestUnmanageService_Unmanage(t *testing.T) {
 		assert.True(t, fs.Exists(ctx, targetDir+"/.vimrc"))
 
 		// Now unmanage
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
 		err = unmanageSvc.Unmanage(ctx, "test-pkg")
 		require.NoError(t, err)
 
@@ -100,13 +100,13 @@ func TestUnmanageService_PlanUnmanage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		manageSvc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, packageDir, targetDir, false)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		manageSvc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
 		err := manageSvc.Manage(ctx, "test-pkg")
 		require.NoError(t, err)
 
 		// Plan unmanage
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
 		plan, err := unmanageSvc.PlanUnmanage(ctx, "test-pkg")
 		require.NoError(t, err)
 		assert.Greater(t, len(plan.Operations), 0)

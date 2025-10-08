@@ -12,10 +12,11 @@ func TestAbsolutePathValidator(t *testing.T) {
 	validator := &AbsolutePathValidator{}
 
 	t.Run("accepts absolute paths", func(t *testing.T) {
+		base := t.TempDir()
 		absolutePaths := []string{
-			"/absolute/path",
-			"/home/user/config",
-			"/etc/config.yaml",
+			filepath.Join(base, "absolute", "path"),
+			filepath.Join(base, "home", "user", "config"),
+			filepath.Join(base, "etc", "config.yaml"),
 		}
 
 		for _, path := range absolutePaths {
@@ -65,9 +66,10 @@ func TestRelativePathValidator(t *testing.T) {
 	})
 
 	t.Run("rejects absolute paths", func(t *testing.T) {
+		base := t.TempDir()
 		absolutePaths := []string{
-			"/absolute/path",
-			"/home/user/config",
+			filepath.Join(base, "absolute", "path"),
+			filepath.Join(base, "home", "user", "config"),
 		}
 
 		for _, path := range absolutePaths {
@@ -88,10 +90,11 @@ func TestTraversalFreeValidator(t *testing.T) {
 	validator := &TraversalFreeValidator{}
 
 	t.Run("accepts clean paths", func(t *testing.T) {
+		base := t.TempDir()
 		cleanPaths := []string{
-			"/clean/path",
+			filepath.Join(base, "clean", "path"),
 			"relative/path",
-			"/home/user/file.txt",
+			filepath.Join(base, "home", "user", "file.txt"),
 			"subdir/file",
 		}
 
@@ -143,8 +146,9 @@ func TestNonEmptyPathValidator(t *testing.T) {
 	validator := &NonEmptyPathValidator{}
 
 	t.Run("accepts non-empty paths", func(t *testing.T) {
+		base := t.TempDir()
 		paths := []string{
-			"/absolute",
+			filepath.Join(base, "absolute"),
 			"relative",
 			".",
 			"..",
@@ -165,6 +169,7 @@ func TestNonEmptyPathValidator(t *testing.T) {
 
 func TestValidatorChaining(t *testing.T) {
 	t.Run("chain multiple validators", func(t *testing.T) {
+		base := t.TempDir()
 		validators := []PathValidator{
 			&NonEmptyPathValidator{},
 			&AbsolutePathValidator{},
@@ -172,7 +177,7 @@ func TestValidatorChaining(t *testing.T) {
 		}
 
 		// Valid path passes all validators
-		validPath := "/clean/absolute/path"
+		validPath := filepath.Join(base, "clean", "absolute", "path")
 		for _, v := range validators {
 			err := v.Validate(validPath)
 			assert.NoError(t, err)
@@ -194,12 +199,13 @@ func TestValidatorChaining(t *testing.T) {
 
 func TestValidateWithValidators(t *testing.T) {
 	t.Run("runs all validators in order", func(t *testing.T) {
+		base := t.TempDir()
 		validators := []PathValidator{
 			&NonEmptyPathValidator{},
 			&AbsolutePathValidator{},
 		}
 
-		err := ValidateWithValidators("/valid/path", validators)
+		err := ValidateWithValidators(filepath.Join(base, "valid", "path"), validators)
 		assert.NoError(t, err)
 	})
 
@@ -216,7 +222,8 @@ func TestValidateWithValidators(t *testing.T) {
 	})
 
 	t.Run("handles empty validator list", func(t *testing.T) {
-		err := ValidateWithValidators("/any/path", []PathValidator{})
+		base := t.TempDir()
+		err := ValidateWithValidators(filepath.Join(base, "any", "path"), []PathValidator{})
 		assert.NoError(t, err, "empty validator list should pass")
 	})
 

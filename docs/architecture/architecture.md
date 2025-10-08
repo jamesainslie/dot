@@ -108,9 +108,13 @@ dot/
 │       └── list.go
 │
 ├── pkg/dot/                    # Public library API
-│   ├── api.go                  # Facade interface
-│   ├── pipeline.go             # Pipeline builder
-│   ├── streaming.go            # Streaming APIs
+│   ├── client.go               # Client facade (delegates to services)
+│   ├── manifest_service.go     # Manifest management service
+│   ├── manage_service.go       # Package installation service
+│   ├── unmanage_service.go     # Package removal service
+│   ├── status_service.go       # Status/listing service
+│   ├── doctor_service.go       # Health check service
+│   ├── adopt_service.go        # File adoption service
 │   └── types.go                # Re-exported domain types
 │
 ├── internal/

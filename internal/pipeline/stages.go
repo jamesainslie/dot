@@ -4,10 +4,10 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/planner"
 	"github.com/jamesainslie/dot/internal/scanner"
-	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // ScanInput contains the input for scanning packages

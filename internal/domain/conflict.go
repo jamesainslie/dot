@@ -16,4 +16,3 @@ type WarningInfo struct {
 	Severity string            `json:"severity"`
 	Context  map[string]string `json:"context,omitempty"`
 }
-

@@ -5,8 +5,8 @@ import (
 	"io/fs"
 	"testing"
 
-	"github.com/jamesainslie/dot/internal/scanner"
 	"github.com/jamesainslie/dot/internal/domain"
+	"github.com/jamesainslie/dot/internal/scanner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

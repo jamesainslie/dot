@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // CheckpointID uniquely identifies a checkpoint.
@@ -16,23 +16,23 @@ type CheckpointID string
 type Checkpoint struct {
 	ID         CheckpointID
 	CreatedAt  time.Time
-	operations map[dot.OperationID]dot.Operation
+	operations map[domain.OperationID]domain.Operation
 	mu         sync.RWMutex
 }
 
 // Record stores an executed operation in the checkpoint.
-func (c *Checkpoint) Record(id dot.OperationID, op dot.Operation) {
+func (c *Checkpoint) Record(id domain.OperationID, op domain.Operation) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.operations == nil {
-		c.operations = make(map[dot.OperationID]dot.Operation)
+		c.operations = make(map[domain.OperationID]domain.Operation)
 	}
 	c.operations[id] = op
 }
 
 // Lookup retrieves an operation from the checkpoint.
 // Returns nil if the operation is not found.
-func (c *Checkpoint) Lookup(id dot.OperationID) dot.Operation {
+func (c *Checkpoint) Lookup(id domain.OperationID) domain.Operation {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.operations[id]
@@ -40,7 +40,7 @@ func (c *Checkpoint) Lookup(id dot.OperationID) dot.Operation {
 
 // GetOperation retrieves an operation by ID with thread safety.
 // Returns the operation and true if found, or nil and false if not found.
-func (c *Checkpoint) GetOperation(id dot.OperationID) (dot.Operation, bool) {
+func (c *Checkpoint) GetOperation(id domain.OperationID) (domain.Operation, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	op, exists := c.operations[id]
@@ -49,11 +49,11 @@ func (c *Checkpoint) GetOperation(id dot.OperationID) (dot.Operation, bool) {
 
 // ListOperations returns a snapshot of all operations in the checkpoint.
 // The returned slice is a copy and safe to use concurrently.
-func (c *Checkpoint) ListOperations() []dot.Operation {
+func (c *Checkpoint) ListOperations() []domain.Operation {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	ops := make([]dot.Operation, 0, len(c.operations))
+	ops := make([]domain.Operation, 0, len(c.operations))
 	for _, op := range c.operations {
 		ops = append(ops, op)
 	}
@@ -116,7 +116,7 @@ func (s *MemoryCheckpointStore) Restore(ctx context.Context, id CheckpointID) (*
 
 	checkpoint, exists := s.checkpoints[id]
 	if !exists {
-		return nil, dot.ErrCheckpointNotFound{ID: string(id)}
+		return nil, domain.ErrCheckpointNotFound{ID: string(id)}
 	}
 	return checkpoint, nil
 }

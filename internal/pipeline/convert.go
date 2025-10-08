@@ -2,19 +2,19 @@ package pipeline
 
 import (
 	"github.com/jamesainslie/dot/internal/planner"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
-// convertConflicts converts planner.Conflict to dot.ConflictInfo for plan metadata.
+// convertConflicts converts planner.Conflict to domain.ConflictInfo for plan metadata.
 // Creates shallow copies of context maps to prevent shared mutation.
-func convertConflicts(conflicts []planner.Conflict) []dot.ConflictInfo {
+func convertConflicts(conflicts []planner.Conflict) []domain.ConflictInfo {
 	if len(conflicts) == 0 {
 		return nil
 	}
 
-	infos := make([]dot.ConflictInfo, 0, len(conflicts))
+	infos := make([]domain.ConflictInfo, 0, len(conflicts))
 	for _, c := range conflicts {
-		infos = append(infos, dot.ConflictInfo{
+		infos = append(infos, domain.ConflictInfo{
 			Type:    c.Type.String(),
 			Path:    c.Path.String(),
 			Details: c.Details,
@@ -24,16 +24,16 @@ func convertConflicts(conflicts []planner.Conflict) []dot.ConflictInfo {
 	return infos
 }
 
-// convertWarnings converts planner.Warning to dot.WarningInfo for plan metadata.
+// convertWarnings converts planner.Warning to domain.WarningInfo for plan metadata.
 // Creates shallow copies of context maps to prevent shared mutation.
-func convertWarnings(warnings []planner.Warning) []dot.WarningInfo {
+func convertWarnings(warnings []planner.Warning) []domain.WarningInfo {
 	if len(warnings) == 0 {
 		return nil
 	}
 
-	infos := make([]dot.WarningInfo, 0, len(warnings))
+	infos := make([]domain.WarningInfo, 0, len(warnings))
 	for _, w := range warnings {
-		infos = append(infos, dot.WarningInfo{
+		infos = append(infos, domain.WarningInfo{
 			Message:  w.Message,
 			Severity: w.Severity.String(),
 			Context:  copyContext(w.Context),

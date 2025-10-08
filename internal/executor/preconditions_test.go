@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jamesainslie/dot/internal/adapters"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,8 +21,8 @@ func TestCheckDirCreatePreconditions_Success(t *testing.T) {
 	// Create parent directory
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 
-	dirPath := dot.MustParsePath("/home/subdir")
-	op := dot.NewDirCreate("dir1", dirPath)
+	dirPath := domain.MustParsePath("/home/subdir")
+	op := domain.NewDirCreate("dir1", dirPath)
 
 	err := exec.checkDirCreatePreconditions(ctx, op)
 	require.NoError(t, err)
@@ -38,12 +38,12 @@ func TestCheckDirCreatePreconditions_ParentNotFound(t *testing.T) {
 	})
 
 	// Parent doesn't exist
-	dirPath := dot.MustParsePath("/nonexistent/subdir")
-	op := dot.NewDirCreate("dir1", dirPath)
+	dirPath := domain.MustParsePath("/nonexistent/subdir")
+	op := domain.NewDirCreate("dir1", dirPath)
 
 	err := exec.checkDirCreatePreconditions(ctx, op)
 	require.Error(t, err)
-	require.IsType(t, dot.ErrParentNotFound{}, err)
+	require.IsType(t, domain.ErrParentNotFound{}, err)
 }
 
 func TestCheckDirCreatePreconditions_TopLevelDirectory(t *testing.T) {
@@ -58,8 +58,8 @@ func TestCheckDirCreatePreconditions_TopLevelDirectory(t *testing.T) {
 	// Create root so top-level directory can be created
 	require.NoError(t, fs.MkdirAll(ctx, "/", 0755))
 
-	dirPath := dot.MustParsePath("/toplevel")
-	op := dot.NewDirCreate("dir1", dirPath)
+	dirPath := domain.MustParsePath("/toplevel")
+	op := domain.NewDirCreate("dir1", dirPath)
 
 	err := exec.checkDirCreatePreconditions(ctx, op)
 	require.NoError(t, err)
@@ -75,13 +75,13 @@ func TestCheckFileMovePreconditions_Success(t *testing.T) {
 	})
 
 	// Set up source and destination parent
-	source := dot.MustParsePath("/home/file")
-	dest := dot.MustParsePath("/packages/pkg/file")
+	source := domain.MustParsePath("/home/file")
+	dest := domain.MustParsePath("/packages/pkg/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 
-	op := dot.NewFileMove("move1", source, dest)
+	op := domain.NewFileMove("move1", source, dest)
 
 	err := exec.checkFileMovePreconditions(ctx, op)
 	require.NoError(t, err)
@@ -96,15 +96,15 @@ func TestCheckFileMovePreconditions_SourceNotFound(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	source := dot.MustParsePath("/nonexistent")
-	dest := dot.MustParsePath("/packages/pkg/file")
+	source := domain.MustParsePath("/nonexistent")
+	dest := domain.MustParsePath("/packages/pkg/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 
-	op := dot.NewFileMove("move1", source, dest)
+	op := domain.NewFileMove("move1", source, dest)
 
 	err := exec.checkFileMovePreconditions(ctx, op)
 	require.Error(t, err)
-	require.IsType(t, dot.ErrSourceNotFound{}, err)
+	require.IsType(t, domain.ErrSourceNotFound{}, err)
 }
 
 func TestCheckFileMovePreconditions_DestParentNotFound(t *testing.T) {
@@ -116,16 +116,16 @@ func TestCheckFileMovePreconditions_DestParentNotFound(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	source := dot.MustParsePath("/home/file")
-	dest := dot.MustParsePath("/nonexistent/file")
+	source := domain.MustParsePath("/home/file")
+	dest := domain.MustParsePath("/nonexistent/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 
-	op := dot.NewFileMove("move1", source, dest)
+	op := domain.NewFileMove("move1", source, dest)
 
 	err := exec.checkFileMovePreconditions(ctx, op)
 	require.Error(t, err)
-	require.IsType(t, dot.ErrParentNotFound{}, err)
+	require.IsType(t, domain.ErrParentNotFound{}, err)
 }
 
 func TestCheckPreconditions_LinkDelete(t *testing.T) {
@@ -137,8 +137,8 @@ func TestCheckPreconditions_LinkDelete(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	target := dot.MustParsePath("/home/file")
-	op := dot.NewLinkDelete("link1", target)
+	target := domain.MustParsePath("/home/file")
+	op := domain.NewLinkDelete("link1", target)
 
 	// LinkDelete has no preconditions - should return nil
 	err := exec.checkPreconditions(ctx, op)
@@ -154,8 +154,8 @@ func TestCheckPreconditions_DirDelete(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	dirPath := dot.MustParsePath("/home/dir")
-	op := dot.NewDirDelete("dir1", dirPath)
+	dirPath := domain.MustParsePath("/home/dir")
+	op := domain.NewDirDelete("dir1", dirPath)
 
 	// DirDelete has no preconditions - should return nil
 	err := exec.checkPreconditions(ctx, op)
@@ -171,9 +171,9 @@ func TestCheckPreconditions_FileBackup(t *testing.T) {
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	source := dot.MustParsePath("/home/file")
-	backup := dot.MustParsePath("/home/file.bak")
-	op := dot.NewFileBackup("backup1", source, backup)
+	source := domain.MustParsePath("/home/file")
+	backup := domain.MustParsePath("/home/file.bak")
+	op := domain.NewFileBackup("backup1", source, backup)
 
 	// FileBackup has no preconditions - should return nil
 	err := exec.checkPreconditions(ctx, op)

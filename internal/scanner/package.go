@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jamesainslie/dot/internal/ignore"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // ScanPackage scans a single package directory.
@@ -15,19 +15,19 @@ import (
 // 2. Scans the directory tree
 // 3. Applies ignore patterns (filtered during tree scan)
 // 4. Returns Package with tree
-func ScanPackage(ctx context.Context, fs dot.FS, path dot.PackagePath, name string, ignoreSet *ignore.IgnoreSet) dot.Result[dot.Package] {
+func ScanPackage(ctx context.Context, fs domain.FS, path domain.PackagePath, name string, ignoreSet *ignore.IgnoreSet) domain.Result[domain.Package] {
 	// Check if package exists
 	if !fs.Exists(ctx, path.String()) {
-		return dot.Err[dot.Package](dot.ErrPackageNotFound{
+		return domain.Err[domain.Package](domain.ErrPackageNotFound{
 			Package: name,
 		})
 	}
 
 	// Scan the package directory tree
-	pkgFilePath := dot.NewFilePath(path.String()).Unwrap()
+	pkgFilePath := domain.NewFilePath(path.String()).Unwrap()
 	treeResult := ScanTree(ctx, fs, pkgFilePath)
 	if treeResult.IsErr() {
-		return dot.Err[dot.Package](treeResult.UnwrapErr())
+		return domain.Err[domain.Package](treeResult.UnwrapErr())
 	}
 
 	tree := treeResult.Unwrap()
@@ -35,7 +35,7 @@ func ScanPackage(ctx context.Context, fs dot.FS, path dot.PackagePath, name stri
 	// Filter tree based on ignore patterns
 	filtered := filterTree(tree, ignoreSet)
 
-	return dot.Ok(dot.Package{
+	return domain.Ok(domain.Package{
 		Name: name,
 		Path: path,
 		Tree: &filtered,
@@ -44,16 +44,16 @@ func ScanPackage(ctx context.Context, fs dot.FS, path dot.PackagePath, name stri
 
 // filterTree removes ignored files from a tree.
 // Returns a new tree with ignored nodes filtered out.
-func filterTree(node dot.Node, ignoreSet *ignore.IgnoreSet) dot.Node {
+func filterTree(node domain.Node, ignoreSet *ignore.IgnoreSet) domain.Node {
 	// Check if this node should be ignored
 	if ignoreSet.ShouldIgnore(node.Path.String()) {
 		// Return empty node to be filtered by parent
-		return dot.Node{}
+		return domain.Node{}
 	}
 
 	// If directory, filter children
-	if node.Type == dot.NodeDir {
-		var filteredChildren []dot.Node
+	if node.Type == domain.NodeDir {
+		var filteredChildren []domain.Node
 		for _, child := range node.Children {
 			filtered := filterTree(child, ignoreSet)
 			// Skip empty nodes (ignored)
@@ -62,7 +62,7 @@ func filterTree(node dot.Node, ignoreSet *ignore.IgnoreSet) dot.Node {
 			}
 		}
 
-		return dot.Node{
+		return domain.Node{
 			Path:     node.Path,
 			Type:     node.Type,
 			Children: filteredChildren,

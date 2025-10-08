@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // Validator checks manifest consistency with filesystem
 type Validator struct {
-	fs dot.FS
+	fs domain.FS
 }
 
 // NewValidator creates a new manifest validator
-func NewValidator(fs dot.FS) *Validator {
+func NewValidator(fs domain.FS) *Validator {
 	return &Validator{fs: fs}
 }
 
@@ -44,7 +44,7 @@ const (
 )
 
 // Validate checks manifest consistency with filesystem
-func (v *Validator) Validate(ctx context.Context, targetDir dot.TargetPath, manifest Manifest) ValidationResult {
+func (v *Validator) Validate(ctx context.Context, targetDir domain.TargetPath, manifest Manifest) ValidationResult {
 	result := ValidationResult{
 		IsValid: true,
 		Issues:  []ValidationIssue{},

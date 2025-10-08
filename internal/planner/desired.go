@@ -5,18 +5,18 @@ import (
 	"fmt"
 
 	"github.com/jamesainslie/dot/internal/scanner"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // LinkSpec specifies a desired symbolic link.
 type LinkSpec struct {
-	Source dot.FilePath // Source file in package
-	Target dot.FilePath // Target location
+	Source domain.FilePath // Source file in package
+	Target domain.FilePath // Target location
 }
 
 // DirSpec specifies a desired directory.
 type DirSpec struct {
-	Path dot.FilePath
+	Path domain.FilePath
 }
 
 // DesiredState represents the desired filesystem state.
@@ -46,7 +46,7 @@ func (pr PlanResult) HasConflicts() bool {
 // 3. Join with target to get target path
 // 4. Create LinkSpec (source -> target)
 // 5. Create DirSpec for parent directories
-func ComputeDesiredState(packages []dot.Package, target dot.TargetPath) dot.Result[DesiredState] {
+func ComputeDesiredState(packages []domain.Package, target domain.TargetPath) domain.Result[DesiredState] {
 	state := DesiredState{
 		Links: make(map[string]LinkSpec),
 		Dirs:  make(map[string]DirSpec),
@@ -60,22 +60,22 @@ func ComputeDesiredState(packages []dot.Package, target dot.TargetPath) dot.Resu
 
 		// Process all files in the package tree
 		if err := processPackageTree(pkg, target, &state); err != nil {
-			return dot.Err[DesiredState](err)
+			return domain.Err[DesiredState](err)
 		}
 	}
 
-	return dot.Ok(state)
+	return domain.Ok(state)
 }
 
 // processPackageTree walks a package tree and adds link/dir specs to state.
-func processPackageTree(pkg dot.Package, target dot.TargetPath, state *DesiredState) error {
+func processPackageTree(pkg domain.Package, target domain.TargetPath, state *DesiredState) error {
 	return walkPackageFiles(*pkg.Tree, pkg.Path, target, state)
 }
 
 // walkPackageFiles recursively processes files in a package tree.
-func walkPackageFiles(node dot.Node, pkgRoot dot.PackagePath, target dot.TargetPath, state *DesiredState) error {
+func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, target domain.TargetPath, state *DesiredState) error {
 	// Process files only (not directories or symlinks)
-	if node.Type == dot.NodeFile {
+	if node.Type == domain.NodeFile {
 		// Compute relative path from package root
 		relPathResult := relativePath(pkgRoot, node.Path)
 		if relPathResult.IsErr() {
@@ -112,7 +112,7 @@ func walkPackageFiles(node dot.Node, pkgRoot dot.PackagePath, target dot.TargetP
 }
 
 // addParentDirs adds directory specs for all parent directories of path.
-func addParentDirs(path dot.FilePath, target dot.TargetPath, state *DesiredState) error {
+func addParentDirs(path domain.FilePath, target domain.TargetPath, state *DesiredState) error {
 	current := path
 	targetStr := target.String()
 
@@ -143,14 +143,14 @@ func addParentDirs(path dot.FilePath, target dot.TargetPath, state *DesiredState
 
 // Helper functions that will be moved to scanner package
 
-func relativePath(base dot.PackagePath, target dot.FilePath) dot.Result[string] {
+func relativePath(base domain.PackagePath, target domain.FilePath) domain.Result[string] {
 	// Simple relative path computation
 	baseStr := base.String()
 	targetStr := target.String()
 
 	// If target doesn't start with base, error
 	if len(targetStr) <= len(baseStr) {
-		return dot.Err[string](dot.ErrInvalidPath{Path: targetStr, Reason: "not under base"})
+		return domain.Err[string](domain.ErrInvalidPath{Path: targetStr, Reason: "not under base"})
 	}
 
 	// Strip base path and leading slash
@@ -159,7 +159,7 @@ func relativePath(base dot.PackagePath, target dot.FilePath) dot.Result[string] 
 		rel = rel[1:]
 	}
 
-	return dot.Ok(rel)
+	return domain.Ok(rel)
 }
 
 func translatePath(path string) string {
@@ -167,20 +167,20 @@ func translatePath(path string) string {
 }
 
 // ComputeOperationsFromDesiredState converts desired state into operations
-func ComputeOperationsFromDesiredState(desired DesiredState) []dot.Operation {
+func ComputeOperationsFromDesiredState(desired DesiredState) []domain.Operation {
 	// Preallocate slice for directories and links
-	ops := make([]dot.Operation, 0, len(desired.Dirs)+len(desired.Links))
+	ops := make([]domain.Operation, 0, len(desired.Dirs)+len(desired.Links))
 
 	// Create directory operations with content-based IDs for determinism
 	for _, dirSpec := range desired.Dirs {
-		id := dot.OperationID(fmt.Sprintf("dir-%s", dirSpec.Path.String()))
-		ops = append(ops, dot.NewDirCreate(id, dirSpec.Path))
+		id := domain.OperationID(fmt.Sprintf("dir-%s", dirSpec.Path.String()))
+		ops = append(ops, domain.NewDirCreate(id, dirSpec.Path))
 	}
 
 	// Create link operations with content-based IDs for determinism
 	for _, linkSpec := range desired.Links {
-		id := dot.OperationID(fmt.Sprintf("link-%s->%s", linkSpec.Source.String(), linkSpec.Target.String()))
-		ops = append(ops, dot.NewLinkCreate(id, linkSpec.Source, linkSpec.Target))
+		id := domain.OperationID(fmt.Sprintf("link-%s->%s", linkSpec.Source.String(), linkSpec.Target.String()))
+		ops = append(ops, domain.NewLinkCreate(id, linkSpec.Source, linkSpec.Target))
 	}
 
 	return ops

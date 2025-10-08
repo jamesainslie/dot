@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
@@ -93,12 +94,12 @@ func (r *TableRenderer) resetColor() string {
 }
 
 // RenderDiagnostics renders diagnostic report as a table.
-func (r *TableRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
+func (r *TableRenderer) RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error {
 	// Show overall health
 	healthColor := r.scheme.Success
-	if report.OverallHealth == dot.HealthWarnings {
+	if report.OverallHealth == domain.HealthWarnings {
 		healthColor = r.scheme.Warning
-	} else if report.OverallHealth == dot.HealthErrors {
+	} else if report.OverallHealth == domain.HealthErrors {
 		healthColor = r.scheme.Error
 	}
 
@@ -153,37 +154,37 @@ type operationDisplay struct {
 }
 
 // formatOperationForTable extracts display information from an operation.
-func formatOperationForTable(op dot.Operation) operationDisplay {
+func formatOperationForTable(op domain.Operation) operationDisplay {
 	// Normalize: dereference pointers to get value type for switching
 	normalized := normalizeOperation(op)
 
 	display := operationDisplay{Action: "Create"}
 
 	switch typed := normalized.(type) {
-	case dot.DirCreate:
+	case domain.DirCreate:
 		display.Type = "Directory"
 		display.Details = typed.Path.String()
 
-	case dot.LinkCreate:
+	case domain.LinkCreate:
 		display.Type = "Symlink"
 		display.Details = fmt.Sprintf("%s -> %s", typed.Target.String(), typed.Source.String())
 
-	case dot.FileMove:
+	case domain.FileMove:
 		display.Action = "Move"
 		display.Type = "File"
 		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Dest.String())
 
-	case dot.FileBackup:
+	case domain.FileBackup:
 		display.Action = "Backup"
 		display.Type = "File"
 		display.Details = fmt.Sprintf("%s -> %s", typed.Source.String(), typed.Backup.String())
 
-	case dot.DirDelete:
+	case domain.DirDelete:
 		display.Action = "Delete"
 		display.Type = "Directory"
 		display.Details = typed.Path.String()
 
-	case dot.LinkDelete:
+	case domain.LinkDelete:
 		display.Action = "Delete"
 		display.Type = "Symlink"
 		display.Details = typed.Target.String()
@@ -199,7 +200,7 @@ func formatOperationForTable(op dot.Operation) operationDisplay {
 }
 
 // RenderPlan renders an execution plan as a table.
-func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+func (r *TableRenderer) RenderPlan(w io.Writer, plan domain.Plan) error {
 	fmt.Fprintf(w, "%sDry run mode - no changes will be applied%s\n\n", r.colorText(r.scheme.Warning), r.resetColor())
 
 	if len(plan.Operations) == 0 {
@@ -236,28 +237,28 @@ func (r *TableRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 	fmt.Fprintln(w, "Summary:")
 
 	// Count all operation kinds in a single pass
-	counts := make(map[dot.OperationKind]int)
+	counts := make(map[domain.OperationKind]int)
 	for _, op := range plan.Operations {
 		counts[op.Kind()]++
 	}
 
 	// Display counts with semantic labels for each operation kind
-	if count := counts[dot.OpKindDirCreate]; count > 0 {
+	if count := counts[domain.OpKindDirCreate]; count > 0 {
 		fmt.Fprintf(w, "  Directories created: %d\n", count)
 	}
-	if count := counts[dot.OpKindLinkCreate]; count > 0 {
+	if count := counts[domain.OpKindLinkCreate]; count > 0 {
 		fmt.Fprintf(w, "  Symlinks created: %d\n", count)
 	}
-	if count := counts[dot.OpKindFileMove]; count > 0 {
+	if count := counts[domain.OpKindFileMove]; count > 0 {
 		fmt.Fprintf(w, "  Files moved: %d\n", count)
 	}
-	if count := counts[dot.OpKindFileBackup]; count > 0 {
+	if count := counts[domain.OpKindFileBackup]; count > 0 {
 		fmt.Fprintf(w, "  Backups created: %d\n", count)
 	}
-	if count := counts[dot.OpKindDirDelete]; count > 0 {
+	if count := counts[domain.OpKindDirDelete]; count > 0 {
 		fmt.Fprintf(w, "  Directories deleted: %d\n", count)
 	}
-	if count := counts[dot.OpKindLinkDelete]; count > 0 {
+	if count := counts[domain.OpKindLinkDelete]; count > 0 {
 		fmt.Fprintf(w, "  Symlinks deleted: %d\n", count)
 	}
 

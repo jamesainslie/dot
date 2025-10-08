@@ -3,7 +3,7 @@ package pipeline
 import (
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,14 +66,14 @@ func TestOperationBelongsToPackage(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		op      dot.Operation
+		op      domain.Operation
 		pkgPath string
 		want    bool
 	}{
 		{
 			name: "LinkCreate from package",
-			op: dot.NewLinkCreate(
-				dot.OperationID("test-1"),
+			op: domain.NewLinkCreate(
+				domain.OperationID("test-1"),
 				mustFilePath("/packages/vim/dot-vimrc"),
 				mustFilePath("/home/user/.vimrc"),
 			),
@@ -82,8 +82,8 @@ func TestOperationBelongsToPackage(t *testing.T) {
 		},
 		{
 			name: "LinkCreate from different package",
-			op: dot.NewLinkCreate(
-				dot.OperationID("test-2"),
+			op: domain.NewLinkCreate(
+				domain.OperationID("test-2"),
 				mustFilePath("/packages/zsh/dot-zshrc"),
 				mustFilePath("/home/user/.zshrc"),
 			),
@@ -92,8 +92,8 @@ func TestOperationBelongsToPackage(t *testing.T) {
 		},
 		{
 			name: "DirCreate",
-			op: dot.NewDirCreate(
-				dot.OperationID("test-3"),
+			op: domain.NewDirCreate(
+				domain.OperationID("test-3"),
 				mustFilePath("/home/user/.vim"),
 			),
 			pkgPath: vimPkgPath,
@@ -101,8 +101,8 @@ func TestOperationBelongsToPackage(t *testing.T) {
 		},
 		{
 			name: "LinkDelete",
-			op: dot.NewLinkDelete(
-				dot.OperationID("test-4"),
+			op: domain.NewLinkDelete(
+				domain.OperationID("test-4"),
 				mustFilePath("/home/user/.vimrc"),
 			),
 			pkgPath: vimPkgPath,
@@ -120,7 +120,7 @@ func TestOperationBelongsToPackage(t *testing.T) {
 
 func TestBuildPackageOperationMapping(t *testing.T) {
 	// Create test packages
-	packages := []dot.Package{
+	packages := []domain.Package{
 		{
 			Name: "vim",
 			Path: mustPackagePath("/packages/vim"),
@@ -132,24 +132,24 @@ func TestBuildPackageOperationMapping(t *testing.T) {
 	}
 
 	// Create test operations
-	ops := []dot.Operation{
-		dot.NewLinkCreate(
-			dot.OperationID("vim-link-1"),
+	ops := []domain.Operation{
+		domain.NewLinkCreate(
+			domain.OperationID("vim-link-1"),
 			mustFilePath("/packages/vim/dot-vimrc"),
 			mustFilePath("/home/user/.vimrc"),
 		),
-		dot.NewLinkCreate(
-			dot.OperationID("vim-link-2"),
+		domain.NewLinkCreate(
+			domain.OperationID("vim-link-2"),
 			mustFilePath("/packages/vim/dot-vim-colors"),
 			mustFilePath("/home/user/.vim-colors"),
 		),
-		dot.NewLinkCreate(
-			dot.OperationID("zsh-link-1"),
+		domain.NewLinkCreate(
+			domain.OperationID("zsh-link-1"),
 			mustFilePath("/packages/zsh/dot-zshrc"),
 			mustFilePath("/home/user/.zshrc"),
 		),
-		dot.NewDirCreate(
-			dot.OperationID("dir-1"),
+		domain.NewDirCreate(
+			domain.OperationID("dir-1"),
 			mustFilePath("/home/user/.config"),
 		),
 	}
@@ -160,56 +160,56 @@ func TestBuildPackageOperationMapping(t *testing.T) {
 	// Verify vim operations
 	require.Contains(t, mapping, "vim")
 	assert.Len(t, mapping["vim"], 2)
-	assert.Contains(t, mapping["vim"], dot.OperationID("vim-link-1"))
-	assert.Contains(t, mapping["vim"], dot.OperationID("vim-link-2"))
+	assert.Contains(t, mapping["vim"], domain.OperationID("vim-link-1"))
+	assert.Contains(t, mapping["vim"], domain.OperationID("vim-link-2"))
 
 	// Verify zsh operations
 	require.Contains(t, mapping, "zsh")
 	assert.Len(t, mapping["zsh"], 1)
-	assert.Contains(t, mapping["zsh"], dot.OperationID("zsh-link-1"))
+	assert.Contains(t, mapping["zsh"], domain.OperationID("zsh-link-1"))
 
 	// Verify dir operation not assigned to any package
 	for _, opIDs := range mapping {
-		assert.NotContains(t, opIDs, dot.OperationID("dir-1"))
+		assert.NotContains(t, opIDs, domain.OperationID("dir-1"))
 	}
 }
 
 func TestBuildPackageOperationMapping_EmptyPackages(t *testing.T) {
-	ops := []dot.Operation{
-		dot.NewLinkCreate(
-			dot.OperationID("link-1"),
+	ops := []domain.Operation{
+		domain.NewLinkCreate(
+			domain.OperationID("link-1"),
 			mustFilePath("/packages/vim/dot-vimrc"),
 			mustFilePath("/home/user/.vimrc"),
 		),
 	}
 
-	mapping := buildPackageOperationMapping([]dot.Package{}, ops)
+	mapping := buildPackageOperationMapping([]domain.Package{}, ops)
 	assert.Len(t, mapping, 0)
 }
 
 func TestBuildPackageOperationMapping_EmptyOperations(t *testing.T) {
-	packages := []dot.Package{
+	packages := []domain.Package{
 		{
 			Name: "vim",
 			Path: mustPackagePath("/packages/vim"),
 		},
 	}
 
-	mapping := buildPackageOperationMapping(packages, []dot.Operation{})
+	mapping := buildPackageOperationMapping(packages, []domain.Operation{})
 	assert.Len(t, mapping, 0)
 }
 
 func TestBuildPackageOperationMapping_NoMatchingOperations(t *testing.T) {
-	packages := []dot.Package{
+	packages := []domain.Package{
 		{
 			Name: "vim",
 			Path: mustPackagePath("/packages/vim"),
 		},
 	}
 
-	ops := []dot.Operation{
-		dot.NewDirCreate(
-			dot.OperationID("dir-1"),
+	ops := []domain.Operation{
+		domain.NewDirCreate(
+			domain.OperationID("dir-1"),
 			mustFilePath("/home/user/.config"),
 		),
 	}
@@ -220,16 +220,16 @@ func TestBuildPackageOperationMapping_NoMatchingOperations(t *testing.T) {
 
 // Test helpers
 
-func mustFilePath(path string) dot.FilePath {
-	result := dot.NewFilePath(path)
+func mustFilePath(path string) domain.FilePath {
+	result := domain.NewFilePath(path)
 	if !result.IsOk() {
 		panic("invalid file path: " + path)
 	}
 	return result.Unwrap()
 }
 
-func mustPackagePath(path string) dot.PackagePath {
-	result := dot.NewPackagePath(path)
+func mustPackagePath(path string) domain.PackagePath {
+	result := domain.NewPackagePath(path)
 	if !result.IsOk() {
 		panic("invalid package path: " + path)
 	}

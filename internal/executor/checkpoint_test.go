@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,9 +24,9 @@ func TestCheckpoint_Record(t *testing.T) {
 	store := NewMemoryCheckpointStore()
 	checkpoint := store.Create(ctx)
 
-	source := dot.MustParsePath("/source")
-	target := dot.MustParsePath("/target")
-	op := dot.NewLinkCreate("link1", source, target)
+	source := domain.MustParsePath("/source")
+	target := domain.MustParsePath("/target")
+	op := domain.NewLinkCreate("link1", source, target)
 
 	checkpoint.Record("link1", op)
 
@@ -53,9 +53,9 @@ func TestMemoryCheckpointStore_Restore(t *testing.T) {
 	id := checkpoint.ID
 
 	// Add operation
-	source := dot.MustParsePath("/source")
-	target := dot.MustParsePath("/target")
-	op := dot.NewLinkCreate("link1", source, target)
+	source := domain.MustParsePath("/source")
+	target := domain.MustParsePath("/target")
+	op := domain.NewLinkCreate("link1", source, target)
 	checkpoint.Record("link1", op)
 
 	// Restore checkpoint
@@ -73,7 +73,7 @@ func TestMemoryCheckpointStore_Restore_NotFound(t *testing.T) {
 	// Try to restore non-existent checkpoint
 	_, err := store.Restore(ctx, "nonexistent")
 	require.Error(t, err)
-	require.IsType(t, dot.ErrCheckpointNotFound{}, err)
+	require.IsType(t, domain.ErrCheckpointNotFound{}, err)
 }
 
 func TestMemoryCheckpointStore_Delete(t *testing.T) {

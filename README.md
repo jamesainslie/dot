@@ -1,5 +1,9 @@
-# dot
 
+<div align="center">
+  <img src="pics/logo.png" alt="dot logo" width="200"/>
+</div>
+
+# dot
 [![CI](https://github.com/jamesainslie/dot/actions/workflows/ci.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/ci.yml)
 [![Release](https://github.com/jamesainslie/dot/actions/workflows/release.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jamesainslie/dot)](https://goreportcard.com/report/github.com/jamesainslie/dot)

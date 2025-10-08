@@ -77,6 +77,10 @@ func TestFixtureBuilder_FileTree(t *testing.T) {
 }
 
 func TestFixtureBuilder_FileWithMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file mode tests use POSIX permissions not supported on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	fb := NewFixtureBuilder(t, tmpDir)
 

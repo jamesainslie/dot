@@ -74,6 +74,10 @@ func TestAssertNotExists(t *testing.T) {
 }
 
 func TestAssertFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file mode tests use POSIX permissions not supported on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "script.sh")
 

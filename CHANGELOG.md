@@ -11,6 +11,7 @@
 - add planning docs to gitignore
 - remove planning and archive docs from source control
 - **ci:** expunge emojis
+- **ci:** expunge emojis
 - **ci:** ignore some planning docs
 - **ci:** expunge emojis
 - **docs:** remove unwanted docs
@@ -19,15 +20,21 @@
 ### Docs
 - add Phase 24 complete summary
 - **architecture:** update for service-based architecture
+- **architecture:** add comprehensive architecture documentation
 - **changelog:** update for v0.1.1 release
 - **changelog:** update for v0.1.1 release
+- **changelog:** update README.md
+- **changelog:** update for v0.1.1 release
+- **developer:** add mermaid diagrams and comprehensive testing documentation
+- **index:** update documentation index to reflect current structure
 - **navigation:** add root README links to all child documentation
-- **phase-12b:** update progress doc to reflect completion
-- **phase-12b:** add executive summary of Phase 12b completion
-- **phase-12b:** document complete Phase 12b refactoring
 - **phase-12b:** document Phase 12b Core completion
+- **phase-12b:** update progress doc to reflect completion
+- **phase-12b:** document complete Phase 12b refactoring
+- **phase-12b:** add executive summary of Phase 12b completion
 - **planning:** add Phase 24 progress checkpoint
 - **planning:** add Phase 24 code smell remediation plan
+- **readme:** fix broken documentation links
 - **test:** update benchmark template to use testing.TB pattern
 
 ### Feat
@@ -50,20 +57,21 @@
 - **config:** honor MarshalOptions.Indent in TOML strategy
 - **doctor:** detect and report permission errors on link targets
 - **domain:** make path validator tests OS-aware for Windows
+- **hooks:** check overall project coverage to match CI
 - **hooks:** show linting output in pre-commit hook
 - **hooks:** show test output in pre-commit hook
-- **hooks:** check overall project coverage to match CI
 - **manage:** implement proper unmanage in planFullRemanage
 - **manifest:** propagate non-not-found errors in Update
 - **path:** add method forwarding to Path wrapper type
+- **release:** move tag to amended commit in release workflow
 - **status:** propagate non-not-found manifest errors
-- **test:** rename ExecutionFailure test to match actual behavior
 - **test:** strengthen PackageOperations assertion in exhaustive test
-- **test:** skip file mode test on Windows
+- **test:** rename ExecutionFailure test to match actual behavior
 - **test:** correct comment in PlanOperationsEmpty test
-- **test:** add proper error handling to CLI integration tests
 - **test:** add Windows build constraints to Unix-specific tests
+- **test:** add proper error handling to CLI integration tests
 - **test:** add Windows compatibility to testutil symlink tests
+- **test:** skip file mode test on Windows
 - **test:** correct mock variadic parameter handling in ports_test
 
 ### Refactor
@@ -108,6 +116,8 @@
 - **integration:** implement comprehensive integration test infrastructure
 
 ### Pull Requests
+- Merge pull request [#25](https://github.com/jamesainslie/dot/issues/25) from jamesainslie/feature-documentation-shiznickle
+- Merge pull request [#24](https://github.com/jamesainslie/dot/issues/24) from jamesainslie/docs-update-document-index
 - Merge pull request [#23](https://github.com/jamesainslie/dot/issues/23) from jamesainslie/docs-add-root-links
 - Merge pull request [#22](https://github.com/jamesainslie/dot/issues/22) from jamesainslie/phase-17-integration-testing
 - Merge pull request [#21](https://github.com/jamesainslie/dot/issues/21) from jamesainslie/feature-tech-debt

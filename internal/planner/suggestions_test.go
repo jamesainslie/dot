@@ -3,13 +3,13 @@ package planner
 import (
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
 // Task 7.3.3: Test Suggestion Generation
 func TestGenerateSuggestionsForFileExists(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 	conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
 
 	suggestions := generateSuggestions(conflict)
@@ -39,7 +39,7 @@ func TestGenerateSuggestionsForFileExists(t *testing.T) {
 }
 
 func TestGenerateSuggestionsForWrongLink(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 	conflict := NewConflict(ConflictWrongLink, targetPath, "Symlink points elsewhere")
 
 	suggestions := generateSuggestions(conflict)
@@ -58,7 +58,7 @@ func TestGenerateSuggestionsForWrongLink(t *testing.T) {
 }
 
 func TestGenerateSuggestionsForPermission(t *testing.T) {
-	targetPath := dot.NewFilePath("/etc/config").Unwrap()
+	targetPath := domain.NewFilePath("/etc/config").Unwrap()
 	conflict := NewConflict(ConflictPermission, targetPath, "Permission denied")
 
 	suggestions := generateSuggestions(conflict)
@@ -76,7 +76,7 @@ func TestGenerateSuggestionsForPermission(t *testing.T) {
 }
 
 func TestGenerateSuggestionsForCircular(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.config").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.config").Unwrap()
 	conflict := NewConflict(ConflictCircular, targetPath, "Circular dependency")
 
 	suggestions := generateSuggestions(conflict)
@@ -91,7 +91,7 @@ func TestGenerateSuggestionsForCircular(t *testing.T) {
 }
 
 func TestGenerateSuggestionsForTypeMismatch(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.config").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.config").Unwrap()
 	conflict := NewConflict(ConflictFileExpected, targetPath, "File exists where directory expected")
 
 	suggestions := generateSuggestions(conflict)
@@ -101,7 +101,7 @@ func TestGenerateSuggestionsForTypeMismatch(t *testing.T) {
 
 // Task 7.3.4: Test Conflict Enrichment
 func TestEnrichConflictWithSuggestions(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 	conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
 
 	// Initially no suggestions
@@ -122,10 +122,10 @@ func TestEnrichConflictWithSuggestions(t *testing.T) {
 }
 
 func TestEnrichMultipleConflicts(t *testing.T) {
-	path1 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	path1 := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 	conflict1 := NewConflict(ConflictFileExists, path1, "File exists")
 
-	path2 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	path2 := domain.NewFilePath("/home/user/.vimrc").Unwrap()
 	conflict2 := NewConflict(ConflictWrongLink, path2, "Wrong link")
 
 	enriched1 := enrichConflictWithSuggestions(conflict1)
@@ -141,7 +141,7 @@ func TestEnrichMultipleConflicts(t *testing.T) {
 
 // Additional coverage tests for suggestion generation edge cases
 func TestGenerateSuggestionsForDirExpected(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.config").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.config").Unwrap()
 	conflict := NewConflict(ConflictDirExpected, targetPath, "Directory expected but file found")
 
 	suggestions := generateSuggestions(conflict)
@@ -156,7 +156,7 @@ func TestGenerateSuggestionsForDirExpected(t *testing.T) {
 }
 
 func TestGenerateSuggestionsForUnknownType(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 	conflict := NewConflict(ConflictType(999), targetPath, "Unknown conflict")
 
 	suggestions := generateSuggestions(conflict)
@@ -167,7 +167,7 @@ func TestGenerateSuggestionsForUnknownType(t *testing.T) {
 
 func TestGeneratePermissionSuggestionsWithRoot(t *testing.T) {
 	// Test path at root level where Parent() might fail
-	rootPath := dot.NewFilePath("/etc").Unwrap()
+	rootPath := domain.NewFilePath("/etc").Unwrap()
 	conflict := NewConflict(ConflictPermission, rootPath, "Permission denied")
 
 	suggestions := generatePermissionSuggestions(conflict)
@@ -178,7 +178,7 @@ func TestGeneratePermissionSuggestionsWithRoot(t *testing.T) {
 
 func TestGenerateTypeMismatchBothDirections(t *testing.T) {
 	t.Run("file expected", func(t *testing.T) {
-		path := dot.NewFilePath("/home/user/.config").Unwrap()
+		path := domain.NewFilePath("/home/user/.config").Unwrap()
 		conflict := NewConflict(ConflictFileExpected, path, "File expected")
 
 		suggestions := generateTypeMismatchSuggestions(conflict)
@@ -196,7 +196,7 @@ func TestGenerateTypeMismatchBothDirections(t *testing.T) {
 	})
 
 	t.Run("dir expected", func(t *testing.T) {
-		path := dot.NewFilePath("/home/user/.config").Unwrap()
+		path := domain.NewFilePath("/home/user/.config").Unwrap()
 		conflict := NewConflict(ConflictDirExpected, path, "Dir expected")
 
 		suggestions := generateTypeMismatchSuggestions(conflict)
@@ -229,7 +229,7 @@ func TestAllSuggestionTemplatesHaveExamples(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			path := dot.NewFilePath("/home/user/test").Unwrap()
+			path := domain.NewFilePath("/home/user/test").Unwrap()
 			conflict := NewConflict(tc.conflictType, path, "Test conflict")
 
 			suggestions := generateSuggestions(conflict)

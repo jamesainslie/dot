@@ -3,21 +3,21 @@ package manifest
 import (
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
-func mustTargetPath(t *testing.T, path string) dot.TargetPath {
+func mustTargetPath(t *testing.T, path string) domain.TargetPath {
 	t.Helper()
-	result := dot.NewTargetPath(path)
+	result := domain.NewTargetPath(path)
 	if result.IsErr() {
 		t.Fatalf("failed to create target path: %v", result.UnwrapErr())
 	}
 	return result.Unwrap()
 }
 
-func mustPackagePath(t *testing.T, path string) dot.PackagePath {
+func mustPackagePath(t *testing.T, path string) domain.PackagePath {
 	t.Helper()
-	result := dot.NewPackagePath(path)
+	result := domain.NewPackagePath(path)
 	if result.IsErr() {
 		t.Fatalf("failed to create package path: %v", result.UnwrapErr())
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
@@ -121,7 +122,7 @@ func (r *TextRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticRepor
 }
 
 // RenderPlan renders an execution plan as plain text.
-func (r *TextRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+func (r *TextRenderer) RenderPlan(w io.Writer, plan domain.Plan) error {
 	// Header
 	fmt.Fprintf(w, "%sDry run mode - no changes will be applied%s\n\n", r.colorText(r.scheme.Warning), r.resetColor())
 
@@ -168,30 +169,30 @@ func (r *TextRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
 }
 
 // renderOperation renders a single operation.
-func (r *TextRenderer) renderOperation(w io.Writer, op dot.Operation) {
+func (r *TextRenderer) renderOperation(w io.Writer, op domain.Operation) {
 	symbol := r.colorText(r.scheme.Success) + "+" + r.resetColor()
 
 	// Normalize: dereference pointers to get value type for switching
 	normalized := normalizeOperation(op)
 
 	switch typed := normalized.(type) {
-	case dot.DirCreate:
+	case domain.DirCreate:
 		fmt.Fprintf(w, "  %s Create directory: %s\n", symbol, typed.Path.String())
 
-	case dot.LinkCreate:
+	case domain.LinkCreate:
 		fmt.Fprintf(w, "  %s Create symlink: %s -> %s\n", symbol, typed.Target.String(), typed.Source.String())
 
-	case dot.FileMove:
+	case domain.FileMove:
 		fmt.Fprintf(w, "  %s Move file: %s -> %s\n", symbol, typed.Source.String(), typed.Dest.String())
 
-	case dot.FileBackup:
+	case domain.FileBackup:
 		fmt.Fprintf(w, "  %s Backup file: %s -> %s\n", symbol, typed.Source.String(), typed.Backup.String())
 
-	case dot.DirDelete:
+	case domain.DirDelete:
 		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
 		fmt.Fprintf(w, "  %s Delete directory: %s\n", deleteSymbol, typed.Path.String())
 
-	case dot.LinkDelete:
+	case domain.LinkDelete:
 		deleteSymbol := r.colorText(r.scheme.Error) + "-" + r.resetColor()
 		fmt.Fprintf(w, "  %s Delete symlink: %s\n", deleteSymbol, typed.Target.String())
 
@@ -212,22 +213,22 @@ type operationCounts struct {
 }
 
 // countOperations counts operations by type.
-func (r *TextRenderer) countOperations(plan dot.Plan) operationCounts {
+func (r *TextRenderer) countOperations(plan domain.Plan) operationCounts {
 	var counts operationCounts
 
 	for _, op := range plan.Operations {
 		switch op.Kind() {
-		case dot.OpKindDirCreate:
+		case domain.OpKindDirCreate:
 			counts.DirCreate++
-		case dot.OpKindDirDelete:
+		case domain.OpKindDirDelete:
 			counts.DirDelete++
-		case dot.OpKindLinkCreate:
+		case domain.OpKindLinkCreate:
 			counts.LinkCreate++
-		case dot.OpKindLinkDelete:
+		case domain.OpKindLinkDelete:
 			counts.LinkDelete++
-		case dot.OpKindFileMove:
+		case domain.OpKindFileMove:
 			counts.FileMove++
-		case dot.OpKindFileBackup:
+		case domain.OpKindFileBackup:
 			counts.FileBackup++
 		}
 	}

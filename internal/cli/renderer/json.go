@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
@@ -32,6 +33,6 @@ func (r *JSONRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticRepor
 }
 
 // RenderPlan renders an execution plan as JSON.
-func (r *JSONRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+func (r *JSONRenderer) RenderPlan(w io.Writer, plan domain.Plan) error {
 	return r.newEncoder(w).Encode(plan)
 }

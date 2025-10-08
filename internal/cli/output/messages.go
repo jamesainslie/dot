@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jamesainslie/dot/internal/cli/render"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // Printer handles output formatting and display.
@@ -140,7 +140,7 @@ func (p *Printer) PrintSummary(summary ExecutionSummary) {
 }
 
 // PrintDryRunSummary outputs dry-run summary.
-func (p *Printer) PrintDryRunSummary(plan dot.Plan) {
+func (p *Printer) PrintDryRunSummary(plan domain.Plan) {
 	if p.quiet {
 		return
 	}
@@ -159,9 +159,9 @@ func (p *Printer) PrintDryRunSummary(plan dot.Plan) {
 		dirCount := 0
 		for _, op := range plan.Operations {
 			switch op.Kind() {
-			case dot.OpKindLinkCreate, dot.OpKindLinkDelete:
+			case domain.OpKindLinkCreate, domain.OpKindLinkDelete:
 				linkCount++
-			case dot.OpKindDirCreate, dot.OpKindDirDelete:
+			case domain.OpKindDirCreate, domain.OpKindDirDelete:
 				dirCount++
 			}
 		}

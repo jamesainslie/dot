@@ -6,11 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 func TestTopologicalSort_EmptyGraph(t *testing.T) {
-	graph := BuildGraph([]dot.Operation{})
+	graph := BuildGraph([]domain.Operation{})
 
 	sorted, err := graph.TopologicalSort()
 
@@ -19,8 +19,8 @@ func TestTopologicalSort_EmptyGraph(t *testing.T) {
 }
 
 func TestTopologicalSort_SingleNode(t *testing.T) {
-	op := dot.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
-	graph := BuildGraph([]dot.Operation{op})
+	op := domain.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
+	graph := BuildGraph([]domain.Operation{op})
 
 	sorted, err := graph.TopologicalSort()
 
@@ -30,9 +30,9 @@ func TestTopologicalSort_SingleNode(t *testing.T) {
 }
 
 func TestTopologicalSort_IndependentNodes(t *testing.T) {
-	op1 := dot.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
-	op2 := dot.NewLinkCreate("link-auto", mustParsePath("/c"), mustParsePath("/d"))
-	graph := BuildGraph([]dot.Operation{op1, op2})
+	op1 := domain.NewLinkCreate("link-auto", mustParsePath("/a"), mustParsePath("/b"))
+	op2 := domain.NewLinkCreate("link-auto", mustParsePath("/c"), mustParsePath("/d"))
+	graph := BuildGraph([]domain.Operation{op1, op2})
 
 	sorted, err := graph.TopologicalSort()
 
@@ -45,17 +45,17 @@ func TestTopologicalSort_IndependentNodes(t *testing.T) {
 
 func TestTopologicalSort_LinearChain(t *testing.T) {
 	// Create linear dependency: A -> B -> C
-	opA := dot.NewDirCreate("dir-auto", mustParsePath("/dir1"))
+	opA := domain.NewDirCreate("dir-auto", mustParsePath("/dir1"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/dir1/dir2")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/dir1/dir2")),
+		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/dir1/dir2/file")),
-		deps: []dot.Operation{opB},
+		op:   domain.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/dir1/dir2/file")),
+		deps: []domain.Operation{opB},
 	}
 
-	graph := BuildGraph([]dot.Operation{opC, opB, opA})
+	graph := BuildGraph([]domain.Operation{opC, opB, opA})
 
 	sorted, err := graph.TopologicalSort()
 
@@ -73,21 +73,21 @@ func TestTopologicalSort_LinearChain(t *testing.T) {
 
 func TestTopologicalSort_DiamondPattern(t *testing.T) {
 	// Diamond: A -> B, A -> C, B -> D, C -> D
-	opA := dot.NewDirCreate("dir-auto", mustParsePath("/root"))
+	opA := domain.NewDirCreate("dir-auto", mustParsePath("/root"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/root/dir1")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/root/dir1")),
+		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/root/dir2")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/root/dir2")),
+		deps: []domain.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/root/file")),
-		deps: []dot.Operation{opB, opC},
+		op:   domain.NewLinkCreate("link-auto", mustParsePath("/src"), mustParsePath("/root/file")),
+		deps: []domain.Operation{opB, opC},
 	}
 
-	graph := BuildGraph([]dot.Operation{opD, opC, opB, opA})
+	graph := BuildGraph([]domain.Operation{opD, opC, opB, opA})
 
 	sorted, err := graph.TopologicalSort()
 
@@ -108,27 +108,27 @@ func TestTopologicalSort_DiamondPattern(t *testing.T) {
 
 func TestTopologicalSort_ComplexGraph(t *testing.T) {
 	// More complex graph with multiple dependencies
-	ops := make([]dot.Operation, 6)
-	ops[0] = dot.NewDirCreate("dir-auto", mustParsePath("/a"))
+	ops := make([]domain.Operation, 6)
+	ops[0] = domain.NewDirCreate("dir-auto", mustParsePath("/a"))
 	ops[1] = &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/b")),
-		deps: []dot.Operation{ops[0]},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/b")),
+		deps: []domain.Operation{ops[0]},
 	}
 	ops[2] = &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/c")),
-		deps: []dot.Operation{ops[0]},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/c")),
+		deps: []domain.Operation{ops[0]},
 	}
 	ops[3] = &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/d")),
-		deps: []dot.Operation{ops[1], ops[2]},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/d")),
+		deps: []domain.Operation{ops[1], ops[2]},
 	}
 	ops[4] = &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/e")),
-		deps: []dot.Operation{ops[2]},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/e")),
+		deps: []domain.Operation{ops[2]},
 	}
 	ops[5] = &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/f")),
-		deps: []dot.Operation{ops[3], ops[4]},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/f")),
+		deps: []domain.Operation{ops[3], ops[4]},
 	}
 
 	graph := BuildGraph(ops)
@@ -149,13 +149,13 @@ func TestTopologicalSort_ComplexGraph(t *testing.T) {
 }
 
 func TestFindCycle_NoCycle(t *testing.T) {
-	opA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
+	opA := domain.NewDirCreate("dir-auto", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/b")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/b")),
+		deps: []domain.Operation{opA},
 	}
 
-	graph := BuildGraph([]dot.Operation{opB, opA})
+	graph := BuildGraph([]domain.Operation{opB, opA})
 
 	cycle := graph.FindCycle()
 
@@ -164,15 +164,15 @@ func TestFindCycle_NoCycle(t *testing.T) {
 
 func TestFindCycle_SelfLoop(t *testing.T) {
 	// Operation depends on itself
-	baseOp := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
+	baseOp := domain.NewDirCreate("dir-auto", mustParsePath("/a"))
 	opA := &mockOperation{
 		op:   baseOp,
 		deps: nil, // Will set after creation
 	}
 	// Create self-reference
-	opA.deps = []dot.Operation{opA}
+	opA.deps = []domain.Operation{opA}
 
-	graph := BuildGraph([]dot.Operation{opA})
+	graph := BuildGraph([]domain.Operation{opA})
 
 	cycle := graph.FindCycle()
 
@@ -183,23 +183,23 @@ func TestFindCycle_SelfLoop(t *testing.T) {
 
 func TestFindCycle_SimpleCycle(t *testing.T) {
 	// Create cycle: A -> B -> A
-	var opA, opB dot.Operation
+	var opA, opB domain.Operation
 
-	baseA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
-	baseB := dot.NewDirCreate("dir-auto", mustParsePath("/b"))
+	baseA := domain.NewDirCreate("dir-auto", mustParsePath("/a"))
+	baseB := domain.NewDirCreate("dir-auto", mustParsePath("/b"))
 
 	opA = &mockOperation{
 		op:   baseA,
-		deps: []dot.Operation{nil}, // Will set after creating opB
+		deps: []domain.Operation{nil}, // Will set after creating opB
 	}
 	opB = &mockOperation{
 		op:   baseB,
-		deps: []dot.Operation{opA},
+		deps: []domain.Operation{opA},
 	}
 	// Complete the cycle
-	opA.(*mockOperation).deps = []dot.Operation{opB}
+	opA.(*mockOperation).deps = []domain.Operation{opB}
 
-	graph := BuildGraph([]dot.Operation{opA, opB})
+	graph := BuildGraph([]domain.Operation{opA, opB})
 
 	cycle := graph.FindCycle()
 
@@ -209,28 +209,28 @@ func TestFindCycle_SimpleCycle(t *testing.T) {
 
 func TestFindCycle_LongerCycle(t *testing.T) {
 	// Create cycle: A -> B -> C -> A
-	var opA, opB, opC dot.Operation
+	var opA, opB, opC domain.Operation
 
-	baseA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
-	baseB := dot.NewDirCreate("dir-auto", mustParsePath("/b"))
-	baseC := dot.NewDirCreate("dir-auto", mustParsePath("/c"))
+	baseA := domain.NewDirCreate("dir-auto", mustParsePath("/a"))
+	baseB := domain.NewDirCreate("dir-auto", mustParsePath("/b"))
+	baseC := domain.NewDirCreate("dir-auto", mustParsePath("/c"))
 
 	opA = &mockOperation{
 		op:   baseA,
-		deps: []dot.Operation{nil}, // Will set after creating opC
+		deps: []domain.Operation{nil}, // Will set after creating opC
 	}
 	opB = &mockOperation{
 		op:   baseB,
-		deps: []dot.Operation{opA},
+		deps: []domain.Operation{opA},
 	}
 	opC = &mockOperation{
 		op:   baseC,
-		deps: []dot.Operation{opB},
+		deps: []domain.Operation{opB},
 	}
 	// Complete the cycle
-	opA.(*mockOperation).deps = []dot.Operation{opC}
+	opA.(*mockOperation).deps = []domain.Operation{opC}
 
-	graph := BuildGraph([]dot.Operation{opA, opB, opC})
+	graph := BuildGraph([]domain.Operation{opA, opB, opC})
 
 	cycle := graph.FindCycle()
 
@@ -240,22 +240,22 @@ func TestFindCycle_LongerCycle(t *testing.T) {
 
 func TestTopologicalSort_WithCycle(t *testing.T) {
 	// Create cycle: A -> B -> A
-	var opA, opB dot.Operation
+	var opA, opB domain.Operation
 
-	baseA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
-	baseB := dot.NewDirCreate("dir-auto", mustParsePath("/b"))
+	baseA := domain.NewDirCreate("dir-auto", mustParsePath("/a"))
+	baseB := domain.NewDirCreate("dir-auto", mustParsePath("/b"))
 
 	opA = &mockOperation{
 		op:   baseA,
-		deps: []dot.Operation{nil},
+		deps: []domain.Operation{nil},
 	}
 	opB = &mockOperation{
 		op:   baseB,
-		deps: []dot.Operation{opA},
+		deps: []domain.Operation{opA},
 	}
-	opA.(*mockOperation).deps = []dot.Operation{opB}
+	opA.(*mockOperation).deps = []domain.Operation{opB}
 
-	graph := BuildGraph([]dot.Operation{opA, opB})
+	graph := BuildGraph([]domain.Operation{opA, opB})
 
 	sorted, err := graph.TopologicalSort()
 
@@ -263,34 +263,34 @@ func TestTopologicalSort_WithCycle(t *testing.T) {
 	assert.Nil(t, sorted, "cyclic graph should return nil operations")
 
 	// Verify error type
-	var cyclicErr dot.ErrCyclicDependency
+	var cyclicErr domain.ErrCyclicDependency
 	assert.ErrorAs(t, err, &cyclicErr, "error should be ErrCyclicDependency")
 }
 
 func TestTopologicalSort_CycleInLargerGraph(t *testing.T) {
 	// Graph with acyclic part and cycle: A, B -> C -> D -> C
-	opA := dot.NewDirCreate("dir-auto", mustParsePath("/a"))
+	opA := domain.NewDirCreate("dir-auto", mustParsePath("/a"))
 
-	var opC, opD dot.Operation
-	baseC := dot.NewDirCreate("dir-auto", mustParsePath("/c"))
-	baseD := dot.NewDirCreate("dir-auto", mustParsePath("/d"))
+	var opC, opD domain.Operation
+	baseC := domain.NewDirCreate("dir-auto", mustParsePath("/c"))
+	baseD := domain.NewDirCreate("dir-auto", mustParsePath("/d"))
 
 	opC = &mockOperation{
 		op:   baseC,
-		deps: []dot.Operation{nil}, // Will set after creating opD
+		deps: []domain.Operation{nil}, // Will set after creating opD
 	}
 	opD = &mockOperation{
 		op:   baseD,
-		deps: []dot.Operation{opC},
+		deps: []domain.Operation{opC},
 	}
-	opC.(*mockOperation).deps = []dot.Operation{opD}
+	opC.(*mockOperation).deps = []domain.Operation{opD}
 
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir-auto", mustParsePath("/b")),
-		deps: []dot.Operation{opC},
+		op:   domain.NewDirCreate("dir-auto", mustParsePath("/b")),
+		deps: []domain.Operation{opC},
 	}
 
-	graph := BuildGraph([]dot.Operation{opA, opB, opC, opD})
+	graph := BuildGraph([]domain.Operation{opA, opB, opC, opD})
 
 	sorted, err := graph.TopologicalSort()
 
@@ -300,7 +300,7 @@ func TestTopologicalSort_CycleInLargerGraph(t *testing.T) {
 
 // findOperationIndex returns the index of an operation in a slice.
 // Returns -1 if not found.
-func findOperationIndex(ops []dot.Operation, target dot.Operation) int {
+func findOperationIndex(ops []domain.Operation, target domain.Operation) int {
 	for i, op := range ops {
 		if target.Equals(op) {
 			return i

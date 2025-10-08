@@ -4,14 +4,14 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/planner"
-	"github.com/jamesainslie/dot/pkg/dot"
 )
 
 // ManagePipelineOpts contains options for the Manage pipeline
 type ManagePipelineOpts struct {
-	FS        dot.FS
+	FS        domain.FS
 	IgnoreSet *ignore.IgnoreSet
 	Policies  planner.ResolutionPolicies
 	BackupDir string
@@ -19,8 +19,8 @@ type ManagePipelineOpts struct {
 
 // ManageInput contains the input for manage operations
 type ManageInput struct {
-	PackageDir dot.PackagePath
-	TargetDir  dot.TargetPath
+	PackageDir domain.PackagePath
+	TargetDir  domain.TargetPath
 	Packages   []string
 }
 
@@ -39,7 +39,7 @@ func NewManagePipeline(opts ManagePipelineOpts) *ManagePipeline {
 
 // Execute runs the complete manage pipeline.
 // It performs: scan packages -> compute desired state -> resolve conflicts -> sort operations
-func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Result[dot.Plan] {
+func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) domain.Result[domain.Plan] {
 	// Stage 1: Scan packages
 	scanInput := ScanInput{
 		PackageDir: input.PackageDir,
@@ -51,7 +51,7 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 
 	scanResult := ScanStage()(ctx, scanInput)
 	if scanResult.IsErr() {
-		return dot.Err[dot.Plan](scanResult.UnwrapErr())
+		return domain.Err[domain.Plan](scanResult.UnwrapErr())
 	}
 	packages := scanResult.Unwrap()
 
@@ -63,7 +63,7 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 
 	planResult := PlanStage()(ctx, planInput)
 	if planResult.IsErr() {
-		return dot.Err[dot.Plan](planResult.UnwrapErr())
+		return domain.Err[domain.Plan](planResult.UnwrapErr())
 	}
 	desired := planResult.Unwrap()
 
@@ -77,7 +77,7 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 
 	resolveResult := ResolveStage()(ctx, resolveInput)
 	if resolveResult.IsErr() {
-		return dot.Err[dot.Plan](resolveResult.UnwrapErr())
+		return domain.Err[domain.Plan](resolveResult.UnwrapErr())
 	}
 	resolved := resolveResult.Unwrap()
 
@@ -85,13 +85,13 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 	if resolved.HasConflicts() {
 		// Return plan with conflicts for user to handle
 		// The caller can inspect the conflicts in the metadata
-		return dot.Ok(dot.Plan{
+		return domain.Ok(domain.Plan{
 			Operations: resolved.Operations,
-			Metadata: dot.PlanMetadata{
+			Metadata: domain.PlanMetadata{
 				PackageCount:   len(packages),
 				OperationCount: len(resolved.Operations),
-				LinkCount:      countOperationsByKind(resolved.Operations, dot.OpKindLinkCreate),
-				DirCount:       countOperationsByKind(resolved.Operations, dot.OpKindDirCreate),
+				LinkCount:      countOperationsByKind(resolved.Operations, domain.OpKindLinkCreate),
+				DirCount:       countOperationsByKind(resolved.Operations, domain.OpKindDirCreate),
 				Conflicts:      convertConflicts(resolved.Conflicts),
 				Warnings:       convertWarnings(resolved.Warnings),
 			},
@@ -105,7 +105,7 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 
 	sortResult := SortStage()(ctx, sortInput)
 	if sortResult.IsErr() {
-		return dot.Err[dot.Plan](sortResult.UnwrapErr())
+		return domain.Err[domain.Plan](sortResult.UnwrapErr())
 	}
 	sorted := sortResult.Unwrap()
 
@@ -113,24 +113,24 @@ func (p *ManagePipeline) Execute(ctx context.Context, input ManageInput) dot.Res
 	packageOps := buildPackageOperationMapping(packages, sorted)
 
 	// Build final plan with metadata including any warnings
-	plan := dot.Plan{
+	plan := domain.Plan{
 		Operations: sorted,
-		Metadata: dot.PlanMetadata{
+		Metadata: domain.PlanMetadata{
 			PackageCount:   len(packages),
 			OperationCount: len(sorted),
-			LinkCount:      countOperationsByKind(sorted, dot.OpKindLinkCreate),
-			DirCount:       countOperationsByKind(sorted, dot.OpKindDirCreate),
+			LinkCount:      countOperationsByKind(sorted, domain.OpKindLinkCreate),
+			DirCount:       countOperationsByKind(sorted, domain.OpKindDirCreate),
 			Conflicts:      nil, // No conflicts in success path
 			Warnings:       convertWarnings(resolved.Warnings),
 		},
 		PackageOperations: packageOps,
 	}
 
-	return dot.Ok(plan)
+	return domain.Ok(plan)
 }
 
 // countOperationsByKind counts operations of a specific kind
-func countOperationsByKind(ops []dot.Operation, kind dot.OperationKind) int {
+func countOperationsByKind(ops []domain.Operation, kind domain.OperationKind) int {
 	count := 0
 	for _, op := range ops {
 		if op.Kind() == kind {
@@ -142,13 +142,13 @@ func countOperationsByKind(ops []dot.Operation, kind dot.OperationKind) int {
 
 // buildPackageOperationMapping creates a mapping from package names to operation IDs
 // by matching operation source paths to package paths.
-func buildPackageOperationMapping(packages []dot.Package, operations []dot.Operation) map[string][]dot.OperationID {
-	packageOps := make(map[string][]dot.OperationID)
+func buildPackageOperationMapping(packages []domain.Package, operations []domain.Operation) map[string][]domain.OperationID {
+	packageOps := make(map[string][]domain.OperationID)
 
 	// For each package, find operations that reference files from that package
 	for _, pkg := range packages {
 		pkgPath := pkg.Path.String()
-		ops := make([]dot.OperationID, 0)
+		ops := make([]domain.OperationID, 0)
 
 		for _, op := range operations {
 			// Check if this operation's source is from this package
@@ -166,12 +166,12 @@ func buildPackageOperationMapping(packages []dot.Package, operations []dot.Opera
 }
 
 // operationBelongsToPackage checks if an operation's source is from the given package path.
-func operationBelongsToPackage(op dot.Operation, pkgPath string) bool {
+func operationBelongsToPackage(op domain.Operation, pkgPath string) bool {
 	switch o := op.(type) {
-	case dot.LinkCreate:
+	case domain.LinkCreate:
 		// LinkCreate source is the file in the package
 		return isUnderPath(o.Source.String(), pkgPath)
-	case dot.FileMove:
+	case domain.FileMove:
 		// FileMove destination is the file in the package
 		return isUnderPath(o.Dest.String(), pkgPath)
 	default:

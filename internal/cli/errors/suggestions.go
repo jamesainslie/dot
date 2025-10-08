@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // SuggestionEngine generates actionable resolution steps.
@@ -21,44 +21,44 @@ func (e *SuggestionEngine) Generate(err error) []string {
 	}
 
 	// Domain Errors
-	var invalidPath dot.ErrInvalidPath
+	var invalidPath domain.ErrInvalidPath
 	if errors.As(err, &invalidPath) {
 		return e.suggestForInvalidPath(invalidPath)
 	}
 
-	var pkgNotFound dot.ErrPackageNotFound
+	var pkgNotFound domain.ErrPackageNotFound
 	if errors.As(err, &pkgNotFound) {
 		return e.suggestForPackageNotFound(pkgNotFound)
 	}
 
-	var conflict dot.ErrConflict
+	var conflict domain.ErrConflict
 	if errors.As(err, &conflict) {
 		return e.suggestForConflict(conflict)
 	}
 
-	var cyclicDep dot.ErrCyclicDependency
+	var cyclicDep domain.ErrCyclicDependency
 	if errors.As(err, &cyclicDep) {
 		return e.suggestForCyclicDependency(cyclicDep)
 	}
 
 	// Infrastructure Errors
-	var permDenied dot.ErrPermissionDenied
+	var permDenied domain.ErrPermissionDenied
 	if errors.As(err, &permDenied) {
 		return e.suggestForPermissionDenied(permDenied)
 	}
 
-	var fsOp dot.ErrFilesystemOperation
+	var fsOp domain.ErrFilesystemOperation
 	if errors.As(err, &fsOp) {
 		return e.suggestForFilesystemOperation(fsOp)
 	}
 
 	// Executor Errors
-	var execFailed dot.ErrExecutionFailed
+	var execFailed domain.ErrExecutionFailed
 	if errors.As(err, &execFailed) {
 		return e.suggestForExecutionFailed(execFailed)
 	}
 
-	var srcNotFound dot.ErrSourceNotFound
+	var srcNotFound domain.ErrSourceNotFound
 	if errors.As(err, &srcNotFound) {
 		return e.suggestForSourceNotFound(srcNotFound)
 	}
@@ -66,7 +66,7 @@ func (e *SuggestionEngine) Generate(err error) []string {
 	return nil
 }
 
-func (e *SuggestionEngine) suggestForInvalidPath(err dot.ErrInvalidPath) []string {
+func (e *SuggestionEngine) suggestForInvalidPath(err domain.ErrInvalidPath) []string {
 	suggestions := []string{
 		"Use absolute paths starting with /",
 		"Check for typos in the path",
@@ -83,7 +83,7 @@ func (e *SuggestionEngine) suggestForInvalidPath(err dot.ErrInvalidPath) []strin
 	return suggestions
 }
 
-func (e *SuggestionEngine) suggestForPackageNotFound(err dot.ErrPackageNotFound) []string {
+func (e *SuggestionEngine) suggestForPackageNotFound(err domain.ErrPackageNotFound) []string {
 	suggestions := []string{
 		"Check available packages with: dot list",
 	}
@@ -100,7 +100,7 @@ func (e *SuggestionEngine) suggestForPackageNotFound(err dot.ErrPackageNotFound)
 	return suggestions
 }
 
-func (e *SuggestionEngine) suggestForConflict(err dot.ErrConflict) []string {
+func (e *SuggestionEngine) suggestForConflict(err domain.ErrConflict) []string {
 	suggestions := []string{}
 
 	if strings.Contains(err.Reason, "exists") || strings.Contains(err.Reason, "file") {
@@ -116,7 +116,7 @@ func (e *SuggestionEngine) suggestForConflict(err dot.ErrConflict) []string {
 	return suggestions
 }
 
-func (e *SuggestionEngine) suggestForCyclicDependency(err dot.ErrCyclicDependency) []string {
+func (e *SuggestionEngine) suggestForCyclicDependency(err domain.ErrCyclicDependency) []string {
 	return []string{
 		"This indicates a bug in the operation planning logic",
 		"Please report this issue with the command you ran",
@@ -124,7 +124,7 @@ func (e *SuggestionEngine) suggestForCyclicDependency(err dot.ErrCyclicDependenc
 	}
 }
 
-func (e *SuggestionEngine) suggestForPermissionDenied(err dot.ErrPermissionDenied) []string {
+func (e *SuggestionEngine) suggestForPermissionDenied(err domain.ErrPermissionDenied) []string {
 	suggestions := []string{}
 
 	if err.Path != "" {
@@ -141,7 +141,7 @@ func (e *SuggestionEngine) suggestForPermissionDenied(err dot.ErrPermissionDenie
 	return suggestions
 }
 
-func (e *SuggestionEngine) suggestForFilesystemOperation(err dot.ErrFilesystemOperation) []string {
+func (e *SuggestionEngine) suggestForFilesystemOperation(err domain.ErrFilesystemOperation) []string {
 	suggestions := []string{
 		"Verify the file system is writable",
 		"Check available disk space",
@@ -155,7 +155,7 @@ func (e *SuggestionEngine) suggestForFilesystemOperation(err dot.ErrFilesystemOp
 	return suggestions
 }
 
-func (e *SuggestionEngine) suggestForExecutionFailed(err dot.ErrExecutionFailed) []string {
+func (e *SuggestionEngine) suggestForExecutionFailed(err domain.ErrExecutionFailed) []string {
 	suggestions := []string{
 		"Review the individual error messages above for specific issues",
 	}
@@ -178,7 +178,7 @@ func (e *SuggestionEngine) suggestForExecutionFailed(err dot.ErrExecutionFailed)
 	return suggestions
 }
 
-func (e *SuggestionEngine) suggestForSourceNotFound(err dot.ErrSourceNotFound) []string {
+func (e *SuggestionEngine) suggestForSourceNotFound(err domain.ErrSourceNotFound) []string {
 	suggestions := []string{
 		"Verify the source file exists in the package",
 	}

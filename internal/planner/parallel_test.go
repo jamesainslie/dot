@@ -6,11 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 func TestParallelizationPlan_EmptyGraph(t *testing.T) {
-	graph := BuildGraph([]dot.Operation{})
+	graph := BuildGraph([]domain.Operation{})
 
 	batches := graph.ParallelizationPlan()
 
@@ -18,8 +18,8 @@ func TestParallelizationPlan_EmptyGraph(t *testing.T) {
 }
 
 func TestParallelizationPlan_SingleOperation(t *testing.T) {
-	op := dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
-	graph := BuildGraph([]dot.Operation{op})
+	op := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
+	graph := BuildGraph([]domain.Operation{op})
 
 	batches := graph.ParallelizationPlan()
 
@@ -29,10 +29,10 @@ func TestParallelizationPlan_SingleOperation(t *testing.T) {
 }
 
 func TestParallelizationPlan_IndependentOperations(t *testing.T) {
-	op1 := dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
-	op2 := dot.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
-	op3 := dot.NewDirCreate("dir1", mustParsePath("/e"))
-	graph := BuildGraph([]dot.Operation{op1, op2, op3})
+	op1 := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
+	op2 := domain.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
+	op3 := domain.NewDirCreate("dir1", mustParsePath("/e"))
+	graph := BuildGraph([]domain.Operation{op1, op2, op3})
 
 	batches := graph.ParallelizationPlan()
 
@@ -47,17 +47,17 @@ func TestParallelizationPlan_IndependentOperations(t *testing.T) {
 
 func TestParallelizationPlan_LinearChain(t *testing.T) {
 	// Create linear dependency: A -> B -> C
-	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
+	opA := domain.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir2", mustParsePath("/b")),
+		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/c")),
-		deps: []dot.Operation{opB},
+		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/c")),
+		deps: []domain.Operation{opB},
 	}
 
-	graph := BuildGraph([]dot.Operation{opC, opB, opA})
+	graph := BuildGraph([]domain.Operation{opC, opB, opA})
 
 	batches := graph.ParallelizationPlan()
 
@@ -74,21 +74,21 @@ func TestParallelizationPlan_LinearChain(t *testing.T) {
 
 func TestParallelizationPlan_DiamondPattern(t *testing.T) {
 	// Diamond: A -> B, A -> C, B -> D, C -> D
-	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
+	opA := domain.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir2", mustParsePath("/b")),
+		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir3", mustParsePath("/c")),
+		deps: []domain.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
-		deps: []dot.Operation{opB, opC},
+		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
+		deps: []domain.Operation{opB, opC},
 	}
 
-	graph := BuildGraph([]dot.Operation{opD, opC, opB, opA})
+	graph := BuildGraph([]domain.Operation{opD, opC, opB, opA})
 
 	batches := graph.ParallelizationPlan()
 
@@ -120,29 +120,29 @@ func TestParallelizationPlan_ComplexGraph(t *testing.T) {
 	//    \ /
 	//     F
 
-	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
+	opA := domain.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir2", mustParsePath("/b")),
+		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir3", mustParsePath("/c")),
+		deps: []domain.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewDirCreate("dir4", mustParsePath("/d")),
-		deps: []dot.Operation{opB, opC},
+		op:   domain.NewDirCreate("dir4", mustParsePath("/d")),
+		deps: []domain.Operation{opB, opC},
 	}
 	opE := &mockOperation{
-		op:   dot.NewDirCreate("dir5", mustParsePath("/e")),
-		deps: []dot.Operation{opB, opC},
+		op:   domain.NewDirCreate("dir5", mustParsePath("/e")),
+		deps: []domain.Operation{opB, opC},
 	}
 	opF := &mockOperation{
-		op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/f")),
-		deps: []dot.Operation{opD, opE},
+		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/f")),
+		deps: []domain.Operation{opD, opE},
 	}
 
-	graph := BuildGraph([]dot.Operation{opF, opE, opD, opC, opB, opA})
+	graph := BuildGraph([]domain.Operation{opF, opE, opD, opC, opB, opA})
 
 	batches := graph.ParallelizationPlan()
 
@@ -171,36 +171,36 @@ func TestParallelizationSafety(t *testing.T) {
 	// Create various graph structures and verify safety properties
 	testCases := []struct {
 		name string
-		ops  []dot.Operation
+		ops  []domain.Operation
 	}{
 		{
 			name: "simple chain",
-			ops: func() []dot.Operation {
-				opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
+			ops: func() []domain.Operation {
+				opA := domain.NewDirCreate("dir1", mustParsePath("/a"))
 				opB := &mockOperation{
-					op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
-					deps: []dot.Operation{opA},
+					op:   domain.NewDirCreate("dir2", mustParsePath("/b")),
+					deps: []domain.Operation{opA},
 				}
-				return []dot.Operation{opB, opA}
+				return []domain.Operation{opB, opA}
 			}(),
 		},
 		{
 			name: "diamond",
-			ops: func() []dot.Operation {
-				opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
+			ops: func() []domain.Operation {
+				opA := domain.NewDirCreate("dir1", mustParsePath("/a"))
 				opB := &mockOperation{
-					op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
-					deps: []dot.Operation{opA},
+					op:   domain.NewDirCreate("dir2", mustParsePath("/b")),
+					deps: []domain.Operation{opA},
 				}
 				opC := &mockOperation{
-					op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
-					deps: []dot.Operation{opA},
+					op:   domain.NewDirCreate("dir3", mustParsePath("/c")),
+					deps: []domain.Operation{opA},
 				}
 				opD := &mockOperation{
-					op:   dot.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
-					deps: []dot.Operation{opB, opC},
+					op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
+					deps: []domain.Operation{opB, opC},
 				}
-				return []dot.Operation{opD, opC, opB, opA}
+				return []domain.Operation{opD, opC, opB, opA}
 			}(),
 		},
 	}
@@ -235,25 +235,25 @@ func TestParallelizationSafety(t *testing.T) {
 
 func TestParallelizationDependenciesSatisfied(t *testing.T) {
 	// Create a complex graph
-	opA := dot.NewDirCreate("dir1", mustParsePath("/a"))
+	opA := domain.NewDirCreate("dir1", mustParsePath("/a"))
 	opB := &mockOperation{
-		op:   dot.NewDirCreate("dir2", mustParsePath("/b")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir2", mustParsePath("/b")),
+		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   dot.NewDirCreate("dir3", mustParsePath("/c")),
-		deps: []dot.Operation{opA},
+		op:   domain.NewDirCreate("dir3", mustParsePath("/c")),
+		deps: []domain.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   dot.NewDirCreate("dir4", mustParsePath("/d")),
-		deps: []dot.Operation{opB, opC},
+		op:   domain.NewDirCreate("dir4", mustParsePath("/d")),
+		deps: []domain.Operation{opB, opC},
 	}
 
-	graph := BuildGraph([]dot.Operation{opD, opC, opB, opA})
+	graph := BuildGraph([]domain.Operation{opD, opC, opB, opA})
 	batches := graph.ParallelizationPlan()
 
 	// Build a map of operation to batch index
-	opToBatch := make(map[dot.Operation]int)
+	opToBatch := make(map[domain.Operation]int)
 	for batchIdx, batch := range batches {
 		for _, op := range batch {
 			opToBatch[op] = batchIdx
@@ -279,15 +279,15 @@ func TestParallelizationPlan_LargeGraph(t *testing.T) {
 	// Build a larger graph to test performance
 	numLevels := 10
 	opsPerLevel := 10
-	var ops []dot.Operation
-	levels := make([][]dot.Operation, numLevels)
+	var ops []domain.Operation
+	levels := make([][]domain.Operation, numLevels)
 
 	// Level 0: independent operations
 	idCounter := 0
 	for i := 0; i < opsPerLevel; i++ {
 		idCounter++
-		opID := dot.OperationID(formatPath("dir-%d", idCounter))
-		op := dot.NewDirCreate(opID, mustParsePath(formatPath("/level0/op", i)))
+		opID := domain.OperationID(formatPath("dir-%d", idCounter))
+		op := domain.NewDirCreate(opID, mustParsePath(formatPath("/level0/op", i)))
 		levels[0] = append(levels[0], op)
 		ops = append(ops, op)
 	}
@@ -296,9 +296,9 @@ func TestParallelizationPlan_LargeGraph(t *testing.T) {
 	for level := 1; level < numLevels; level++ {
 		for i := 0; i < opsPerLevel; i++ {
 			idCounter++
-			opID := dot.OperationID(formatPath("dir-%d", idCounter))
+			opID := domain.OperationID(formatPath("dir-%d", idCounter))
 			op := &mockOperation{
-				op:   dot.NewDirCreate(opID, mustParsePath(formatPath("/level%d/op", level, i))),
+				op:   domain.NewDirCreate(opID, mustParsePath(formatPath("/level%d/op", level, i))),
 				deps: levels[level-1],
 			}
 			levels[level] = append(levels[level], op)

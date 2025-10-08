@@ -3,7 +3,7 @@ package output
 import (
 	"errors"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // Exit codes for different error types.
@@ -23,22 +23,22 @@ func GetExitCode(err error) int {
 	}
 
 	// Check for domain errors
-	var invalidPath dot.ErrInvalidPath
+	var invalidPath domain.ErrInvalidPath
 	if errors.As(err, &invalidPath) {
 		return ExitInvalidArguments
 	}
 
-	var pkgNotFound dot.ErrPackageNotFound
+	var pkgNotFound domain.ErrPackageNotFound
 	if errors.As(err, &pkgNotFound) {
 		return ExitPackageNotFound
 	}
 
-	var conflict dot.ErrConflict
+	var conflict domain.ErrConflict
 	if errors.As(err, &conflict) {
 		return ExitConflict
 	}
 
-	var permDenied dot.ErrPermissionDenied
+	var permDenied domain.ErrPermissionDenied
 	if errors.As(err, &permDenied) {
 		return ExitPermissionDenied
 	}

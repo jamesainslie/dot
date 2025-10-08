@@ -9,25 +9,25 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 const manifestFileName = ".dot-manifest.json"
 
 // FSManifestStore implements ManifestStore using filesystem
 type FSManifestStore struct {
-	fs dot.FS
+	fs domain.FS
 }
 
 // NewFSManifestStore creates filesystem-based manifest store
-func NewFSManifestStore(fs dot.FS) *FSManifestStore {
+func NewFSManifestStore(fs domain.FS) *FSManifestStore {
 	return &FSManifestStore{fs: fs}
 }
 
 // Load retrieves manifest from target directory
-func (s *FSManifestStore) Load(ctx context.Context, targetDir dot.TargetPath) dot.Result[Manifest] {
+func (s *FSManifestStore) Load(ctx context.Context, targetDir domain.TargetPath) domain.Result[Manifest] {
 	if ctx.Err() != nil {
-		return dot.Err[Manifest](ctx.Err())
+		return domain.Err[Manifest](ctx.Err())
 	}
 
 	manifestPath := filepath.Join(targetDir.String(), manifestFileName)
@@ -36,21 +36,21 @@ func (s *FSManifestStore) Load(ctx context.Context, targetDir dot.TargetPath) do
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// Missing manifest is not an error - return empty manifest
-			return dot.Ok(New())
+			return domain.Ok(New())
 		}
-		return dot.Err[Manifest](fmt.Errorf("failed to read manifest: %w", err))
+		return domain.Err[Manifest](fmt.Errorf("failed to read manifest: %w", err))
 	}
 
 	var m Manifest
 	if err := json.Unmarshal(data, &m); err != nil {
-		return dot.Err[Manifest](fmt.Errorf("failed to parse manifest: %w", err))
+		return domain.Err[Manifest](fmt.Errorf("failed to parse manifest: %w", err))
 	}
 
-	return dot.Ok(m)
+	return domain.Ok(m)
 }
 
 // Save persists manifest to target directory
-func (s *FSManifestStore) Save(ctx context.Context, targetDir dot.TargetPath, manifest Manifest) error {
+func (s *FSManifestStore) Save(ctx context.Context, targetDir domain.TargetPath, manifest Manifest) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}

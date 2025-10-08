@@ -7,16 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 func TestJSONRenderer_RenderDiagnostics(t *testing.T) {
 	r := &JSONRenderer{pretty: true}
 
-	report := dot.DiagnosticReport{
-		OverallHealth: dot.HealthOK,
-		Issues:        []dot.Issue{},
-		Statistics: dot.DiagnosticStats{
+	report := domain.DiagnosticReport{
+		OverallHealth: domain.HealthOK,
+		Issues:        []domain.Issue{},
+		Statistics: domain.DiagnosticStats{
 			TotalLinks: 10,
 		},
 	}
@@ -34,18 +34,18 @@ func TestJSONRenderer_RenderDiagnostics(t *testing.T) {
 func TestYAMLRenderer_RenderDiagnostics(t *testing.T) {
 	r := &YAMLRenderer{indent: 2}
 
-	report := dot.DiagnosticReport{
-		OverallHealth: dot.HealthWarnings,
-		Issues: []dot.Issue{
+	report := domain.DiagnosticReport{
+		OverallHealth: domain.HealthWarnings,
+		Issues: []domain.Issue{
 			{
-				Severity:   dot.SeverityWarning,
-				Type:       dot.IssueOrphanedLink,
+				Severity:   domain.SeverityWarning,
+				Type:       domain.IssueOrphanedLink,
 				Path:       "/test",
 				Message:    "Test",
 				Suggestion: "Fix it",
 			},
 		},
-		Statistics: dot.DiagnosticStats{},
+		Statistics: domain.DiagnosticStats{},
 	}
 
 	var buf bytes.Buffer
@@ -65,17 +65,17 @@ func TestTableRenderer_RenderDiagnostics(t *testing.T) {
 		width:    80,
 	}
 
-	report := dot.DiagnosticReport{
-		OverallHealth: dot.HealthErrors,
-		Issues: []dot.Issue{
+	report := domain.DiagnosticReport{
+		OverallHealth: domain.HealthErrors,
+		Issues: []domain.Issue{
 			{
-				Severity: dot.SeverityError,
-				Type:     dot.IssueBrokenLink,
+				Severity: domain.SeverityError,
+				Type:     domain.IssueBrokenLink,
 				Path:     "/test/path",
 				Message:  "Broken",
 			},
 		},
-		Statistics: dot.DiagnosticStats{
+		Statistics: domain.DiagnosticStats{
 			TotalLinks:  5,
 			BrokenLinks: 1,
 		},

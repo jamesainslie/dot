@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // MemFS implements an in-memory filesystem for testing.
@@ -33,7 +33,7 @@ func NewMemFS() *MemFS {
 	}
 }
 
-func (f *MemFS) Stat(ctx context.Context, name string) (dot.FileInfo, error) {
+func (f *MemFS) Stat(ctx context.Context, name string) (domain.FileInfo, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
@@ -51,7 +51,7 @@ func (f *MemFS) Stat(ctx context.Context, name string) (dot.FileInfo, error) {
 	}, nil
 }
 
-func (f *MemFS) ReadDir(ctx context.Context, name string) ([]dot.DirEntry, error) {
+func (f *MemFS) ReadDir(ctx context.Context, name string) ([]domain.DirEntry, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
@@ -65,7 +65,7 @@ func (f *MemFS) ReadDir(ctx context.Context, name string) ([]dot.DirEntry, error
 	}
 
 	// Find all direct children
-	var entries []dot.DirEntry
+	var entries []domain.DirEntry
 	prefix := filepath.Clean(name) + string(filepath.Separator)
 
 	for path, file := range f.files {
@@ -306,7 +306,7 @@ func (f *MemFS) IsSymlink(ctx context.Context, name string) (bool, error) {
 	return file.symlink != "", nil
 }
 
-// memFileInfo implements dot.FileInfo
+// memFileInfo implements domain.FileInfo
 type memFileInfo struct {
 	name    string
 	size    int64
@@ -322,7 +322,7 @@ func (i *memFileInfo) ModTime() any      { return i.modTime }
 func (i *memFileInfo) IsDir() bool       { return i.isDir }
 func (i *memFileInfo) Sys() any          { return nil }
 
-// memDirEntry implements dot.DirEntry
+// memDirEntry implements domain.DirEntry
 type memDirEntry struct {
 	name  string
 	isDir bool
@@ -332,7 +332,7 @@ type memDirEntry struct {
 func (e *memDirEntry) Name() string      { return e.name }
 func (e *memDirEntry) IsDir() bool       { return e.isDir }
 func (e *memDirEntry) Type() fs.FileMode { return e.mode }
-func (e *memDirEntry) Info() (dot.FileInfo, error) {
+func (e *memDirEntry) Info() (domain.FileInfo, error) {
 	return &memFileInfo{
 		name:  e.name,
 		mode:  e.mode,

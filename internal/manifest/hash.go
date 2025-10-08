@@ -8,22 +8,22 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // ContentHasher computes content hashes for packages
 type ContentHasher struct {
-	fs dot.FS
+	fs domain.FS
 }
 
 // NewContentHasher creates a new content hasher
-func NewContentHasher(fs dot.FS) *ContentHasher {
+func NewContentHasher(fs domain.FS) *ContentHasher {
 	return &ContentHasher{fs: fs}
 }
 
 // HashPackage computes content hash for entire package
 // Hash is deterministic and based on file contents and paths
-func (h *ContentHasher) HashPackage(ctx context.Context, pkgPath dot.PackagePath) (string, error) {
+func (h *ContentHasher) HashPackage(ctx context.Context, pkgPath domain.PackagePath) (string, error) {
 	if ctx.Err() != nil {
 		return "", ctx.Err()
 	}

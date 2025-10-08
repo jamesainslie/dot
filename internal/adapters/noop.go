@@ -3,7 +3,7 @@ package adapters
 import (
 	"context"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // NoopLogger is a logger that does nothing.
@@ -20,7 +20,7 @@ func (l *NoopLogger) Info(ctx context.Context, msg string, args ...any)  {}
 func (l *NoopLogger) Warn(ctx context.Context, msg string, args ...any)  {}
 func (l *NoopLogger) Error(ctx context.Context, msg string, args ...any) {}
 
-func (l *NoopLogger) With(args ...any) dot.Logger {
+func (l *NoopLogger) With(args ...any) domain.Logger {
 	return l
 }
 
@@ -33,7 +33,7 @@ func NewNoopTracer() *NoopTracer {
 	return &NoopTracer{}
 }
 
-func (t *NoopTracer) Start(ctx context.Context, name string, opts ...dot.SpanOption) (context.Context, dot.Span) {
+func (t *NoopTracer) Start(ctx context.Context, name string, opts ...domain.SpanOption) (context.Context, domain.Span) {
 	return ctx, &NoopSpan{}
 }
 
@@ -42,7 +42,7 @@ type NoopSpan struct{}
 
 func (s *NoopSpan) End()                                 {}
 func (s *NoopSpan) RecordError(err error)                {}
-func (s *NoopSpan) SetAttributes(attrs ...dot.Attribute) {}
+func (s *NoopSpan) SetAttributes(attrs ...domain.Attribute) {}
 
 // NoopMetrics is a metrics collector that does nothing.
 // Useful for testing and when metrics are disabled.
@@ -53,15 +53,15 @@ func NewNoopMetrics() *NoopMetrics {
 	return &NoopMetrics{}
 }
 
-func (m *NoopMetrics) Counter(name string, labels ...string) dot.Counter {
+func (m *NoopMetrics) Counter(name string, labels ...string) domain.Counter {
 	return &NoopCounter{}
 }
 
-func (m *NoopMetrics) Histogram(name string, labels ...string) dot.Histogram {
+func (m *NoopMetrics) Histogram(name string, labels ...string) domain.Histogram {
 	return &NoopHistogram{}
 }
 
-func (m *NoopMetrics) Gauge(name string, labels ...string) dot.Gauge {
+func (m *NoopMetrics) Gauge(name string, labels ...string) domain.Gauge {
 	return &NoopGauge{}
 }
 

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // ScanTree recursively scans a filesystem tree starting at path.
@@ -21,17 +21,17 @@ import (
 // 4. If file, return file node
 //
 // This is a pure function - all I/O goes through the FS interface.
-func ScanTree(ctx context.Context, fs dot.FS, path dot.FilePath) dot.Result[dot.Node] {
+func ScanTree(ctx context.Context, fs domain.FS, path domain.FilePath) domain.Result[domain.Node] {
 	// Check for symlinks first (symlinks are always leaves)
 	isLink, err := fs.IsSymlink(ctx, path.String())
 	if err != nil {
-		return dot.Err[dot.Node](fmt.Errorf("check symlink %s: %w", path.String(), err))
+		return domain.Err[domain.Node](fmt.Errorf("check symlink %s: %w", path.String(), err))
 	}
 
 	if isLink {
-		return dot.Ok(dot.Node{
+		return domain.Ok(domain.Node{
 			Path:     path,
-			Type:     dot.NodeSymlink,
+			Type:     domain.NodeSymlink,
 			Children: nil,
 		})
 	}
@@ -39,14 +39,14 @@ func ScanTree(ctx context.Context, fs dot.FS, path dot.FilePath) dot.Result[dot.
 	// Check if directory
 	isDir, err := fs.IsDir(ctx, path.String())
 	if err != nil {
-		return dot.Err[dot.Node](fmt.Errorf("check directory %s: %w", path.String(), err))
+		return domain.Err[domain.Node](fmt.Errorf("check directory %s: %w", path.String(), err))
 	}
 
 	if !isDir {
 		// Regular file
-		return dot.Ok(dot.Node{
+		return domain.Ok(domain.Node{
 			Path:     path,
-			Type:     dot.NodeFile,
+			Type:     domain.NodeFile,
 			Children: nil,
 		})
 	}
@@ -54,25 +54,25 @@ func ScanTree(ctx context.Context, fs dot.FS, path dot.FilePath) dot.Result[dot.
 	// Directory - scan children
 	entries, err := fs.ReadDir(ctx, path.String())
 	if err != nil {
-		return dot.Err[dot.Node](fmt.Errorf("read directory %s: %w", path.String(), err))
+		return domain.Err[domain.Node](fmt.Errorf("read directory %s: %w", path.String(), err))
 	}
 
 	// Recursively scan each child
-	children := make([]dot.Node, 0, len(entries))
+	children := make([]domain.Node, 0, len(entries))
 	for _, entry := range entries {
 		childPath := path.Join(entry.Name())
 
 		childResult := ScanTree(ctx, fs, childPath)
 		if childResult.IsErr() {
-			return dot.Err[dot.Node](childResult.UnwrapErr())
+			return domain.Err[domain.Node](childResult.UnwrapErr())
 		}
 
 		children = append(children, childResult.Unwrap())
 	}
 
-	return dot.Ok(dot.Node{
+	return domain.Ok(domain.Node{
 		Path:     path,
-		Type:     dot.NodeDir,
+		Type:     domain.NodeDir,
 		Children: children,
 	})
 }
@@ -81,7 +81,7 @@ func ScanTree(ctx context.Context, fs dot.FS, path dot.FilePath) dot.Result[dot.
 // Traversal is depth-first pre-order.
 //
 // If fn returns an error, traversal stops and the error is returned.
-func Walk(node dot.Node, fn func(dot.Node) error) error {
+func Walk(node domain.Node, fn func(domain.Node) error) error {
 	// Visit current node
 	if err := fn(node); err != nil {
 		return err
@@ -99,11 +99,11 @@ func Walk(node dot.Node, fn func(dot.Node) error) error {
 
 // CollectFiles returns all file paths in a tree.
 // Useful for collecting all files in a package.
-func CollectFiles(node dot.Node) []dot.FilePath {
-	var files []dot.FilePath
+func CollectFiles(node domain.Node) []domain.FilePath {
+	var files []domain.FilePath
 
-	Walk(node, func(n dot.Node) error {
-		if n.Type == dot.NodeFile {
+	Walk(node, func(n domain.Node) error {
+		if n.Type == domain.NodeFile {
 			files = append(files, n.Path)
 		}
 		return nil
@@ -113,7 +113,7 @@ func CollectFiles(node dot.Node) []dot.FilePath {
 }
 
 // CountNodes returns the total number of nodes in a tree.
-func CountNodes(node dot.Node) int {
+func CountNodes(node domain.Node) int {
 	count := 1 // Count this node
 
 	for _, child := range node.Children {
@@ -125,10 +125,10 @@ func CountNodes(node dot.Node) int {
 
 // RelativePath computes the relative path from base to target.
 // Both paths must be absolute. Returns error if target is not under base.
-func RelativePath(base, target dot.FilePath) dot.Result[string] {
+func RelativePath(base, target domain.FilePath) domain.Result[string] {
 	rel, err := filepath.Rel(base.String(), target.String())
 	if err != nil {
-		return dot.Err[string](fmt.Errorf("compute relative path: %w", err))
+		return domain.Err[string](fmt.Errorf("compute relative path: %w", err))
 	}
-	return dot.Ok(rel)
+	return domain.Ok(rel)
 }

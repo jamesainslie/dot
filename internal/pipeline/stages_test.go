@@ -7,7 +7,7 @@ import (
 	"github.com/jamesainslie/dot/internal/adapters"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/planner"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,8 +19,8 @@ func TestScanStage_ContextCancellation(t *testing.T) {
 
 		scanStage := ScanStage()
 		input := ScanInput{
-			PackageDir: dot.NewPackagePath("/packages").Unwrap(),
-			TargetDir:  dot.NewTargetPath("/target").Unwrap(),
+			PackageDir: domain.NewPackagePath("/packages").Unwrap(),
+			TargetDir:  domain.NewTargetPath("/target").Unwrap(),
 			Packages:   []string{"vim"},
 			IgnoreSet:  ignore.NewIgnoreSet(),
 			FS:         adapters.NewOSFilesystem(),
@@ -38,8 +38,8 @@ func TestScanStage_ContextCancellation(t *testing.T) {
 
 		scanStage := ScanStage()
 		input := ScanInput{
-			PackageDir: dot.NewPackagePath("/packages").Unwrap(),
-			TargetDir:  dot.NewTargetPath("/target").Unwrap(),
+			PackageDir: domain.NewPackagePath("/packages").Unwrap(),
+			TargetDir:  domain.NewTargetPath("/target").Unwrap(),
 			Packages:   []string{}, // Empty list
 			IgnoreSet:  ignore.NewIgnoreSet(),
 			FS:         adapters.NewOSFilesystem(),
@@ -60,8 +60,8 @@ func TestPlanStage_ContextCancellation(t *testing.T) {
 
 		planStage := PlanStage()
 		input := PlanInput{
-			Packages:  []dot.Package{},
-			TargetDir: dot.NewTargetPath("/target").Unwrap(),
+			Packages:  []domain.Package{},
+			TargetDir: domain.NewTargetPath("/target").Unwrap(),
 		}
 
 		result := planStage(ctx, input)
@@ -101,7 +101,7 @@ func TestSortStage_ContextCancellation(t *testing.T) {
 
 		sortStage := SortStage()
 		input := SortInput{
-			Operations: []dot.Operation{},
+			Operations: []domain.Operation{},
 		}
 
 		result := sortStage(ctx, input)
@@ -116,12 +116,12 @@ func TestSortStage_ContextCancellation(t *testing.T) {
 
 		sortStage := SortStage()
 
-		source := dot.NewFilePath("/packages/vim/vimrc").Unwrap()
-		target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+		source := domain.NewFilePath("/packages/vim/vimrc").Unwrap()
+		target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
 
 		input := SortInput{
-			Operations: []dot.Operation{
-				dot.NewLinkCreate("link1", source, target),
+			Operations: []domain.Operation{
+				domain.NewLinkCreate("link1", source, target),
 			},
 		}
 
@@ -138,8 +138,8 @@ func TestStages_ValidContextPropagation(t *testing.T) {
 
 		// Scan stage with empty packages
 		scanResult := ScanStage()(ctx, ScanInput{
-			PackageDir: dot.NewPackagePath("/packages").Unwrap(),
-			TargetDir:  dot.NewTargetPath("/target").Unwrap(),
+			PackageDir: domain.NewPackagePath("/packages").Unwrap(),
+			TargetDir:  domain.NewTargetPath("/target").Unwrap(),
 			Packages:   []string{},
 			IgnoreSet:  ignore.NewIgnoreSet(),
 			FS:         adapters.NewOSFilesystem(),
@@ -148,8 +148,8 @@ func TestStages_ValidContextPropagation(t *testing.T) {
 
 		// Plan stage with empty packages
 		planResult := PlanStage()(ctx, PlanInput{
-			Packages:  []dot.Package{},
-			TargetDir: dot.NewTargetPath("/target").Unwrap(),
+			Packages:  []domain.Package{},
+			TargetDir: domain.NewTargetPath("/target").Unwrap(),
 		})
 		require.True(t, planResult.IsOk())
 
@@ -167,7 +167,7 @@ func TestStages_ValidContextPropagation(t *testing.T) {
 
 		// Sort stage with empty operations
 		sortResult := SortStage()(ctx, SortInput{
-			Operations: []dot.Operation{},
+			Operations: []domain.Operation{},
 		})
 		require.True(t, sortResult.IsOk())
 	})

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"golang.org/x/term"
 )
 
@@ -41,7 +41,7 @@ func (f *Formatter) FormatWithContext(err error, ctx ErrorContext) string {
 	}
 
 	// Handle ErrMultiple specially
-	var errMultiple dot.ErrMultiple
+	var errMultiple domain.ErrMultiple
 	if errors.As(err, &errMultiple) {
 		return f.formatMultiple(errMultiple, ctx)
 	}
@@ -58,7 +58,7 @@ func (f *Formatter) FormatWithContext(err error, ctx ErrorContext) string {
 }
 
 // formatMultiple formats multiple errors as a list.
-func (f *Formatter) formatMultiple(err dot.ErrMultiple, ctx ErrorContext) string {
+func (f *Formatter) formatMultiple(err domain.ErrMultiple, ctx ErrorContext) string {
 	if len(err.Errors) == 0 {
 		return "no errors"
 	}
@@ -94,7 +94,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 	suggestion.context = ctx
 
 	// Domain Errors
-	var invalidPath dot.ErrInvalidPath
+	var invalidPath domain.ErrInvalidPath
 	if errors.As(err, &invalidPath) {
 		return &Template{
 			Title:       "Invalid Path",
@@ -104,7 +104,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var pkgNotFound dot.ErrPackageNotFound
+	var pkgNotFound domain.ErrPackageNotFound
 	if errors.As(err, &pkgNotFound) {
 		return &Template{
 			Title:       "Package Not Found",
@@ -113,7 +113,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var conflict dot.ErrConflict
+	var conflict domain.ErrConflict
 	if errors.As(err, &conflict) {
 		return &Template{
 			Title:       "Conflict Detected",
@@ -123,7 +123,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var cyclicDep dot.ErrCyclicDependency
+	var cyclicDep domain.ErrCyclicDependency
 	if errors.As(err, &cyclicDep) {
 		return &Template{
 			Title:       "Circular Dependency Detected",
@@ -134,7 +134,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 	}
 
 	// Infrastructure Errors
-	var permDenied dot.ErrPermissionDenied
+	var permDenied domain.ErrPermissionDenied
 	if errors.As(err, &permDenied) {
 		return &Template{
 			Title:       "Permission Denied",
@@ -143,7 +143,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var fsOp dot.ErrFilesystemOperation
+	var fsOp domain.ErrFilesystemOperation
 	if errors.As(err, &fsOp) {
 		return &Template{
 			Title:       "Filesystem Operation Failed",
@@ -154,7 +154,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 	}
 
 	// Executor Errors
-	var emptyPlan dot.ErrEmptyPlan
+	var emptyPlan domain.ErrEmptyPlan
 	if errors.As(err, &emptyPlan) {
 		return &Template{
 			Title:       "Empty Plan",
@@ -163,7 +163,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var execFailed dot.ErrExecutionFailed
+	var execFailed domain.ErrExecutionFailed
 	if errors.As(err, &execFailed) {
 		details := []string{
 			fmt.Sprintf("%d operations succeeded", execFailed.Executed),
@@ -180,7 +180,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var srcNotFound dot.ErrSourceNotFound
+	var srcNotFound domain.ErrSourceNotFound
 	if errors.As(err, &srcNotFound) {
 		return &Template{
 			Title:       "Source Not Found",
@@ -189,7 +189,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var parentNotFound dot.ErrParentNotFound
+	var parentNotFound domain.ErrParentNotFound
 	if errors.As(err, &parentNotFound) {
 		return &Template{
 			Title:       "Parent Directory Not Found",
@@ -198,7 +198,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var checkpointNotFound dot.ErrCheckpointNotFound
+	var checkpointNotFound domain.ErrCheckpointNotFound
 	if errors.As(err, &checkpointNotFound) {
 		return &Template{
 			Title:       "Checkpoint Not Found",
@@ -207,7 +207,7 @@ func (f *Formatter) getTemplate(err error, ctx ErrorContext) *Template {
 		}
 	}
 
-	var notImpl dot.ErrNotImplemented
+	var notImpl domain.ErrNotImplemented
 	if errors.As(err, &notImpl) {
 		return &Template{
 			Title:       "Not Implemented",

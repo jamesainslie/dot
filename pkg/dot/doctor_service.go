@@ -38,12 +38,50 @@ func (s *DoctorService) Doctor(ctx context.Context) (DiagnosticReport, error) {
 
 // DoctorWithScan performs health checks with explicit scan configuration.
 func (s *DoctorService) DoctorWithScan(ctx context.Context, scanCfg ScanConfig) (DiagnosticReport, error) {
+	targetPath, err := s.getTargetPath()
+	if err != nil {
+		return DiagnosticReport{}, err
+	}
+
+	m, issues, stats, err := s.loadManifestOrCreateDefault(ctx, targetPath)
+	if err != nil {
+		return DiagnosticReport{}, err
+	}
+	// If manifest doesn't exist, return early with info issue
+	if m == nil {
+		return DiagnosticReport{
+			OverallHealth: HealthOK,
+			Issues:        issues,
+			Statistics:    stats,
+		}, nil
+	}
+
+	s.checkManagedPackages(ctx, m, &issues, &stats)
+
+	if scanCfg.Mode != ScanOff {
+		s.performOrphanScan(ctx, m, scanCfg, &issues, &stats)
+	}
+
+	health := s.determineOverallHealth(issues)
+
+	return DiagnosticReport{
+		OverallHealth: health,
+		Issues:        issues,
+		Statistics:    stats,
+	}, nil
+}
+
+// getTargetPath constructs and validates target path.
+func (s *DoctorService) getTargetPath() (TargetPath, error) {
 	targetPathResult := NewTargetPath(s.targetDir)
 	if !targetPathResult.IsOk() {
-		return DiagnosticReport{}, targetPathResult.UnwrapErr()
+		return TargetPath{}, targetPathResult.UnwrapErr()
 	}
-	targetPath := targetPathResult.Unwrap()
+	return targetPathResult.Unwrap(), nil
+}
 
+// loadManifestOrCreateDefault loads manifest or returns default state if not found.
+func (s *DoctorService) loadManifestOrCreateDefault(ctx context.Context, targetPath TargetPath) (*manifest.Manifest, []Issue, DiagnosticStats, error) {
 	manifestResult := s.manifestSvc.Load(ctx, targetPath)
 	issues := make([]Issue, 0)
 	stats := DiagnosticStats{}
@@ -57,48 +95,38 @@ func (s *DoctorService) DoctorWithScan(ctx context.Context, scanCfg ScanConfig) 
 				Message:    "No manifest found - no packages are currently managed",
 				Suggestion: "Run 'dot manage' to install packages",
 			})
-			return DiagnosticReport{
-				OverallHealth: HealthOK,
-				Issues:        issues,
-				Statistics:    stats,
-			}, nil
+			return nil, issues, stats, nil
 		}
-		return DiagnosticReport{}, err
+		return nil, nil, stats, err
 	}
 
 	m := manifestResult.Unwrap()
+	return &m, issues, stats, nil
+}
 
-	// Check each package in the manifest
+// checkManagedPackages validates all packages in the manifest.
+func (s *DoctorService) checkManagedPackages(ctx context.Context, m *manifest.Manifest, issues *[]Issue, stats *DiagnosticStats) {
 	for pkgName, pkgInfo := range m.Packages {
 		stats.ManagedLinks += pkgInfo.LinkCount
 		for _, linkPath := range pkgInfo.Links {
 			stats.TotalLinks++
-			s.checkLink(ctx, pkgName, linkPath, &issues, &stats)
+			s.checkLink(ctx, pkgName, linkPath, issues, stats)
 		}
 	}
+}
 
-	// Orphaned link detection (if enabled)
-	if scanCfg.Mode != ScanOff {
-		s.performOrphanScan(ctx, &m, scanCfg, &issues, &stats)
-	}
-
-	// Determine overall health
+// determineOverallHealth computes health status from issues.
+func (s *DoctorService) determineOverallHealth(issues []Issue) HealthStatus {
 	health := HealthOK
 	for _, issue := range issues {
 		if issue.Severity == SeverityError {
-			health = HealthErrors
-			break
+			return HealthErrors
 		}
 		if issue.Severity == SeverityWarning && health == HealthOK {
 			health = HealthWarnings
 		}
 	}
-
-	return DiagnosticReport{
-		OverallHealth: health,
-		Issues:        issues,
-		Statistics:    stats,
-	}, nil
+	return health
 }
 
 // checkLink validates a single link from the manifest.

@@ -8,7 +8,7 @@ echo "Running pre-commit checks..."
 
 # Run tests with coverage
 echo "→ Checking test coverage..."
-go test ./pkg/dot -coverprofile=coverage.out -covermode=atomic > /dev/null 2>&1
+go test ./... -coverprofile=coverage.out -covermode=atomic > /dev/null 2>&1
 
 # Extract coverage percentage
 COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
@@ -16,7 +16,7 @@ COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | se
 # Check threshold
 THRESHOLD=80.0
 
-echo "→ pkg/dot coverage: ${COVERAGE}%"
+echo "→ Overall coverage: ${COVERAGE}%"
 
 # Compare coverage to threshold (using bc for float comparison)
 if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
@@ -26,7 +26,7 @@ if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
     echo "   Required:  ${THRESHOLD}%"
     echo "   Shortfall: $(echo "$THRESHOLD - $COVERAGE" | bc)%"
     echo ""
-    echo "Please add tests to pkg/dot to reach 80% coverage before committing."
+    echo "Please add tests to reach 80% coverage before committing."
     echo "Run: go test ./pkg/dot -coverprofile=coverage.out && go tool cover -html=coverage.out"
     rm -f coverage.out
     exit 1

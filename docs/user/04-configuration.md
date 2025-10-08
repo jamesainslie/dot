@@ -120,6 +120,34 @@ folding: true
 
 When enabled, creates directory symlinks when all contents belong to single package. Disable for per-file granularity.
 
+### Package Translation
+
+#### packageNameMapping
+
+Enable package name to target directory mapping.
+
+**Type**: boolean  
+**Default**: `true`  
+**Example**:
+```yaml
+dotfile:
+  package_name_mapping: true
+```
+
+When enabled, package names determine target directories:
+- Package `dot-vim` → files installed to `~/.vim/`
+- Package `dot-gnupg` → files installed to `~/.gnupg/`
+- Package `config` → files installed to `~/config/`
+
+This eliminates redundant directory nesting. Package `dot-gnupg/gpg.conf` links to `~/.gnupg/gpg.conf` instead of `~/gpg.conf`.
+
+**Breaking Change in v0.2.0**: This is now the default behavior. Set to `false` to restore legacy behavior where package names are ignored.
+
+**Legacy behavior** (`false`):
+- Package structure must mirror target structure
+- Package name used only for identification
+- Requires redundant nesting like `dot-vim/dot-vim/`
+
 ### Ignore Patterns
 
 #### ignore

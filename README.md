@@ -65,8 +65,8 @@ dot --version
 Create a package directory to store your packages:
 
 ```bash
-mkdir -p ~/dotfiles/vim
-echo "set number" > ~/dotfiles/vim/dot-vimrc
+mkdir -p ~/dotfiles/dot-vim
+echo "set number" > ~/dotfiles/dot-vim/vimrc
 ```
 
 ### Manage a Package
@@ -75,10 +75,15 @@ Install the package by creating symlinks:
 
 ```bash
 cd ~/dotfiles
-dot manage vim
+dot manage dot-vim
 ```
 
-This creates `~/.vimrc` pointing to `~/dotfiles/vim/dot-vimrc`.
+This creates `~/.vim/vimrc` pointing to `~/dotfiles/dot-vim/vimrc`.
+
+Package names determine target directories:
+- `dot-vim` → `~/.vim/`
+- `dot-gnupg` → `~/.gnupg/`
+- `vim` → `~/vim/`
 
 ### Check Status
 
@@ -93,7 +98,7 @@ dot status
 Remove symlinks for a package:
 
 ```bash
-dot unmanage vim
+dot unmanage dot-vim
 ```
 
 ## Core Concepts
@@ -108,13 +113,24 @@ The destination directory where symlinks are created. Default: `$HOME`.
 
 ### Package
 
-A directory within the package directory containing configuration files. Package structure mirrors the target directory structure.
+A directory within the package directory containing configuration files.
+
+### Package Name Mapping
+
+Package names determine target directories (default behavior):
+- Package `dot-vim` → files installed to `~/.vim/`
+- Package `dot-gnupg` → files installed to `~/.gnupg/`
+- Package `config` → files installed to `~/config/`
+
+This eliminates redundant nesting and makes package naming intuitive.
 
 ### Dotfile Translation
 
-Files prefixed with `dot-` in packages are linked as dotfiles (leading `.`). For example:
-- `dot-bashrc` → `.bashrc`
-- `dot-config/nvim/init.vim` → `.config/nvim/init.vim`
+Files prefixed with `dot-` are translated to dotfiles (leading `.`):
+- Within `dot-vim/`: `dot-vimrc` → `.vim/.vimrc`
+- Within `config/`: `dot-bashrc` → `config/.bashrc`
+
+Both package-level and file-level translation work together.
 
 ### Directory Folding
 
@@ -130,16 +146,14 @@ Create symlinks for packages:
 
 ```bash
 # Single package
-dot manage vim
+dot manage dot-vim
 
 # Multiple packages
-dot manage vim tmux zsh
+dot manage dot-vim dot-tmux dot-zsh
 
 # With options
-dot --dir ~/dotfiles --target $HOME manage vim
-dot --dry-run manage vim        # Preview changes
-dot --no-folding manage vim     # Disable directory folding
-dot --absolute manage vim       # Use absolute symlinks
+dot --dir ~/dotfiles --target $HOME manage dot-vim
+dot --dry-run manage dot-vim        # Preview changes
 ```
 
 #### Unmanage (Remove)
@@ -148,13 +162,13 @@ Remove symlinks for packages:
 
 ```bash
 # Single package
-dot unmanage vim
+dot unmanage dot-vim
 
 # Multiple packages
-dot unmanage vim tmux
+dot unmanage dot-vim dot-tmux
 
 # Preview removal
-dot --dry-run unmanage vim
+dot --dry-run unmanage dot-vim
 ```
 
 #### Remanage (Update)
@@ -163,10 +177,10 @@ Update packages (remove and reinstall with incremental detection):
 
 ```bash
 # Update packages efficiently
-dot remanage vim
+dot remanage dot-vim
 
 # Updates only changed packages
-dot remanage vim tmux zsh
+dot remanage dot-vim dot-tmux dot-zsh
 ```
 
 #### Adopt (Import)
@@ -174,11 +188,11 @@ dot remanage vim tmux zsh
 Move existing files into a package and replace with symlinks:
 
 ```bash
-# Adopt single file
-dot adopt vim ~/.vimrc
+# Adopt single file into package
+dot adopt dot-vim ~/.vimrc
 
 # Adopt multiple files
-dot adopt zsh ~/.zshrc ~/.zprofile ~/.zshenv
+dot adopt dot-zsh ~/.zshrc ~/.zprofile ~/.zshenv
 ```
 
 ### Query Commands
@@ -192,7 +206,7 @@ Display installation status:
 dot status
 
 # Specific packages
-dot status vim tmux
+dot status dot-vim dot-tmux
 
 # Different formats
 dot status --format json

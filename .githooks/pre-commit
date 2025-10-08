@@ -10,7 +10,7 @@ echo "Running pre-commit checks..."
 echo "→ Running tests with coverage..."
 if ! go test ./... -coverprofile=coverage.out -covermode=atomic > /dev/null 2>&1; then
     echo ""
-    echo "❌ COMMIT REJECTED: Tests failed"
+    echo "COMMIT REJECTED: Tests failed"
     echo ""
     echo "Fix test failures before committing."
     echo "Run: go test ./..."
@@ -29,7 +29,7 @@ echo "→ Overall coverage: ${COVERAGE}%"
 # Compare coverage to threshold (using bc for float comparison)
 if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
     echo ""
-    echo "❌ COMMIT REJECTED: Test coverage below threshold"
+    echo "COMMIT REJECTED: Test coverage below threshold"
     echo "   Current:   ${COVERAGE}%"
     echo "   Required:  ${THRESHOLD}%"
     echo "   Shortfall: $(echo "$THRESHOLD - $COVERAGE" | bc)%"
@@ -46,20 +46,20 @@ echo "✅ Tests passed with ${COVERAGE}% coverage"
 echo "→ Running linters..."
 if ! make lint; then
     echo ""
-    echo "❌ COMMIT REJECTED: Linting failed"
+    echo "COMMIT REJECTED: Linting failed"
     echo ""
     echo "Fix all linting issues shown above before committing."
     rm -f coverage.out
     exit 1
 fi
 
-echo "✅ Linting passed"
+echo "Linting passed"
 
 # Cleanup
 rm -f coverage.out
 
 echo ""
-echo "✅ All pre-commit checks passed"
+echo "All pre-commit checks passed"
 echo ""
 
 exit 0

@@ -316,7 +316,7 @@ func (s *DoctorService) scanForOrphanedLinks(
 		}
 
 		fullPath := filepath.Join(dir, entry.Name())
-		
+
 		if entry.IsDir() {
 			s.scanDirectoryRecursive(ctx, fullPath, m, linkSet, scanCfg, issues, stats)
 		} else {
@@ -369,7 +369,7 @@ func (s *DoctorService) checkForOrphanedLink(
 	normalizedRel := filepath.ToSlash(relPath)
 	normalizedFull := filepath.ToSlash(fullPath)
 	managed := linkSet[normalizedRel] || linkSet[normalizedFull]
-	
+
 	if !managed {
 		stats.OrphanedLinks++
 		*issues = append(*issues, Issue{

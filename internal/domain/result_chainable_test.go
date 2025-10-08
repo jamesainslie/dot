@@ -103,7 +103,7 @@ func TestResult_Map(t *testing.T) {
 func TestResultChaining(t *testing.T) {
 	t.Run("chain multiple operations", func(t *testing.T) {
 		initial := Ok(5)
-		
+
 		final := FlatMap(initial, func(n int) Result[int] {
 			return Ok(n * 2)
 		})
@@ -117,7 +117,7 @@ func TestResultChaining(t *testing.T) {
 
 	t.Run("stops at first error", func(t *testing.T) {
 		initial := Ok(5)
-		
+
 		step1 := FlatMap(initial, func(n int) Result[int] {
 			return Err[int](errors.New("step 1 failed"))
 		})

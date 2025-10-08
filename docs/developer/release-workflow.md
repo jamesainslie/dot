@@ -236,3 +236,7 @@ Check GitHub Actions logs:
 - [git-chglog Documentation](https://github.com/git-chglog/git-chglog)
 - [GoReleaser Documentation](https://goreleaser.com/)
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [Documentation Index](../README.md)
+

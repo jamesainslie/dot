@@ -627,4 +627,7 @@ A: No, symlinks in packages are copied as symlinks to target.
 - [Command Reference](05-commands.md): Complete command documentation
 - [Configuration Reference](04-configuration.md): Configuration options
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

@@ -160,3 +160,7 @@ dot manage new-packages
 - [Command Reference](05-commands.md): Complete command documentation
 - [Configuration Reference](04-configuration.md): Configure dot
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
+

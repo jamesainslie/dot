@@ -38,3 +38,7 @@ Static fixtures should be used for:
 - Prefix dotfile sources with `dot-` (e.g., `dot-vimrc`)
 - Use descriptive names indicating purpose
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [Integration Tests](../integration/README.md)
+

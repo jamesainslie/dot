@@ -90,7 +90,7 @@ func TestInstrumentedExecutor_Success(t *testing.T) {
 
 	// Create simple plan
 	source := domain.MustParsePath("/packages/pkg/file")
-	target := domain.MustParsePath("/home/file")
+	target := domain.MustParseTargetPath("/home/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
@@ -127,7 +127,7 @@ func TestInstrumentedExecutor_Failure(t *testing.T) {
 
 	// Operation will fail during prepare (source doesn't exist)
 	source := domain.MustParsePath("/nonexistent")
-	target := domain.MustParsePath("/home/file")
+	target := domain.MustParseTargetPath("/home/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 
 	op := domain.NewLinkCreate("link1", source, target)
@@ -164,7 +164,7 @@ func TestInstrumentedExecutor_WithRollback(t *testing.T) {
 	// we'll create a plan that will pass prepare but fail during parallel execute.
 
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
@@ -200,9 +200,9 @@ func TestInstrumentedExecutor_ParallelMetrics(t *testing.T) {
 
 	// Create plan with parallel batches
 	source1 := domain.MustParsePath("/packages/pkg/file1")
-	target1 := domain.MustParsePath("/home/file1")
+	target1 := domain.MustParseTargetPath("/home/file1")
 	source2 := domain.MustParsePath("/packages/pkg/file2")
-	target2 := domain.MustParsePath("/home/file2")
+	target2 := domain.MustParseTargetPath("/home/file2")
 
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))

@@ -10,8 +10,8 @@ import (
 
 // LinkSpec specifies a desired symbolic link.
 type LinkSpec struct {
-	Source domain.FilePath // Source file in package
-	Target domain.FilePath // Target location
+	Source domain.FilePath   // Source file in package
+	Target domain.TargetPath // Target location
 }
 
 // DirSpec specifies a desired directory.
@@ -112,7 +112,7 @@ func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, target domai
 }
 
 // addParentDirs adds directory specs for all parent directories of path.
-func addParentDirs(path domain.FilePath, target domain.TargetPath, state *DesiredState) error {
+func addParentDirs(path domain.TargetPath, target domain.TargetPath, state *DesiredState) error {
 	current := path
 	targetStr := target.String()
 
@@ -132,7 +132,9 @@ func addParentDirs(path domain.FilePath, target domain.TargetPath, state *Desire
 
 		// Add directory spec if not already present
 		if _, exists := state.Dirs[parentStr]; !exists {
-			state.Dirs[parentStr] = DirSpec{Path: parent}
+			// Convert TargetPath to FilePath for DirSpec storage
+			dirPath := domain.NewFilePath(parentStr).Unwrap()
+			state.Dirs[parentStr] = DirSpec{Path: dirPath}
 		}
 
 		current = parent

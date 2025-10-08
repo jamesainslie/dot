@@ -9,7 +9,7 @@ import (
 
 func TestLinkCreateOperation(t *testing.T) {
 	source := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	op := dot.NewLinkCreate("link1", source, target)
 
@@ -26,7 +26,7 @@ func TestLinkCreateOperation(t *testing.T) {
 }
 
 func TestLinkDeleteOperation(t *testing.T) {
-	target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	op := dot.NewLinkDelete("link1", target)
 
@@ -71,7 +71,7 @@ func TestDirDeleteOperation(t *testing.T) {
 }
 
 func TestFileMoveOperation(t *testing.T) {
-	source := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	source := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dest := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
 
 	op := dot.NewFileMove("move1", source, dest)
@@ -104,7 +104,7 @@ func TestFileBackupOperation(t *testing.T) {
 
 func TestOperationEquality(t *testing.T) {
 	source := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	op1 := dot.NewLinkCreate("link1", source, target)
 	op2 := dot.NewLinkCreate("link2", source, target)
@@ -116,7 +116,7 @@ func TestOperationEquality(t *testing.T) {
 
 func TestLinkCreateEquals(t *testing.T) {
 	source1 := dot.NewFilePath("/home/user/.dotfiles/vimrc").Unwrap()
-	target1 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	target1 := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 	source2 := dot.NewFilePath("/home/user/.dotfiles/bashrc").Unwrap()
 
 	op1 := dot.NewLinkCreate("link1", source1, target1)
@@ -130,13 +130,14 @@ func TestLinkCreateEquals(t *testing.T) {
 }
 
 func TestLinkDeleteEquals(t *testing.T) {
-	target1 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
-	target2 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	target1 := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
+	target2 := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+	dirPath := dot.NewFilePath("/home/user/.vim").Unwrap()
 
 	op1 := dot.NewLinkDelete("link1", target1)
 	op2 := dot.NewLinkDelete("link2", target1)
 	op3 := dot.NewLinkDelete("link3", target2)
-	op4 := dot.NewDirDelete("dir1", target1)
+	op4 := dot.NewDirDelete("dir1", dirPath)
 
 	assert.True(t, op1.Equals(op2), "same target should be equal")
 	assert.False(t, op1.Equals(op3), "different target should not be equal")
@@ -172,14 +173,15 @@ func TestDirDeleteEquals(t *testing.T) {
 }
 
 func TestFileMoveEquals(t *testing.T) {
-	source1 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	source1 := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dest1 := dot.NewFilePath("/home/user/.dotfiles/vimrc").Unwrap()
-	source2 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	source2 := dot.NewTargetPath("/home/user/.bashrc").Unwrap()
+	backupSource := dot.NewFilePath("/home/user/.vimrc").Unwrap()
 
 	op1 := dot.NewFileMove("move1", source1, dest1)
 	op2 := dot.NewFileMove("move2", source1, dest1)
 	op3 := dot.NewFileMove("move3", source2, dest1)
-	op4 := dot.NewFileBackup("backup1", source1, dest1)
+	op4 := dot.NewFileBackup("backup1", backupSource, dest1)
 
 	assert.True(t, op1.Equals(op2), "same source and dest should be equal")
 	assert.False(t, op1.Equals(op3), "different source should not be equal")
@@ -191,10 +193,12 @@ func TestFileBackupEquals(t *testing.T) {
 	backup1 := dot.NewFilePath("/home/user/.vimrc.backup").Unwrap()
 	source2 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
 
+	sourceTarget1 := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
+	dest1 := dot.NewFilePath("/home/user/.dotfiles/vimrc").Unwrap()
 	op1 := dot.NewFileBackup("backup1", source1, backup1)
 	op2 := dot.NewFileBackup("backup2", source1, backup1)
 	op3 := dot.NewFileBackup("backup3", source2, backup1)
-	op4 := dot.NewFileMove("move1", source1, backup1)
+	op4 := dot.NewFileMove("move1", sourceTarget1, dest1)
 
 	assert.True(t, op1.Equals(op2), "same source and backup should be equal")
 	assert.False(t, op1.Equals(op3), "different source should not be equal")
@@ -223,7 +227,7 @@ func TestOperationKindString(t *testing.T) {
 
 func TestLinkCreateOperationID(t *testing.T) {
 	source := dot.NewFilePath("/packages/vim/.vimrc").Unwrap()
-	dest := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	dest := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 	op := dot.NewLinkCreate("link1", source, dest)
 
 	id := op.ID()
@@ -233,7 +237,7 @@ func TestLinkCreateOperationID(t *testing.T) {
 }
 
 func TestLinkDeleteOperationID(t *testing.T) {
-	link := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	link := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 	op := dot.NewLinkDelete("link1", link)
 
 	id := op.ID()
@@ -260,7 +264,7 @@ func TestDirDeleteOperationID(t *testing.T) {
 }
 
 func TestFileMoveOperationID(t *testing.T) {
-	source := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	source := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dest := dot.NewFilePath("/packages/vim/.vimrc").Unwrap()
 	op := dot.NewFileMove("move1", source, dest)
 

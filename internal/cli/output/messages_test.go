@@ -125,7 +125,7 @@ func TestPrinter_PrintDryRunSummary(t *testing.T) {
 		Operations: []domain.Operation{
 			domain.LinkCreate{
 				Source: domain.MustParsePath("/src"),
-				Target: domain.MustParsePath("/tgt"),
+				Target: domain.MustParseTargetPath("/tgt"),
 			},
 		},
 	}
@@ -140,7 +140,7 @@ func TestPrinter_PrintDryRunSummary_Verbose(t *testing.T) {
 		Operations: []domain.Operation{
 			domain.LinkCreate{
 				Source: domain.MustParsePath("/src"),
-				Target: domain.MustParsePath("/tgt"),
+				Target: domain.MustParseTargetPath("/tgt"),
 			},
 			domain.DirCreate{
 				Path: domain.MustParsePath("/dir"),
@@ -158,7 +158,7 @@ func TestPrinter_PrintDryRunSummary_Quiet(t *testing.T) {
 		Operations: []domain.Operation{
 			domain.LinkCreate{
 				Source: domain.MustParsePath("/src"),
-				Target: domain.MustParsePath("/tgt"),
+				Target: domain.MustParseTargetPath("/tgt"),
 			},
 		},
 	}

@@ -64,7 +64,7 @@ func TestNodeDirectory(t *testing.T) {
 
 func TestPlan(t *testing.T) {
 	source := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	op := dot.NewLinkCreate("link1", source, target)
 
@@ -91,7 +91,7 @@ func TestPlanValidation(t *testing.T) {
 
 	t.Run("plan with operations is valid", func(t *testing.T) {
 		source := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-		target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+		target := dot.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 		plan := dot.Plan{
 			Operations: []dot.Operation{

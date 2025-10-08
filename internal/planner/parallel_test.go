@@ -18,7 +18,7 @@ func TestParallelizationPlan_EmptyGraph(t *testing.T) {
 }
 
 func TestParallelizationPlan_SingleOperation(t *testing.T) {
-	op := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
+	op := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParseTargetPath("/b"))
 	graph := BuildGraph([]domain.Operation{op})
 
 	batches := graph.ParallelizationPlan()
@@ -29,8 +29,8 @@ func TestParallelizationPlan_SingleOperation(t *testing.T) {
 }
 
 func TestParallelizationPlan_IndependentOperations(t *testing.T) {
-	op1 := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
-	op2 := domain.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
+	op1 := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParseTargetPath("/b"))
+	op2 := domain.NewLinkCreate("link2", mustParsePath("/c"), mustParseTargetPath("/d"))
 	op3 := domain.NewDirCreate("dir1", mustParsePath("/e"))
 	graph := BuildGraph([]domain.Operation{op1, op2, op3})
 
@@ -53,7 +53,7 @@ func TestParallelizationPlan_LinearChain(t *testing.T) {
 		deps: []domain.Operation{opA},
 	}
 	opC := &mockOperation{
-		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/c")),
+		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParseTargetPath("/c")),
 		deps: []domain.Operation{opB},
 	}
 
@@ -84,7 +84,7 @@ func TestParallelizationPlan_DiamondPattern(t *testing.T) {
 		deps: []domain.Operation{opA},
 	}
 	opD := &mockOperation{
-		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
+		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParseTargetPath("/d")),
 		deps: []domain.Operation{opB, opC},
 	}
 
@@ -138,7 +138,7 @@ func TestParallelizationPlan_ComplexGraph(t *testing.T) {
 		deps: []domain.Operation{opB, opC},
 	}
 	opF := &mockOperation{
-		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/f")),
+		op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParseTargetPath("/f")),
 		deps: []domain.Operation{opD, opE},
 	}
 
@@ -197,7 +197,7 @@ func TestParallelizationSafety(t *testing.T) {
 					deps: []domain.Operation{opA},
 				}
 				opD := &mockOperation{
-					op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParsePath("/d")),
+					op:   domain.NewLinkCreate("link1", mustParsePath("/src"), mustParseTargetPath("/d")),
 					deps: []domain.Operation{opB, opC},
 				}
 				return []domain.Operation{opD, opC, opB, opA}

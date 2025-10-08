@@ -16,7 +16,7 @@ func newUnmanageCommand() *cobra.Command {
 		Short: "Remove packages by deleting symlinks",
 		Long: `Remove one or more packages by deleting their symlinks from 
 the target directory.`,
-		Args: cobra.MinimumNArgs(1),
+		Args: argsWithUsage(cobra.MinimumNArgs(1)),
 		RunE: runUnmanage,
 	}
 

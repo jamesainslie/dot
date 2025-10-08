@@ -798,4 +798,7 @@ Add to `~/.bashrc`, `~/.zshrc`, or equivalent.
 - [Advanced Features](07-advanced.md): Deep dive into options and features
 - [Troubleshooting Guide](08-troubleshooting.md): Solve common issues
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

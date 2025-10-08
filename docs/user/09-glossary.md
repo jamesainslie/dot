@@ -204,4 +204,7 @@ Mapping between GNU Stow and dot terminology:
 - [Command Reference](05-commands.md): Complete command documentation
 - [Configuration Reference](04-configuration.md): Configuration options
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

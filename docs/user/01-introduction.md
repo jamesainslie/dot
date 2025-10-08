@@ -394,4 +394,7 @@ For developers:
 - [Architecture Overview](../architecture/architecture.md): System design and structure
 - [API Reference](../developer/api-reference.md): Library usage documentation
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

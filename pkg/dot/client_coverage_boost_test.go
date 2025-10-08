@@ -169,7 +169,7 @@ func TestClient_PlanUnmanage_AllEdgeCases(t *testing.T) {
 	assert.True(t, plan2.Metadata.OperationCount > 0)
 }
 
-func TestClient_Remanage_ExecutionFailure(t *testing.T) {
+func TestClient_Remanage_SucceedsOnContentChange(t *testing.T) {
 	fs := adapters.NewMemFS()
 	ctx := context.Background()
 

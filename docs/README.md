@@ -37,6 +37,7 @@ End-user guides, tutorials, and reference materials.
 
 Documentation for developers contributing to the dot project.
 
+- [`developer/architecture.md`](developer/architecture.md) - System architecture and design
 - [`developer/release-workflow.md`](developer/release-workflow.md) - Release process and workflow
 
 ## Planning Documentation
@@ -77,8 +78,9 @@ Other project documentation is located in the repository root:
 
 ### For New Contributors
 1. Read [`../README.md`](../README.md) for project overview
-2. Review [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines
-3. Check [`user/09-glossary.md`](user/09-glossary.md) for project terminology
+2. Review [`developer/architecture.md`](developer/architecture.md) for system architecture
+3. Review [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for contribution guidelines
+4. Check [`user/09-glossary.md`](user/09-glossary.md) for project terminology
 
 ### For Feature Development
 1. Review active phase plans in repository root (phase-16 through phase-20)

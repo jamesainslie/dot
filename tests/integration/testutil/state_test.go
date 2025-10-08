@@ -3,6 +3,7 @@ package testutil
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +11,10 @@ import (
 )
 
 func TestCaptureState(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require elevated privileges on Windows")
+	}
+
 	tmpDir := t.TempDir()
 
 	// Create some files
@@ -75,6 +80,10 @@ func TestCompareStates_Removed(t *testing.T) {
 }
 
 func TestCompareStates_SymlinkAdded(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require elevated privileges on Windows")
+	}
+
 	tmpDir := t.TempDir()
 
 	before := CaptureState(t, tmpDir)
@@ -89,6 +98,10 @@ func TestCompareStates_SymlinkAdded(t *testing.T) {
 }
 
 func TestStateSnapshot_Counts(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require elevated privileges on Windows")
+	}
+
 	tmpDir := t.TempDir()
 
 	// Create various items
@@ -115,6 +128,10 @@ func TestStateSnapshot_HasPath(t *testing.T) {
 }
 
 func TestStateSnapshot_GetState(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require elevated privileges on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	require.NoError(t, os.Symlink("/target", filepath.Join(tmpDir, "link")))
 

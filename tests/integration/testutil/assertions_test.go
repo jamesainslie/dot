@@ -3,12 +3,17 @@ package testutil
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestAssertLink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require elevated privileges on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	linkPath := filepath.Join(tmpDir, "link")
 	target := "/some/target"
@@ -19,6 +24,10 @@ func TestAssertLink(t *testing.T) {
 }
 
 func TestAssertLinkContains(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require elevated privileges on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	linkPath := filepath.Join(tmpDir, "link")
 	target := "/some/target/file"

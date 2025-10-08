@@ -100,6 +100,19 @@ version:
 	@echo "Current version: $(CURRENT_VERSION)"
 	@echo "Next version (patch): v$(MAJOR).$(MINOR).$(shell expr $(PATCH) + 1)"
 
+## changelog: Generate CHANGELOG.md from git commits
+changelog:
+	@command -v git-chglog >/dev/null 2>&1 || { echo "Installing git-chglog..."; go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest; }
+	git-chglog -o CHANGELOG.md
+
+## changelog-next: Preview next version changelog
+changelog-next:
+	@command -v git-chglog >/dev/null 2>&1 || { echo "Installing git-chglog..."; go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest; }
+	$(eval NEXT_VERSION := v$(MAJOR).$(MINOR).$(shell expr $(PATCH) + 1))
+	@echo "Preview of changelog for $(NEXT_VERSION):"
+	@echo ""
+	git-chglog --next-tag $(NEXT_VERSION) $(CURRENT_VERSION)..
+
 ## version-major: Bump major version
 version-major:
 	$(eval NEW_VERSION := v$(shell expr $(MAJOR) + 1).0.0)

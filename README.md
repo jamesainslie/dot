@@ -368,6 +368,7 @@ Limited support:
 - [Architecture Overview](docs/architecture/architecture.md)
 - [Architecture Decision Records](docs/architecture/adr/)
 - [Contributing Guide](CONTRIBUTING.md)
+- [Release Workflow](docs/developer/release-workflow.md)
 - [Testing Strategy](docs/developer/testing.md)
 - [API Reference](docs/developer/api-reference.md)
 - [Internal Architecture](docs/developer/internal-architecture.md)

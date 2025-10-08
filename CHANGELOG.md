@@ -1,13 +1,47 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
+<a name="unreleased"></a>
 ## [Unreleased]
 
-### Bug Fixes
+
+<a name="v0.1.1"></a>
+## [v0.1.1] - 2025-10-08
+### Chore
+- remove remaining PHASE doc from source control
+- remove reference docs from source control
+- remove migration docs from source control
+- add planning docs to gitignore
+- remove planning and archive docs from source control
+- **ci:** expunge emojis
+- **ci:** ignore some planning docs
+- **ci:** expunge emojis
+- **docs:** remove unwanted docs
+- **hooks:** add pre-commit hook for test coverage enforcement
+
+### Docs
+- add Phase 24 complete summary
+- **architecture:** update for service-based architecture
+- **changelog:** update for v0.1.1 release
+- **navigation:** add root README links to all child documentation
+- **phase-12b:** update progress doc to reflect completion
+- **phase-12b:** add executive summary of Phase 12b completion
+- **phase-12b:** document complete Phase 12b refactoring
+- **phase-12b:** document Phase 12b Core completion
+- **planning:** add Phase 24 progress checkpoint
+- **planning:** add Phase 24 code smell remediation plan
+- **test:** update benchmark template to use testing.TB pattern
+
+### Feat
+- **config:** implement TOML marshal strategy
+- **config:** implement JSON marshal strategy
+- **config:** implement YAML marshal strategy
+- **domain:** add chainable Result methods
+- **pkg:** extract DoctorService from Client
+- **pkg:** extract AdoptService from Client
+- **pkg:** extract StatusService from Client
+- **pkg:** extract UnmanageService from Client
+- **pkg:** extract ManageService from Client
+- **pkg:** extract ManifestService from Client
+
+### Fix
 - **client:** properly propagate manifest errors in Doctor
 - **client:** populate packages from plan when empty in updateManifest
 - **config:** add missing KeyDoctorCheckPermissions constant
@@ -30,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **test:** add Windows compatibility to testutil symlink tests
 - **test:** correct mock variadic parameter handling in ports_test
 
-### Code Refactoring
+### Refactor
 - **api:** replace Client interface with concrete struct
 - **config:** migrate writer to use strategy pattern
 - **config:** use permission constants
@@ -54,67 +88,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pkg:** simplify DoctorWithScan method
 - **test:** improve benchmark tests with proper error handling
 
-### Features
-- **config:** implement TOML marshal strategy
-- **config:** implement JSON marshal strategy
-- **config:** implement YAML marshal strategy
-- **domain:** add chainable Result methods
-- **pkg:** extract DoctorService from Client
-- **pkg:** extract AdoptService from Client
-- **pkg:** extract StatusService from Client
-- **pkg:** extract UnmanageService from Client
-- **pkg:** extract ManageService from Client
-- **pkg:** extract ManifestService from Client
+### Style
+- fix goimports formatting
+
+### Test
+- **client:** add exhaustive tests for increased coverage margin
+- **client:** add edge case tests for coverage buffer
+- **client:** add comprehensive tests for pkg/dot Client struct
+- **config:** add marshal strategy interface tests
+- **config:** add default value constant tests
+- **config:** add configuration key constant tests
+- **domain:** add path validator tests
+- **domain:** add Result unwrap helper tests
+- **domain:** add error helper tests
+- **domain:** add permission constant tests
+- **integration:** implement remaining integration test categories
+- **integration:** implement comprehensive integration test infrastructure
+
+### Pull Requests
+- Merge pull request [#23](https://github.com/jamesainslie/dot/issues/23) from jamesainslie/docs-add-root-links
+- Merge pull request [#22](https://github.com/jamesainslie/dot/issues/22) from jamesainslie/phase-17-integration-testing
+- Merge pull request [#21](https://github.com/jamesainslie/dot/issues/21) from jamesainslie/feature-tech-debt
+- Merge pull request [#20](https://github.com/jamesainslie/dot/issues/20) from jamesainslie/feature-implement-git-changelog
+- Merge pull request [#19](https://github.com/jamesainslie/dot/issues/19) from jamesainslie/feature-phase-12b-domain-refactor
+
+### BREAKING CHANGE
+
+(internal only): internal/api package removed.
+This only affects code that directly imported internal/api, which
+should not exist since it was an internal package.
 
 
+<a name="v0.1.0"></a>
 ## v0.1.0 - 2025-10-07
-### Bug Fixes
-- **api:** address CodeRabbit feedback on Phase 12
-- **api:** use configured skip patterns in recursive orphan scanning
-- **api:** improve error handling and test robustness
-- **api:** use package-operation mapping for accurate manifest tracking
-- **api:** normalize paths for cross-platform link lookup
-- **api:** enforce depth and context limits in recursive orphan scanning
-- **cli:** resolve critical bugs in progress, config, and rendering
-- **cli:** handle both pointer and value operation types in renderers
-- **cli:** improve config format detection and help text indentation
-- **cli:** correct scan flag variable scope in NewDoctorCommand
-- **cli:** add error templates for checkpoint and not implemented errors
-- **cli:** respect NO_COLOR environment variable in shouldColorize
-- **cli:** improve JSON/YAML output and doctor performance
-- **cli:** render execution plan in dry-run mode
-- **cli:** improve TTY detection portability and path truncation
-- **config:** enable CodeRabbit auto-review for all pull requests
-- **executor:** make Checkpoint operations map thread-safe
-- **executor:** address code review feedback for concurrent safety and error handling
-- **manifest:** add security guards and prevent hash collisions
-- **pipeline:** prevent shared mutation of context maps in metadata conversion
-- **release:** separate archive configs for Homebrew compatibility
-- **scanner:** implement real package tree scanning with ignore filtering
-- **test:** improve test isolation and cross-platform compatibility
-- **test:** make Adopt execution error test deterministic
-
-### Build System
+### Build
 - **make:** add buildvcs flag for reproducible builds
 - **makefile:** add build infrastructure with semantic versioning
 - **release:** add Homebrew tap integration
 
-### Code Refactoring
-- **adopt:** update Adopt and PlanAdopt methods to use files-first signature
-- **api:** reduce cyclomatic complexity in PlanRemanage
-- **api:** extract orphan scan logic to reduce complexity
-- **cli:** address code review nitpicks for improved code quality
-- **cli:** reduce cyclomatic complexity in table renderer
-- **cli:** add default case and eliminate type assertion duplication
-- **pipeline:** use safe unwrap pattern in path construction tests
-- **pipeline:** improve test quality and organization
-- **quality:** improve error handling documentation and panic messages
-- **terminology:** update suggestion text from unstow to unmanage
-- **terminology:** replace stow with package directory terminology
-- **terminology:** complete stow removal from test fixtures
-- **terminology:** rename stow-prefixed variables to package/manage
+### Chore
+- update README and clean up whitespace in planner files
+- **ci:** ignore reviews directory
+- **ci:** ignore reviews directory
+- **ci:** remove args from golangci
+- **ci:** move initial design docs to docs folder, and keep ignoring them
+- **ci:** ignore control files
+- **deps:** update go.mod dependency classification
+- **docs:** add planning docs
+- **init:** initialize Go module and project structure
 
-### Features
+### Ci
+- **github:** add GitHub Actions workflows and goreleaser configuration
+- **lint:** replace golangci-lint-action with direct installation for v2.x compatibility
+- **lint:** update golangci-lint version to v2.5.0
+- **release:** install golangci-lint before running linters
+- **release:** use GORELEASER_TOKEN for tap updates
+
+### Docs
+- **adr:** add ADR-003 and ADR-004 for future enhancements
+- **api:** document Doctor() breaking change and migration path
+- **api:** remove GNU Stow reference from package documentation
+- **changelog:** update with Phase 22 features and fixes
+- **changelog:** update changelog for Phase 0 completion
+- **cli:** remove GNU Stow references from user-facing text
+- **config:** add configuration guide and update README
+- **config:** add Phase-15b configuration management design
+- **dot:** clarify ScanConfig field behavior in comments
+- **dot:** enhance Result monad documentation with usage guidance
+- **executor:** add Phase 10 completion document
+- **executor:** update Phase 10 completion document with improved coverage
+- **install:** add Homebrew installation guide and release process
+- **phase-19:** implement comprehensive documentation suite
+- **phase-22:** add final implementation summary
+- **phase0:** add Phase 0 completion summary
+- **phase1:** add Phase 1 completion summary and update changelog
+- **phase12:** mark Phase 12 core implementation complete
+- **phase14:** document code review improvements
+- **phase15:** add Phase 15 completion documentation
+- **phase15c:** mark Phase 15c complete
+- **phase15c:** add implementation plan for API enhancements
+- **phase18:** replace tabs with spaces in Makefile code block
+- **phase2:** add Phase 2 completion summary and update changelog
+- **phase3:** add Phase 3 completion summary and update changelog
+- **phase4:** add Phase 4 completion summary and update changelog
+- **phase5:** complete Phases 4-5 with ignore patterns and scanner
+- **phase6:** complete planner foundation with 100% coverage
+- **phases:** add Phase 8 and Phase 9 completion documents
+- **plan:** update Phase 13 plan with new CLI verb terminology
+- **planner:** add Phase 8 implementation plan
+- **planner:** document Phase 7 completion
+- **plans:** add language hints to code blocks and fix formatting
+- **readme:** update documentation for Phase 14 completion
+- **review:** add code review remediation progress tracking
+- **review:** add final coverage status and analysis
+- **review:** add final remediation summary
+- **review:** add language identifier to commit list code block
+- **terminology:** adopt manage/unmanage/remanage command naming
+
+### Feat
 - **adapters:** implement slog logger and no-op adapters
 - **adapters:** implement OS filesystem adapter
 - **api:** implement Unmanage, Remanage, and Adopt operations
@@ -190,5 +261,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **scanner:** implement package scanner with ignore support
 - **types:** add Status and PackageInfo types
 
+### Fix
+- **api:** address CodeRabbit feedback on Phase 12
+- **api:** use configured skip patterns in recursive orphan scanning
+- **api:** improve error handling and test robustness
+- **api:** use package-operation mapping for accurate manifest tracking
+- **api:** normalize paths for cross-platform link lookup
+- **api:** enforce depth and context limits in recursive orphan scanning
+- **cli:** resolve critical bugs in progress, config, and rendering
+- **cli:** handle both pointer and value operation types in renderers
+- **cli:** improve config format detection and help text indentation
+- **cli:** correct scan flag variable scope in NewDoctorCommand
+- **cli:** add error templates for checkpoint and not implemented errors
+- **cli:** respect NO_COLOR environment variable in shouldColorize
+- **cli:** improve JSON/YAML output and doctor performance
+- **cli:** render execution plan in dry-run mode
+- **cli:** improve TTY detection portability and path truncation
+- **config:** enable CodeRabbit auto-review for all pull requests
+- **executor:** make Checkpoint operations map thread-safe
+- **executor:** address code review feedback for concurrent safety and error handling
+- **manifest:** add security guards and prevent hash collisions
+- **pipeline:** prevent shared mutation of context maps in metadata conversion
+- **release:** separate archive configs for Homebrew compatibility
+- **scanner:** implement real package tree scanning with ignore filtering
+- **test:** improve test isolation and cross-platform compatibility
+- **test:** make Adopt execution error test deterministic
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.1.0...HEAD
+### Refactor
+- **adopt:** update Adopt and PlanAdopt methods to use files-first signature
+- **api:** reduce cyclomatic complexity in PlanRemanage
+- **api:** extract orphan scan logic to reduce complexity
+- **cli:** address code review nitpicks for improved code quality
+- **cli:** reduce cyclomatic complexity in table renderer
+- **cli:** add default case and eliminate type assertion duplication
+- **pipeline:** use safe unwrap pattern in path construction tests
+- **pipeline:** improve test quality and organization
+- **quality:** improve error handling documentation and panic messages
+- **terminology:** update suggestion text from unstow to unmanage
+- **terminology:** replace stow with package directory terminology
+- **terminology:** complete stow removal from test fixtures
+- **terminology:** rename stow-prefixed variables to package/manage
+
+### Style
+- **all:** apply goimports formatting
+- **all:** apply goimports formatting
+- **domain:** fix linting issues and apply formatting
+- **manifest:** apply goimports formatting
+- **planner:** fix linting issues in Phase 8 implementation
+- **scanner:** apply goimports formatting
+- **test:** format test files with goimports
+
+### Test
+- **adapters:** add comprehensive MemFS tests to achieve 80%+ coverage
+- **api:** add manifest helper tests and document remediation
+- **api:** add comprehensive test coverage for all API methods
+- **cli:** fix help text assertion after Stow removal
+- **cli:** increase cmd/dot test coverage to 88.6%
+- **cli:** add comprehensive tests to restore coverage above 80%
+- **cmd:** add basic command constructor tests
+- **config:** add comprehensive loader and precedence tests
+- **config:** add aggressive coverage boost tests
+- **config:** add validation edge case tests
+- **config:** improve test coverage to 83%
+- **coverage:** increase test coverage from 73.8% to 83.7%
+- **dot:** add comprehensive error and operation tests
+- **executor:** add comprehensive tests to exceed 80% coverage threshold
+- **planner:** add coverage tests to exceed 80 percent threshold
+
+### Pull Requests
+- Merge pull request [#18](https://github.com/jamesainslie/dot/issues/18) from jamesainslie/feature-homebrew-tap
+- Merge pull request [#17](https://github.com/jamesainslie/dot/issues/17) from jamesainslie/fix-dry-run-output
+- Merge pull request [#16](https://github.com/jamesainslie/dot/issues/16) from jamesainslie/feature-implement-stubs
+- Merge pull request [#15](https://github.com/jamesainslie/dot/issues/15) from jamesainslie/feature-remove-stow-terminology
+- Merge pull request [#14](https://github.com/jamesainslie/dot/issues/14) from jamesainslie/feature-remove-stow-references
+- Merge pull request [#13](https://github.com/jamesainslie/dot/issues/13) from jamesainslie/feature-phase-15c-api-enhancements
+- Merge pull request [#12](https://github.com/jamesainslie/dot/issues/12) from jamesainslie/feature-code-review-remediation
+- Merge pull request [#11](https://github.com/jamesainslie/dot/issues/11) from jamesainslie/feature-phase-15-error-handling-ux
+- Merge pull request [#10](https://github.com/jamesainslie/dot/issues/10) from jamesainslie/feature-implement-cli-query
+- Merge pull request [#9](https://github.com/jamesainslie/dot/issues/9) from jamesainslie/feature-implement-cli
+- Merge pull request [#7](https://github.com/jamesainslie/dot/issues/7) from jamesainslie/feature-implement-api
+- Merge pull request [#6](https://github.com/jamesainslie/dot/issues/6) from jamesainslie/feature-manifests-state-management
+- Merge pull request [#5](https://github.com/jamesainslie/dot/issues/5) from jamesainslie/feature-phase-10-executor
+- Merge pull request [#4](https://github.com/jamesainslie/dot/issues/4) from jamesainslie/jamesainslie-implement-pipeline-orchestration
+- Merge pull request [#3](https://github.com/jamesainslie/dot/issues/3) from jamesainslie/jamesainslie-implement-topological-sorter
+- Merge pull request [#2](https://github.com/jamesainslie/dot/issues/2) from jamesainslie/jamesainslie-implement-resolver
+- Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
+
+
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.1.1...HEAD
+[v0.1.1]: https://github.com/jamesainslie/dot/compare/v0.1.0...v0.1.1

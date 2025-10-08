@@ -311,41 +311,73 @@ func (s *DoctorService) scanForOrphanedLinks(
 	}
 
 	for _, entry := range entries {
-		fullPath := filepath.Join(dir, entry.Name())
-		relPath, err := filepath.Rel(s.targetDir, fullPath)
-		if err != nil {
-			relPath = fullPath
-		}
-
-		if entry.Name() == ".dot-manifest.json" {
+		if s.shouldSkipEntry(entry) {
 			continue
 		}
 
+		fullPath := filepath.Join(dir, entry.Name())
+		
 		if entry.IsDir() {
-			if err := s.scanForOrphanedLinksWithLimits(ctx, fullPath, m, linkSet, scanCfg, issues, stats); err != nil {
-				continue
-			}
+			s.scanDirectoryRecursive(ctx, fullPath, m, linkSet, scanCfg, issues, stats)
 		} else {
-			isLink, err := s.fs.IsSymlink(ctx, fullPath)
-			if err != nil {
-				continue
-			}
-			if isLink {
-				normalizedRel := filepath.ToSlash(relPath)
-				normalizedFull := filepath.ToSlash(fullPath)
-				managed := linkSet[normalizedRel] || linkSet[normalizedFull]
-				if !managed {
-					stats.OrphanedLinks++
-					*issues = append(*issues, Issue{
-						Severity:   SeverityWarning,
-						Type:       IssueOrphanedLink,
-						Path:       relPath,
-						Message:    "Symlink not managed by dot",
-						Suggestion: "Remove manually or use 'dot adopt' to bring under management",
-					})
-				}
-			}
+			s.checkForOrphanedLink(ctx, fullPath, linkSet, issues, stats)
 		}
 	}
 	return nil
+}
+
+// shouldSkipEntry checks if directory entry should be skipped.
+func (s *DoctorService) shouldSkipEntry(entry DirEntry) bool {
+	return entry.Name() == ".dot-manifest.json"
+}
+
+// scanDirectoryRecursive recursively scans subdirectory.
+func (s *DoctorService) scanDirectoryRecursive(
+	ctx context.Context,
+	dir string,
+	m *manifest.Manifest,
+	linkSet map[string]bool,
+	scanCfg ScanConfig,
+	issues *[]Issue,
+	stats *DiagnosticStats,
+) {
+	err := s.scanForOrphanedLinksWithLimits(ctx, dir, m, linkSet, scanCfg, issues, stats)
+	if err != nil {
+		// Continue on error - best effort scanning
+		s.logger.Warn(ctx, "recursive_scan_failed", "dir", dir, "error", err)
+	}
+}
+
+// checkForOrphanedLink checks if symlink is orphaned (not in manifest).
+func (s *DoctorService) checkForOrphanedLink(
+	ctx context.Context,
+	fullPath string,
+	linkSet map[string]bool,
+	issues *[]Issue,
+	stats *DiagnosticStats,
+) {
+	relPath, err := filepath.Rel(s.targetDir, fullPath)
+	if err != nil {
+		relPath = fullPath
+	}
+
+	isLink, err := s.fs.IsSymlink(ctx, fullPath)
+	if err != nil || !isLink {
+		return
+	}
+
+	normalizedRel := filepath.ToSlash(relPath)
+	normalizedFull := filepath.ToSlash(fullPath)
+	managed := linkSet[normalizedRel] || linkSet[normalizedFull]
+	
+	if !managed {
+		stats.OrphanedLinks++
+		*issues = append(*issues, Issue{
+			Severity:   SeverityWarning,
+			Type:       IssueOrphanedLink,
+			Path:       relPath,
+			Message:    "Symlink not managed by dot",
+			Suggestion: "Remove manually or use 'dot adopt' to bring under management",
+		})
+	}
 }

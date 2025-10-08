@@ -94,12 +94,12 @@ func (r *TableRenderer) resetColor() string {
 }
 
 // RenderDiagnostics renders diagnostic report as a table.
-func (r *TableRenderer) RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error {
+func (r *TableRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
 	// Show overall health
 	healthColor := r.scheme.Success
-	if report.OverallHealth == domain.HealthWarnings {
+	if report.OverallHealth == dot.HealthWarnings {
 		healthColor = r.scheme.Warning
-	} else if report.OverallHealth == domain.HealthErrors {
+	} else if report.OverallHealth == dot.HealthErrors {
 		healthColor = r.scheme.Error
 	}
 

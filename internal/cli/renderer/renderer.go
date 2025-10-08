@@ -17,8 +17,8 @@ import (
 // Renderer defines the interface for output formatting.
 type Renderer interface {
 	RenderStatus(w io.Writer, status dot.Status) error
-	RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error
-	RenderPlan(w io.Writer, plan domain.Plan) error
+	RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error
+	RenderPlan(w io.Writer, plan dot.Plan) error
 }
 
 // ColorScheme defines semantic colors for terminal output.

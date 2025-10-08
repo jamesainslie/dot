@@ -34,17 +34,23 @@ func (v *RelativePathValidator) Validate(path string) error {
 }
 
 // TraversalFreeValidator ensures paths do not contain traversal sequences.
-// Rejects paths containing ".." or paths that change when cleaned.
+// Rejects paths containing ".." or paths that are not in canonical form.
+// This prevents both explicit traversal and disguised traversal (e.g., "a/./b", "a//b").
 type TraversalFreeValidator struct{}
 
-// Validate checks if the path is free of traversal sequences.
+// Validate checks if the path is free of traversal sequences and in canonical form.
 func (v *TraversalFreeValidator) Validate(path string) error {
+	// Empty path handled by NonEmptyPathValidator
+	if path == "" {
+		return ErrInvalidPath{Path: path, Reason: "path contains traversal sequences"}
+	}
+
 	// Check for explicit ".." references
 	if strings.Contains(path, "..") {
 		return ErrInvalidPath{Path: path, Reason: "path contains traversal sequences"}
 	}
 
-	// Verify path doesn't change when cleaned
+	// Verify path doesn't change when cleaned (detects //, /./, etc.)
 	cleaned := filepath.Clean(path)
 	if cleaned != path {
 		return ErrInvalidPath{Path: path, Reason: "path contains traversal sequences"}

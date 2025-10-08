@@ -522,7 +522,7 @@ This project adheres to strict development standards:
 
 ## Comparison with GNU Stow
 
-dot was inspired by the awesome [GNU Stow](https://www.gnu.org/software/stow/) tool. Dot provides feature parity with GNU Stow plus additional capabilities:
+Dot is inspired by the awesome [GNU Stow](https://www.gnu.org/software/stow/) tool. Dot provides feature parity with GNU Stow plus additional capabilities:
 
 | Feature | dot | GNU Stow |
 |---------|-----|----------|
@@ -556,4 +556,4 @@ See [CHANGELOG](CHANGELOG.md) for release history and [docs/planning/](docs/plan
 
 ## Acknowledgments
 
-Inspired by GNU Stow, reimagined with modern language features and safety guarantees.
+Inspired by GNU Stow, reimagined with modern language features and safety guarantees. Made with ❤️ in Go.

@@ -23,21 +23,31 @@
 
 Package structure requirements changed.
 
-Before (v0.1.x):
-  dot-gnupg/
-  ├── common.conf         → ~/common.conf
-  └── public-keys.d/      → ~/public-keys.d/
+Package names now determine target directories by default.
 
-After (v0.2.0):
-  dot-gnupg/
-  ├── common.conf         → ~/.gnupg/common.conf
-  └── public-keys.d/      → ~/.gnupg/public-keys.d/
+BEFORE v0.1.x - Package dot-gnupg:
+  File: common.conf
+  Links to: ~/common.conf
+  
+  File: public-keys.d/pubring.db  
+  Links to: ~/public-keys.d/pubring.db
 
-Migration: Restructure packages to remove redundant nesting, or
-opt-out by setting dotfile.package_name_mapping: false in config.
+AFTER v0.2.0 - Package dot-gnupg:
+  File: common.conf
+  Links to: ~/.gnupg/common.conf
+  
+  File: public-keys.d/pubring.db
+  Links to: ~/.gnupg/public-keys.d/pubring.db
 
-Rationale: Project is pre-1.0 (v0.1.1), establishing intuitive
-design before API stability commitment in 1.0.0 release.
+IMPACT: Eliminates redundant directory nesting. Package dot-gnupg targets ~/.gnupg/ automatically.
+
+MIGRATION:
+  Option 1: Remove redundant nesting from packages (recommended)
+  Option 2: Add to ~/.config/dot/config.yaml:
+    dotfile:
+      package_name_mapping: false
+
+RATIONALE: Pre-1.0 project (v0.1.1) establishing intuitive design before 1.0.0 API stability.
 
 
 <a name="v0.1.1"></a>

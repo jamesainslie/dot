@@ -351,8 +351,11 @@ Limited support:
 
 ## Documentation
 
+Complete documentation index available at [docs/README.md](docs/README.md).
+
 ### User Documentation
 
+- [User Guide Index](docs/user/index.md) - Complete navigation
 - [Introduction and Core Concepts](docs/user/01-introduction.md)
 - [Installation Guide](docs/user/02-installation.md)
 - [Quick Start Tutorial](docs/user/03-quickstart.md)
@@ -362,18 +365,13 @@ Limited support:
 - [Advanced Features](docs/user/07-advanced.md)
 - [Troubleshooting Guide](docs/user/08-troubleshooting.md)
 - [Glossary](docs/user/09-glossary.md)
+- [Migration from GNU Stow](docs/user/migration-from-stow.md)
 
 ### Developer Documentation
 
-- [Architecture Overview](docs/architecture/architecture.md)
-- [Architecture Decision Records](docs/architecture/adr/)
+- [Documentation Index](docs/README.md)
 - [Contributing Guide](CONTRIBUTING.md)
 - [Release Workflow](docs/developer/release-workflow.md)
-- [Testing Strategy](docs/developer/testing.md)
-- [API Reference](docs/developer/api-reference.md)
-- [Internal Architecture](docs/developer/internal-architecture.md)
-- [Code Style Guide](docs/developer/style-guide.md)
-- [Performance Guide](docs/developer/performance.md)
 
 ### Examples
 
@@ -445,7 +443,7 @@ dot follows a layered architecture with functional programming principles:
 - **Observable**: Structured logging, distributed tracing, metrics collection
 - **Testable**: Pure core enables property-based testing of algebraic laws
 
-See [Architecture Documentation](docs/architecture/architecture.md) for details.
+See [User Guide - Advanced Features](docs/user/07-advanced.md) for implementation details.
 
 ## Library Usage
 
@@ -479,7 +477,7 @@ func main() {
 }
 ```
 
-See [API Reference](docs/developer/api-reference.md) and [Library Examples](examples/library/).
+See [Library Examples](examples/library/) for more detailed usage patterns.
 
 ## Contributing
 
@@ -550,11 +548,11 @@ See [Migration Guide](docs/user/migration-from-stow.md) for transitioning from G
 
 ## Project Status
 
-**Current Version**: v0.1.0-rc (Release Candidate)
+**Current Version**: v0.1.1
 
-**Stability**: Release Candidate - API may change before v0.1.0 final release
+**Stability**: Stable
 
-See [Implementation Plan](docs/planning/implementation-plan.md) for project roadmap.
+See [CHANGELOG](CHANGELOG.md) for release history and [docs/planning/](docs/planning/) for development milestones.
 
 ## Acknowledgments
 

@@ -223,16 +223,19 @@ func TestCategory_Feature(t *testing.T) {
 ### Benchmark Template
 ```go
 func BenchmarkOperation(b *testing.B) {
+    b.ReportAllocs()
     for i := 0; i < b.N; i++ {
         b.StopTimer()
         // Setup
-        env := testutil.NewTestEnvironment(&testing.T{})
-        client := testutil.NewTestClient(&testing.T{}, env)
+        env := testutil.NewTestEnvironment(b)
+        client := testutil.NewTestClient(b, env)
         // fixtures...
         
         b.StartTimer()
         // Operation to benchmark
-        _ = client.Manage(context.Background(), "test")
+        if err := client.Manage(context.Background(), "test"); err != nil {
+            b.Fatal(err)
+        }
     }
 }
 ```

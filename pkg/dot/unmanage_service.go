@@ -109,12 +109,12 @@ func (s *UnmanageService) PlanUnmanage(ctx context.Context, packages ...string) 
 		// Create delete operations for each link
 		for _, link := range pkgInfo.Links {
 			targetFilePath := s.targetDir + "/" + link
-			filePathResult := NewFilePath(targetFilePath)
-			if !filePathResult.IsOk() {
+			targetPathResult := NewTargetPath(targetFilePath)
+			if !targetPathResult.IsOk() {
 				continue
 			}
 			id := OperationID(fmt.Sprintf("unmanage-link-%s", link))
-			operations = append(operations, NewLinkDelete(id, filePathResult.Unwrap()))
+			operations = append(operations, NewLinkDelete(id, targetPathResult.Unwrap()))
 		}
 	}
 	return Plan{

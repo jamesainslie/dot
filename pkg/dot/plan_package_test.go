@@ -14,7 +14,7 @@ func TestPlan_PackageOperations(t *testing.T) {
 	require.True(t, sourceResult.IsOk())
 	source := sourceResult.Unwrap()
 
-	targetResult := dot.NewFilePath("/home/user/.vimrc")
+	targetResult := dot.NewTargetPath("/home/user/.vimrc")
 	require.True(t, targetResult.IsOk())
 	target := targetResult.Unwrap()
 
@@ -66,7 +66,7 @@ func TestPlan_OperationsForPackage_NoMapping(t *testing.T) {
 	require.True(t, sourceResult.IsOk())
 	source := sourceResult.Unwrap()
 
-	targetResult := dot.NewFilePath("/home/user/.vimrc")
+	targetResult := dot.NewTargetPath("/home/user/.vimrc")
 	require.True(t, targetResult.IsOk())
 	target := targetResult.Unwrap()
 

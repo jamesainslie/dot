@@ -20,7 +20,7 @@ func TestBuildGraph_Empty(t *testing.T) {
 
 func TestBuildGraph_SingleOperation(t *testing.T) {
 	source := mustParsePath("/packages/package/file")
-	target := mustParsePath("/home/user/.config/file")
+	target := mustParseTargetPath("/home/user/.config/file")
 	op := domain.NewLinkCreate("link1", source, target)
 
 	ops := []domain.Operation{op}
@@ -35,12 +35,12 @@ func TestBuildGraph_IndependentOperations(t *testing.T) {
 	op1 := domain.NewLinkCreate(
 		"link1",
 		mustParsePath("/packages/pkg/file1"),
-		mustParsePath("/home/user/file1"),
+		mustParseTargetPath("/home/user/file1"),
 	)
 	op2 := domain.NewLinkCreate(
 		"link2",
 		mustParsePath("/packages/pkg/file2"),
-		mustParsePath("/home/user/file2"),
+		mustParseTargetPath("/home/user/file2"),
 	)
 
 	ops := []domain.Operation{op1, op2}
@@ -66,7 +66,7 @@ func TestBuildGraph_LinearDependencies(t *testing.T) {
 	linkOp := domain.NewLinkCreate(
 		"link1",
 		mustParsePath("/packages/pkg/config"),
-		mustParsePath("/home/user/.config/app.conf"),
+		mustParseTargetPath("/home/user/.config/app.conf"),
 	)
 
 	// Mock linkOp to depend on dirOp
@@ -99,7 +99,7 @@ func TestBuildGraph_DiamondPattern(t *testing.T) {
 	opD := domain.NewLinkCreate(
 		"link1",
 		mustParsePath("/packages/pkg/file"),
-		mustParsePath("/home/user/.config/file"),
+		mustParseTargetPath("/home/user/.config/file"),
 	)
 
 	// Create mock operations with dependencies
@@ -134,15 +134,15 @@ func TestGraph_Size(t *testing.T) {
 		{
 			name: "single operation",
 			ops: []domain.Operation{
-				domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
+				domain.NewLinkCreate("link1", mustParsePath("/a"), mustParseTargetPath("/b")),
 			},
 			expected: 1,
 		},
 		{
 			name: "multiple operations",
 			ops: []domain.Operation{
-				domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
-				domain.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d")),
+				domain.NewLinkCreate("link1", mustParsePath("/a"), mustParseTargetPath("/b")),
+				domain.NewLinkCreate("link2", mustParsePath("/c"), mustParseTargetPath("/d")),
 				domain.NewDirCreate("dir1", mustParsePath("/e")),
 			},
 			expected: 3,
@@ -158,8 +158,8 @@ func TestGraph_Size(t *testing.T) {
 }
 
 func TestGraph_HasOperation(t *testing.T) {
-	op1 := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
-	op2 := domain.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
+	op1 := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParseTargetPath("/b"))
+	op2 := domain.NewLinkCreate("link2", mustParsePath("/c"), mustParseTargetPath("/d"))
 	op3 := domain.NewDirCreate("dir1", mustParsePath("/e"))
 
 	graph := BuildGraph([]domain.Operation{op1, op2})
@@ -213,6 +213,14 @@ func (m *mockOperation) Equals(other domain.Operation) bool {
 // mustParsePath creates a FilePath or panics (for test convenience)
 func mustParsePath(s string) domain.FilePath {
 	result := domain.NewFilePath(s)
+	if !result.IsOk() {
+		panic(result.UnwrapErr())
+	}
+	return result.Unwrap()
+}
+
+func mustParseTargetPath(s string) domain.TargetPath {
+	result := domain.NewTargetPath(s)
 	if !result.IsOk() {
 		panic(result.UnwrapErr())
 	}

@@ -37,14 +37,13 @@ func (s *ManifestService) Save(ctx context.Context, targetPath TargetPath, m man
 
 // Update updates the manifest with package information from a plan.
 func (s *ManifestService) Update(ctx context.Context, targetPath TargetPath, packageDir string, packages []string, plan Plan) error {
-	// Load existing manifest or create new
+	// Load existing manifest (Load returns new manifest for not found case)
 	manifestResult := s.Load(ctx, targetPath)
-	var m manifest.Manifest
-	if manifestResult.IsOk() {
-		m = manifestResult.Unwrap()
-	} else {
-		m = manifest.New()
+	if !manifestResult.IsOk() {
+		// Propagate non-not-found errors (Load already handles not found by returning new manifest)
+		return manifestResult.UnwrapErr()
 	}
+	m := manifestResult.Unwrap()
 
 	// Update package entries
 	hasher := manifest.NewContentHasher(s.fs)

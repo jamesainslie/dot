@@ -145,4 +145,7 @@ This documentation corresponds to dot v0.1.0.
 
 For older versions, see the documentation in the appropriate release tag.
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [Documentation Index](../README.md)
 

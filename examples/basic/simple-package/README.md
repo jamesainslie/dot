@@ -51,3 +51,7 @@ ls ~/.vimrc
 - **Symlink**: Link from target directory to package file
 - **Manage/Unmanage**: Install and remove operations
 
+## Navigation
+
+**[↑ Back to Main README](../../../README.md)** | [Examples Index](../../README.md)
+

@@ -818,4 +818,7 @@ verbosity: 2
 - [Common Workflows](06-workflows.md): See configuration in real-world scenarios
 - [Advanced Features](07-advanced.md): Deep dive into ignore patterns and policies
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

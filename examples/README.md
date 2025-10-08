@@ -105,3 +105,7 @@ To add an example:
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
 
+## Navigation
+
+**[↑ Back to Main README](../README.md)**
+

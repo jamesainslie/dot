@@ -380,3 +380,8 @@ For issues specific to Homebrew installation:
 3. Report bugs with `brew gist-logs dot` output
 
 For general dot usage questions, see the main [documentation](../../README.md).
+
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
+

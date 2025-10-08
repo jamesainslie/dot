@@ -49,12 +49,11 @@ echo "✅ Linting passed"
 
 # Run all tests
 echo "→ Running full test suite..."
-if ! go test ./... > /dev/null 2>&1; then
+if ! go test ./...; then
     echo ""
     echo "❌ COMMIT REJECTED: Tests failed"
     echo ""
-    echo "Run: go test ./..."
-    echo "Fix all test failures before committing."
+    echo "Fix all test failures shown above before committing."
     rm -f coverage.out
     exit 1
 fi

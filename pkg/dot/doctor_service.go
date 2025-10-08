@@ -207,6 +207,16 @@ func (s *DoctorService) checkLink(ctx context.Context, pkgName string, linkPath 
 				Message:    "Link target does not exist: " + target,
 				Suggestion: "Run 'dot remanage " + pkgName + "' to fix broken link",
 			})
+		} else {
+			// Permission or other filesystem errors
+			stats.BrokenLinks++
+			*issues = append(*issues, Issue{
+				Severity:   SeverityError,
+				Type:       IssuePermission,
+				Path:       linkPath,
+				Message:    "Cannot access link target: " + err.Error(),
+				Suggestion: "Check file permissions for target path or run with appropriate permissions",
+			})
 		}
 	}
 }

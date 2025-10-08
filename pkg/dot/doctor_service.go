@@ -191,32 +191,53 @@ func (s *DoctorService) performOrphanScan(
 	issues *[]Issue,
 	stats *DiagnosticStats,
 ) {
-	var scanDirs []string
-	if len(scanCfg.ScopeToDirs) > 0 {
-		scanDirs = scanCfg.ScopeToDirs
-	} else if scanCfg.Mode == ScanScoped {
-		scanDirs = extractManagedDirectories(m)
-	} else {
-		scanDirs = []string{s.targetDir}
-	}
-
-	absScanDirs := make([]string, 0, len(scanDirs))
-	for _, dir := range scanDirs {
-		fullPath := dir
-		if scanCfg.Mode == ScanScoped {
-			fullPath = filepath.Join(s.targetDir, dir)
-		}
-		absScanDirs = append(absScanDirs, fullPath)
-	}
-
-	rootDirs := filterDescendants(absScanDirs)
+	scanDirs := s.determineScanDirectories(m, scanCfg)
+	rootDirs := s.normalizeAndDeduplicateDirs(scanDirs, scanCfg.Mode)
 	linkSet := buildManagedLinkSet(m)
 
 	for _, dir := range rootDirs {
-		err := s.scanForOrphanedLinksWithLimits(ctx, dir, m, linkSet, scanCfg, issues, stats)
-		if err != nil {
-			continue
+		s.scanDirectory(ctx, dir, m, linkSet, scanCfg, issues, stats)
+	}
+}
+
+// determineScanDirectories determines which directories to scan based on configuration.
+func (s *DoctorService) determineScanDirectories(m *manifest.Manifest, scanCfg ScanConfig) []string {
+	if len(scanCfg.ScopeToDirs) > 0 {
+		return scanCfg.ScopeToDirs
+	}
+	if scanCfg.Mode == ScanScoped {
+		return extractManagedDirectories(m)
+	}
+	return []string{s.targetDir}
+}
+
+// normalizeAndDeduplicateDirs converts scan directories to absolute paths and removes descendants.
+func (s *DoctorService) normalizeAndDeduplicateDirs(dirs []string, mode ScanMode) []string {
+	absDirs := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		fullPath := dir
+		if mode == ScanScoped {
+			fullPath = filepath.Join(s.targetDir, dir)
 		}
+		absDirs = append(absDirs, fullPath)
+	}
+	return filterDescendants(absDirs)
+}
+
+// scanDirectory scans a single directory for orphaned links with limit checks.
+func (s *DoctorService) scanDirectory(
+	ctx context.Context,
+	dir string,
+	m *manifest.Manifest,
+	linkSet map[string]bool,
+	scanCfg ScanConfig,
+	issues *[]Issue,
+	stats *DiagnosticStats,
+) {
+	err := s.scanForOrphanedLinksWithLimits(ctx, dir, m, linkSet, scanCfg, issues, stats)
+	if err != nil {
+		// Log but continue - orphan detection is best-effort
+		s.logger.Warn(ctx, "scan_directory_failed", "dir", dir, "error", err)
 	}
 }
 

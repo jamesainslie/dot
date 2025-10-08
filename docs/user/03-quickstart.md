@@ -559,4 +559,7 @@ chmod -R u+rw ~/dotfiles/vim/
 
 See [Troubleshooting Guide](08-troubleshooting.md) for more issues and solutions.
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

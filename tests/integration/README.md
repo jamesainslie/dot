@@ -340,3 +340,7 @@ For questions about integration tests:
 - Check test examples in each category file
 - Refer to phase-17-plan.md for detailed specifications
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)**
+

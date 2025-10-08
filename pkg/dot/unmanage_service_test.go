@@ -28,9 +28,10 @@ func TestUnmanageService_Unmanage(t *testing.T) {
 
 		// Manage first
 		managePipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
-			FS:        fs,
-			IgnoreSet: ignore.NewDefaultIgnoreSet(),
-			Policies:  planner.ResolutionPolicies{OnFileExists: planner.PolicyFail},
+			FS:                 fs,
+			IgnoreSet:          ignore.NewDefaultIgnoreSet(),
+			Policies:           planner.ResolutionPolicies{OnFileExists: planner.PolicyFail},
+			PackageNameMapping: false,
 		})
 		exec := executor.New(executor.Opts{
 			FS:     fs,
@@ -89,9 +90,10 @@ func TestUnmanageService_PlanUnmanage(t *testing.T) {
 		require.NoError(t, fs.WriteFile(ctx, packageDir+"/test-pkg/dot-vimrc", []byte("vim"), 0644))
 
 		managePipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
-			FS:        fs,
-			IgnoreSet: ignore.NewDefaultIgnoreSet(),
-			Policies:  planner.ResolutionPolicies{OnFileExists: planner.PolicyFail},
+			FS:                 fs,
+			IgnoreSet:          ignore.NewDefaultIgnoreSet(),
+			Policies:           planner.ResolutionPolicies{OnFileExists: planner.PolicyFail},
+			PackageNameMapping: false,
 		})
 		exec := executor.New(executor.Opts{
 			FS:     fs,

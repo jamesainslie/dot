@@ -35,11 +35,11 @@ This directory will be your **package directory** containing packages.
 Create a vim package with configuration:
 
 ```bash
-# Create vim package directory
-mkdir -p vim
+# Create vim package directory (package name determines target)
+mkdir -p dot-vim
 
 # Create vim configuration
-cat > vim/dot-vimrc << 'EOF'
+cat > dot-vim/vimrc << 'EOF'
 " Basic vim configuration
 set number
 set relativenumber
@@ -52,23 +52,22 @@ colorscheme desert
 EOF
 
 # Create vim plugin directory structure
-mkdir -p vim/dot-vim/{colors,autoload}
+mkdir -p dot-vim/colors
+mkdir -p dot-vim/autoload
 
 # Add a color scheme
-cat > vim/dot-vim/colors/custom.vim << 'EOF'
+cat > dot-vim/colors/custom.vim << 'EOF'
 " Custom color scheme
 hi Normal guibg=black guifg=white
 EOF
 ```
 
-Package structure:
+Package structure (with package name mapping):
 ```
-~/dotfiles/vim/
-├── dot-vimrc              → ~/.vimrc
-└── dot-vim/               → ~/.vim/
-    ├── colors/
-    │   └── custom.vim
-    └── autoload/
+~/dotfiles/dot-vim/          Package name "dot-vim" → target ~/.vim/
+├── vimrc                    → ~/.vim/vimrc
+└── colors/                  → ~/.vim/colors/
+    └── custom.vim           → ~/.vim/colors/custom.vim
 ```
 
 ## Step 3: Create Second Package (zsh)
@@ -76,11 +75,11 @@ Package structure:
 Create a zsh package:
 
 ```bash
-# Create zsh package directory
-mkdir -p zsh
+# Create zsh package directory (package name "dot-zsh" → target ~/.zsh/)
+mkdir -p dot-zsh
 
 # Create zsh configuration
-cat > zsh/dot-zshrc << 'EOF'
+cat > dot-zsh/zshrc << 'EOF'
 # Zsh configuration
 export EDITOR=vim
 export VISUAL=vim
@@ -100,7 +99,7 @@ HISTFILE=~/.zsh_history
 EOF
 
 # Create zsh environment file
-cat > zsh/dot-zshenv << 'EOF'
+cat > dot-zsh/zshenv << 'EOF'
 # Zsh environment variables (loaded for all shells)
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
@@ -110,15 +109,13 @@ EOF
 Current structure:
 ```
 ~/dotfiles/
-├── vim/
-│   ├── dot-vimrc
-│   └── dot-vim/
-│       ├── colors/
-│       │   └── custom.vim
-│       └── autoload/
-└── zsh/
-    ├── dot-zshrc
-    └── dot-zshenv
+├── dot-vim/               → targets ~/.vim/
+│   ├── vimrc
+│   └── colors/
+│       └── custom.vim
+└── dot-zsh/               → targets ~/.zsh/
+    ├── zshrc
+    └── zshenv
 ```
 
 ## Step 4: Preview Installation (Dry Run)
@@ -126,7 +123,7 @@ Current structure:
 Preview what dot will do before applying changes:
 
 ```bash
-dot --dry-run manage vim
+dot --dry-run manage dot-vim
 ```
 
 Expected output:
@@ -134,10 +131,10 @@ Expected output:
 Dry run mode - no changes will be applied
 
 Plan:
+  + Create directory: ~/.vim
   + Create directory: ~/.vim/colors
-  + Create directory: ~/.vim/autoload
-  + Create symlink: ~/.vimrc -> ~/dotfiles/vim/dot-vimrc
-  + Create symlink: ~/.vim/colors/custom.vim -> ~/dotfiles/vim/dot-vim/colors/custom.vim
+  + Create symlink: ~/.vim/vimrc -> ~/dotfiles/dot-vim/vimrc
+  + Create symlink: ~/.vim/colors/custom.vim -> ~/dotfiles/dot-vim/colors/custom.vim
 
 Summary:
   Directories: 2
@@ -150,26 +147,27 @@ Summary:
 Install vim package:
 
 ```bash
-dot manage vim
+dot manage dot-vim
 ```
 
 Expected output:
 ```
-Managing package: vim
-Created symlink: ~/.vimrc -> ~/dotfiles/vim/dot-vimrc
-Created directory-level symlink: ~/.vim/ -> ~/dotfiles/vim/dot-vim/
-Successfully managed: vim
+Successfully managed 1 package(s)
 ```
 
 Verify installation:
 
 ```bash
-# Check symlink
-ls -la ~/.vimrc
-# Output: lrwxr-xr-x ... .vimrc -> /home/user/dotfiles/vim/dot-vimrc
+# Check symlinks created in ~/.vim/
+ls -la ~/.vim/
+# Output shows vimrc and colors/ directory
+
+# Check the vimrc link
+ls -la ~/.vim/vimrc
+# Output: lrwxr-xr-x ... vimrc -> /home/user/dotfiles/dot-vim/vimrc
 
 # Verify vim configuration works
-vim --version | head -1
+cat ~/.vim/vimrc | head -3
 ```
 
 ## Step 6: Install Multiple Packages
@@ -177,16 +175,12 @@ vim --version | head -1
 Install vim and zsh together:
 
 ```bash
-dot manage vim zsh
+dot manage dot-vim dot-zsh
 ```
 
 Expected output:
 ```
-Managing packages: vim, zsh
-Package vim: already installed
-Created symlink: ~/.zshrc -> ~/dotfiles/zsh/dot-zshrc
-Created symlink: ~/.zshenv -> ~/dotfiles/zsh/dot-zshenv
-Successfully managed: zsh
+Successfully managed 2 package(s)
 ```
 
 ## Step 7: Check Status
@@ -199,29 +193,21 @@ dot status
 
 Expected output:
 ```
-Package: vim
+Package: dot-vim
   Status: installed
   Links: 2
-  Installed: 2025-10-07 10:30:00
+  Installed: 2025-10-08 10:30:00
 
-  Links:
-    ~/.vimrc -> ~/dotfiles/vim/dot-vimrc
-    ~/.vim/ -> ~/dotfiles/vim/dot-vim/ (folded)
-
-Package: zsh
+Package: dot-zsh
   Status: installed
   Links: 2
-  Installed: 2025-10-07 10:31:00
-
-  Links:
-    ~/.zshrc -> ~/dotfiles/zsh/dot-zshrc
-    ~/.zshenv -> ~/dotfiles/zsh/dot-zshenv
+  Installed: 2025-10-08 10:31:00
 ```
 
 Status for specific package:
 
 ```bash
-dot status vim
+dot status dot-vim
 ```
 
 ## Step 8: Adopt Existing File
@@ -239,30 +225,27 @@ cat > ~/.gitconfig << 'EOF'
 EOF
 
 # Adopt it into a new git package
-dot adopt git ~/.gitconfig
+dot adopt dot-git ~/.gitconfig
 ```
 
 Expected output:
 ```
-Adopting files into package: git
-Moved: ~/.gitconfig -> ~/dotfiles/git/dot-gitconfig
-Created symlink: ~/.gitconfig -> ~/dotfiles/git/dot-gitconfig
-Successfully adopted 1 file into: git
+Successfully adopted 1 file(s)
 ```
 
 Verification:
 
 ```bash
 # Check git package was created
-ls ~/dotfiles/git/
-# Output: dot-gitconfig
+ls ~/dotfiles/dot-git/
+# Output: gitconfig
 
 # Verify symlink
-ls -la ~/.gitconfig
-# Output: lrwxr-xr-x ... .gitconfig -> /home/user/dotfiles/git/dot-gitconfig
+ls -la ~/.git/gitconfig
+# Output: lrwxr-xr-x ... gitconfig -> /home/user/dotfiles/dot-git/gitconfig
 
 # Content preserved
-cat ~/.gitconfig
+cat ~/.git/gitconfig
 ```
 
 ## Step 9: Modify and Update Package
@@ -271,7 +254,7 @@ Modify vim configuration and update:
 
 ```bash
 # Edit vim configuration
-cat >> ~/dotfiles/vim/dot-vimrc << 'EOF'
+cat >> ~/dotfiles/dot-vim/vimrc << 'EOF'
 
 " Additional settings
 set cursorline
@@ -279,22 +262,19 @@ set hlsearch
 EOF
 
 # Update vim package
-dot remanage vim
+dot remanage dot-vim
 ```
 
 Expected output:
 ```
-Remanaging package: vim
-Detected changes in: vim
-Relinked: ~/.vimrc
-Successfully remanaged: vim
+Successfully managed 1 package(s)
 ```
 
 Changes are immediately reflected:
 
 ```bash
 # Verify changes
-tail -3 ~/.vimrc
+tail -3 ~/.vim/vimrc
 # Output shows new lines added
 ```
 
@@ -308,10 +288,10 @@ dot list
 
 Expected output:
 ```
-NAME  LINKS  INSTALLED
-vim   2      2025-10-07 10:30:00
-zsh   2      2025-10-07 10:31:00
-git   1      2025-10-07 10:35:00
+NAME      LINKS  INSTALLED
+dot-vim   2      2025-10-08 10:30:00
+dot-zsh   2      2025-10-08 10:31:00
+dot-git   1      2025-10-08 10:35:00
 ```
 
 Sort options:
@@ -351,30 +331,27 @@ Remove a package:
 
 ```bash
 # Preview removal
-dot --dry-run unmanage git
+dot --dry-run unmanage dot-git
 
 # Actual removal
-dot unmanage git
+dot unmanage dot-git
 ```
 
 Expected output:
 ```
-Unmanaging package: git
-Removed symlink: ~/.gitconfig
-Removed empty directory: ~/dotfiles/git/
-Successfully unmanaged: git
+Successfully unmanaged 1 package(s)
 ```
 
 Verification:
 
 ```bash
-# File is gone
-ls ~/.gitconfig
-# Output: ls: ~/.gitconfig: No such file or directory
+# Directory is gone
+ls ~/.git/gitconfig
+# Output: ls: ~/.git/gitconfig: No such file or directory
 
 # Package directory removed
-ls ~/dotfiles/git
-# Output: ls: ~/dotfiles/git: No such file or directory
+ls ~/dotfiles/dot-git
+# Output: ls: ~/dotfiles/dot-git: No such file or directory
 ```
 
 ## Step 13: Clean Up (Tutorial Completion)
@@ -383,7 +360,7 @@ Remove tutorial files:
 
 ```bash
 # Unmanage all packages
-dot unmanage vim zsh
+dot unmanage dot-vim dot-zsh
 
 # Verify removal
 dot status
@@ -399,16 +376,10 @@ rm -rf ~/dotfiles
 
 ```bash
 # Single package
-dot manage vim
+dot manage dot-vim
 
 # Multiple packages
-dot manage vim zsh tmux
-
-# With absolute links
-dot --absolute manage vim
-
-# Without directory folding
-dot --no-folding manage vim
+dot manage dot-vim dot-zsh dot-tmux
 ```
 
 ### Query
@@ -418,7 +389,7 @@ dot --no-folding manage vim
 dot status
 
 # Status of specific packages
-dot status vim zsh
+dot status dot-vim dot-zsh
 
 # List packages
 dot list
@@ -431,22 +402,22 @@ dot doctor
 
 ```bash
 # Update packages
-dot remanage vim
+dot remanage dot-vim
 
 # Adopt existing files
-dot adopt package file1 file2
+dot adopt dot-package file1 file2
 
 # Remove packages
-dot unmanage vim
+dot unmanage dot-vim
 ```
 
 ### Dry Run
 
 ```bash
 # Preview any operation
-dot --dry-run manage vim
-dot --dry-run unmanage zsh
-dot --dry-run adopt git ~/.gitconfig
+dot --dry-run manage dot-vim
+dot --dry-run unmanage dot-zsh
+dot --dry-run adopt dot-git ~/.gitconfig
 ```
 
 ## Tutorial Summary

@@ -172,7 +172,7 @@ For example: directories.package, logging.level`,
 
   # Get logging level
   dot config get logging.level`,
-		Args: cobra.ExactArgs(1),
+		Args: argsWithUsage(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigGet(args[0])
 		},
@@ -251,7 +251,7 @@ Values are automatically type-converted based on the field.`,
 
   # Set symlink mode
   dot config set symlinks.mode absolute`,
-		Args: cobra.ExactArgs(2),
+		Args: argsWithUsage(cobra.ExactArgs(2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigSet(args[0], args[1])
 		},

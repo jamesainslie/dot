@@ -37,6 +37,11 @@ type Config struct {
 	// If zero, defaults to runtime.NumCPU().
 	Concurrency int
 
+	// PackageNameMapping enables package name to target directory mapping.
+	// When enabled, package "dot-gnupg" targets ~/.gnupg/ instead of ~/.
+	// Default: true (project is pre-1.0, breaking change acceptable)
+	PackageNameMapping bool
+
 	// Infrastructure dependencies (required)
 	FS      FS
 	Logger  Logger

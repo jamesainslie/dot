@@ -39,8 +39,9 @@ func TestManageService_Manage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
 
-		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, packageDir, targetDir, false)
+		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
 		err := svc.Manage(ctx, "test-pkg")
 		require.NoError(t, err)
@@ -72,8 +73,9 @@ func TestManageService_Manage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, true)
 
-		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, packageDir, targetDir, true)
+		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, true)
 
 		err := svc.Manage(ctx, "test-pkg")
 		require.NoError(t, err)
@@ -103,8 +105,9 @@ func TestManageService_PlanManage(t *testing.T) {
 		exec := executor.New(executor.Opts{FS: fs, Logger: adapters.NewNoopLogger()})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
 
-		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, packageDir, targetDir, false)
+		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
 		plan, err := svc.PlanManage(ctx, "test-pkg")
 		require.NoError(t, err)
@@ -135,8 +138,9 @@ func TestManageService_Remanage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
 
-		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, packageDir, targetDir, false)
+		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
 		// Initial manage
 		err := svc.Manage(ctx, "test-pkg")

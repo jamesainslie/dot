@@ -73,9 +73,9 @@ func NewClient(cfg Config) (*Client, error) {
 	manifestStore := manifest.NewFSManifestStore(cfg.FS)
 	manifestSvc := newManifestService(cfg.FS, cfg.Logger, manifestStore)
 
-	// Create specialized services
-	manageSvc := newManageService(cfg.FS, cfg.Logger, managePipe, exec, manifestSvc, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
+	// Create specialized services (unmanageSvc first since manageSvc depends on it)
 	unmanageSvc := newUnmanageService(cfg.FS, cfg.Logger, exec, manifestSvc, cfg.TargetDir, cfg.DryRun)
+	manageSvc := newManageService(cfg.FS, cfg.Logger, managePipe, exec, manifestSvc, unmanageSvc, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
 	statusSvc := newStatusService(manifestSvc, cfg.TargetDir)
 	doctorSvc := newDoctorService(cfg.FS, cfg.Logger, manifestSvc, cfg.TargetDir)
 	adoptSvc := newAdoptService(cfg.FS, cfg.Logger, exec, manifestSvc, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)

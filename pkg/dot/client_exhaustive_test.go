@@ -159,9 +159,8 @@ func TestClient_PlanManage_MultiplePackages(t *testing.T) {
 	assert.Equal(t, 3, plan.Metadata.PackageCount)
 
 	// Verify PackageOperations is populated
-	if plan.PackageOperations != nil {
-		assert.True(t, len(plan.PackageOperations) > 0, "Expected package operations mapping")
-	}
+	assert.NotNil(t, plan.PackageOperations, "Expected PackageOperations to be initialized")
+	assert.True(t, len(plan.PackageOperations) > 0, "Expected at least one package in PackageOperations")
 }
 
 func TestClient_PlanUnmanage_MultiplePackages(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // OSFilesystem implements the FS interface using the os package.
@@ -18,7 +18,7 @@ func NewOSFilesystem() *OSFilesystem {
 }
 
 // Stat returns file information.
-func (f *OSFilesystem) Stat(ctx context.Context, name string) (dot.FileInfo, error) {
+func (f *OSFilesystem) Stat(ctx context.Context, name string) (domain.FileInfo, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (f *OSFilesystem) Stat(ctx context.Context, name string) (dot.FileInfo, err
 }
 
 // ReadDir lists directory contents.
-func (f *OSFilesystem) ReadDir(ctx context.Context, name string) ([]dot.DirEntry, error) {
+func (f *OSFilesystem) ReadDir(ctx context.Context, name string) ([]domain.DirEntry, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (f *OSFilesystem) ReadDir(ctx context.Context, name string) ([]dot.DirEntry
 		return nil, err
 	}
 
-	result := make([]dot.DirEntry, len(entries))
+	result := make([]domain.DirEntry, len(entries))
 	for i, entry := range entries {
 		result[i] = WrapDirEntry(entry)
 	}
@@ -171,13 +171,13 @@ func (f *OSFilesystem) IsSymlink(ctx context.Context, name string) (bool, error)
 
 // FileInfo adapters
 
-// osFileInfo wraps fs.FileInfo to implement dot.FileInfo.
+// osFileInfo wraps fs.FileInfo to implement domain.FileInfo.
 type osFileInfo struct {
 	info fs.FileInfo
 }
 
 // WrapFileInfo wraps a standard fs.FileInfo.
-func WrapFileInfo(info fs.FileInfo) dot.FileInfo {
+func WrapFileInfo(info fs.FileInfo) domain.FileInfo {
 	return osFileInfo{info: info}
 }
 
@@ -190,13 +190,13 @@ func (i osFileInfo) Sys() any          { return i.info.Sys() }
 
 // DirEntry adapters
 
-// osDirEntry wraps fs.DirEntry to implement dot.DirEntry.
+// osDirEntry wraps fs.DirEntry to implement domain.DirEntry.
 type osDirEntry struct {
 	entry fs.DirEntry
 }
 
 // WrapDirEntry wraps a standard fs.DirEntry.
-func WrapDirEntry(entry fs.DirEntry) dot.DirEntry {
+func WrapDirEntry(entry fs.DirEntry) domain.DirEntry {
 	return osDirEntry{entry: entry}
 }
 
@@ -206,7 +206,7 @@ func (e osDirEntry) Type() fs.FileMode {
 	return e.entry.Type()
 }
 
-func (e osDirEntry) Info() (dot.FileInfo, error) {
+func (e osDirEntry) Info() (domain.FileInfo, error) {
 	info, err := e.entry.Info()
 	if err != nil {
 		return nil, err

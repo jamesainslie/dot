@@ -1,12 +1,12 @@
 package executor
 
-import "github.com/jamesainslie/dot/pkg/dot"
+import "github.com/jamesainslie/dot/internal/domain"
 
 // ExecutionResult contains the outcome of plan execution.
 type ExecutionResult struct {
-	Executed   []dot.OperationID
-	Failed     []dot.OperationID
-	RolledBack []dot.OperationID
+	Executed   []domain.OperationID
+	Failed     []domain.OperationID
+	RolledBack []domain.OperationID
 	Errors     []error
 }
 

@@ -3,15 +3,15 @@ package planner_test
 import (
 	"testing"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/planner"
-	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestComputeDesiredState_EmptyPackage(t *testing.T) {
-	packages := []dot.Package{}
-	target := dot.NewTargetPath("/home/user").Unwrap()
+	packages := []domain.Package{}
+	target := domain.NewTargetPath("/home/user").Unwrap()
 
 	result := planner.ComputeDesiredState(packages, target)
 	require.True(t, result.IsOk())
@@ -23,22 +23,22 @@ func TestComputeDesiredState_EmptyPackage(t *testing.T) {
 
 func TestComputeDesiredState_SingleFile(t *testing.T) {
 	// Package with single file: vim/vimrc -> ~/.vimrc
-	pkgPath := dot.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
-	target := dot.NewTargetPath("/home/user").Unwrap()
+	pkgPath := domain.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
+	target := domain.NewTargetPath("/home/user").Unwrap()
 
 	// Create a file node representing vim/vimrc
-	fileNode := dot.Node{
-		Path: dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap(),
-		Type: dot.NodeFile,
+	fileNode := domain.Node{
+		Path: domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap(),
+		Type: domain.NodeFile,
 	}
 
-	pkg := dot.Package{
+	pkg := domain.Package{
 		Name: "vim",
 		Path: pkgPath,
 		Tree: &fileNode,
 	}
 
-	result := planner.ComputeDesiredState([]dot.Package{pkg}, target)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, target)
 	require.True(t, result.IsOk())
 
 	state := result.Unwrap()
@@ -54,21 +54,21 @@ func TestComputeDesiredState_SingleFile(t *testing.T) {
 
 func TestComputeDesiredState_DotfileTranslation(t *testing.T) {
 	// Package with dot-vimrc -> should become .vimrc in target
-	pkgPath := dot.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
-	target := dot.NewTargetPath("/home/user").Unwrap()
+	pkgPath := domain.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
+	target := domain.NewTargetPath("/home/user").Unwrap()
 
-	fileNode := dot.Node{
-		Path: dot.NewFilePath("/home/user/.dotfiles/vim/dot-vimrc").Unwrap(),
-		Type: dot.NodeFile,
+	fileNode := domain.Node{
+		Path: domain.NewFilePath("/home/user/.dotfiles/vim/dot-vimrc").Unwrap(),
+		Type: domain.NodeFile,
 	}
 
-	pkg := dot.Package{
+	pkg := domain.Package{
 		Name: "vim",
 		Path: pkgPath,
 		Tree: &fileNode,
 	}
 
-	result := planner.ComputeDesiredState([]dot.Package{pkg}, target)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, target)
 	require.True(t, result.IsOk())
 
 	state := result.Unwrap()
@@ -81,34 +81,34 @@ func TestComputeDesiredState_DotfileTranslation(t *testing.T) {
 
 func TestComputeDesiredState_NestedFiles(t *testing.T) {
 	// Package with nested structure: vim/colors/desert.vim
-	pkgPath := dot.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
-	target := dot.NewTargetPath("/home/user").Unwrap()
+	pkgPath := domain.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
+	target := domain.NewTargetPath("/home/user").Unwrap()
 
 	// Build tree: vim/ -> colors/ -> desert.vim
-	fileNode := dot.Node{
-		Path: dot.NewFilePath("/home/user/.dotfiles/vim/colors/desert.vim").Unwrap(),
-		Type: dot.NodeFile,
+	fileNode := domain.Node{
+		Path: domain.NewFilePath("/home/user/.dotfiles/vim/colors/desert.vim").Unwrap(),
+		Type: domain.NodeFile,
 	}
 
-	colorsDir := dot.Node{
-		Path:     dot.NewFilePath("/home/user/.dotfiles/vim/colors").Unwrap(),
-		Type:     dot.NodeDir,
-		Children: []dot.Node{fileNode},
+	colorsDir := domain.Node{
+		Path:     domain.NewFilePath("/home/user/.dotfiles/vim/colors").Unwrap(),
+		Type:     domain.NodeDir,
+		Children: []domain.Node{fileNode},
 	}
 
-	rootNode := dot.Node{
-		Path:     dot.NewFilePath("/home/user/.dotfiles/vim").Unwrap(),
-		Type:     dot.NodeDir,
-		Children: []dot.Node{colorsDir},
+	rootNode := domain.Node{
+		Path:     domain.NewFilePath("/home/user/.dotfiles/vim").Unwrap(),
+		Type:     domain.NodeDir,
+		Children: []domain.Node{colorsDir},
 	}
 
-	pkg := dot.Package{
+	pkg := domain.Package{
 		Name: "vim",
 		Path: pkgPath,
 		Tree: &rootNode,
 	}
 
-	result := planner.ComputeDesiredState([]dot.Package{pkg}, target)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, target)
 	require.True(t, result.IsOk())
 
 	state := result.Unwrap()
@@ -122,8 +122,8 @@ func TestComputeDesiredState_NestedFiles(t *testing.T) {
 }
 
 func TestLinkSpec(t *testing.T) {
-	source := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+	source := domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
+	target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
 
 	spec := planner.LinkSpec{
 		Source: source,
@@ -135,7 +135,7 @@ func TestLinkSpec(t *testing.T) {
 }
 
 func TestDirSpec(t *testing.T) {
-	path := dot.NewFilePath("/home/user/.vim").Unwrap()
+	path := domain.NewFilePath("/home/user/.vim").Unwrap()
 
 	spec := planner.DirSpec{
 		Path: path,
@@ -145,9 +145,9 @@ func TestDirSpec(t *testing.T) {
 }
 
 func TestDesiredState(t *testing.T) {
-	source := dot.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := dot.NewFilePath("/home/user/.vimrc").Unwrap()
-	dirPath := dot.NewFilePath("/home/user/.vim").Unwrap()
+	source := domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
+	target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	dirPath := domain.NewFilePath("/home/user/.vim").Unwrap()
 
 	state := planner.DesiredState{
 		Links: map[string]planner.LinkSpec{
@@ -187,7 +187,7 @@ func TestPlanResult(t *testing.T) {
 			Dirs:  make(map[string]planner.DirSpec),
 		}
 
-		targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+		targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 		conflict := planner.NewConflict(planner.ConflictFileExists, targetPath, "File exists")
 
 		resolved := planner.NewResolveResult(nil).WithConflict(conflict)
@@ -203,8 +203,8 @@ func TestPlanResult(t *testing.T) {
 }
 
 func TestComputeOperationsFromDesiredState(t *testing.T) {
-	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
-	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	sourcePath := domain.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 
 	desired := planner.DesiredState{
 		Links: map[string]planner.LinkSpec{
@@ -219,16 +219,16 @@ func TestComputeOperationsFromDesiredState(t *testing.T) {
 	ops := planner.ComputeOperationsFromDesiredState(desired)
 
 	assert.Len(t, ops, 1)
-	linkOp, ok := ops[0].(dot.LinkCreate)
+	linkOp, ok := ops[0].(domain.LinkCreate)
 	assert.True(t, ok)
 	assert.Equal(t, sourcePath, linkOp.Source)
 	assert.Equal(t, targetPath, linkOp.Target)
 }
 
 func TestComputeOperationsFromDesiredStateWithDirs(t *testing.T) {
-	dirPath := dot.NewFilePath("/home/user/.config").Unwrap()
-	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
-	targetPath := dot.NewFilePath("/home/user/.config/bash").Unwrap()
+	dirPath := domain.NewFilePath("/home/user/.config").Unwrap()
+	sourcePath := domain.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.config/bash").Unwrap()
 
 	desired := planner.DesiredState{
 		Links: map[string]planner.LinkSpec{
@@ -251,9 +251,9 @@ func TestComputeOperationsFromDesiredStateWithDirs(t *testing.T) {
 	hasLinkCreate := false
 	for _, op := range ops {
 		switch op.Kind() {
-		case dot.OpKindDirCreate:
+		case domain.OpKindDirCreate:
 			hasDirCreate = true
-		case dot.OpKindLinkCreate:
+		case domain.OpKindLinkCreate:
 			hasLinkCreate = true
 		}
 	}
@@ -262,36 +262,36 @@ func TestComputeOperationsFromDesiredStateWithDirs(t *testing.T) {
 }
 
 func TestComputeDesiredStateWithMultipleFiles(t *testing.T) {
-	targetDir := dot.NewTargetPath("/home/user").Unwrap()
+	targetDir := domain.NewTargetPath("/home/user").Unwrap()
 
 	// Create package with multiple files
-	pkgPath := dot.NewPackagePath("/packages/bash").Unwrap()
-	pkgRoot := dot.NewFilePath("/packages/bash").Unwrap()
+	pkgPath := domain.NewPackagePath("/packages/bash").Unwrap()
+	pkgRoot := domain.NewFilePath("/packages/bash").Unwrap()
 	file1 := pkgPath.Join("dot-bashrc")
 	file2 := pkgPath.Join("dot-profile")
 
-	tree := &dot.Node{
+	tree := &domain.Node{
 		Path: pkgRoot,
-		Type: dot.NodeDir,
-		Children: []dot.Node{
+		Type: domain.NodeDir,
+		Children: []domain.Node{
 			{
 				Path: file1,
-				Type: dot.NodeFile,
+				Type: domain.NodeFile,
 			},
 			{
 				Path: file2,
-				Type: dot.NodeFile,
+				Type: domain.NodeFile,
 			},
 		},
 	}
 
-	pkg := dot.Package{
+	pkg := domain.Package{
 		Name: "bash",
 		Path: pkgPath,
 		Tree: tree,
 	}
 
-	result := planner.ComputeDesiredState([]dot.Package{pkg}, targetDir)
+	result := planner.ComputeDesiredState([]domain.Package{pkg}, targetDir)
 
 	assert.True(t, result.IsOk())
 	state := result.Unwrap()

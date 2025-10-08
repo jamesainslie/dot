@@ -6,23 +6,23 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // Executor executes validated plans with transaction safety.
 type Executor struct {
-	fs         dot.FS
-	log        dot.Logger
-	tracer     dot.Tracer
+	fs         domain.FS
+	log        domain.Logger
+	tracer     domain.Tracer
 	checkpoint CheckpointStore
 }
 
 // Opts configures executor creation.
 type Opts struct {
-	FS         dot.FS
-	Logger     dot.Logger
-	Tracer     dot.Tracer
-	Metrics    dot.Metrics
+	FS         domain.FS
+	Logger     domain.Logger
+	Tracer     domain.Tracer
+	Metrics    domain.Metrics
 	Checkpoint CheckpointStore
 }
 
@@ -43,16 +43,16 @@ func New(opts Opts) *Executor {
 }
 
 // Execute executes a plan with two-phase commit and automatic rollback on failure.
-func (e *Executor) Execute(ctx context.Context, plan dot.Plan) dot.Result[ExecutionResult] {
+func (e *Executor) Execute(ctx context.Context, plan domain.Plan) domain.Result[ExecutionResult] {
 	ctx, span := e.tracer.Start(ctx, "executor.Execute")
 	defer span.End()
 
 	// Validate plan is not empty
 	if len(plan.Operations) == 0 {
-		err := dot.ErrEmptyPlan{}
+		err := domain.ErrEmptyPlan{}
 		e.log.Error(ctx, "empty_plan")
 		span.RecordError(err)
-		return dot.Err[ExecutionResult](err)
+		return domain.Err[ExecutionResult](err)
 	}
 
 	e.log.Info(ctx, "executing_plan",
@@ -62,7 +62,7 @@ func (e *Executor) Execute(ctx context.Context, plan dot.Plan) dot.Result[Execut
 	if err := e.prepare(ctx, plan); err != nil {
 		e.log.Error(ctx, "prepare_failed", "error", err)
 		span.RecordError(err)
-		return dot.Err[ExecutionResult](err)
+		return domain.Err[ExecutionResult](err)
 	}
 
 	// Create checkpoint before execution
@@ -83,28 +83,28 @@ func (e *Executor) Execute(ctx context.Context, plan dot.Plan) dot.Result[Execut
 		rolledBack := e.rollback(ctx, result.Executed, checkpoint)
 		result.RolledBack = rolledBack
 
-		err := dot.ErrExecutionFailed{
+		err := domain.ErrExecutionFailed{
 			Executed:   len(result.Executed),
 			Failed:     len(result.Failed),
 			RolledBack: len(result.RolledBack),
 			Errors:     result.Errors,
 		}
-		return dot.Err[ExecutionResult](err)
+		return domain.Err[ExecutionResult](err)
 	}
 
 	// Success - delete checkpoint
 	if err := e.checkpoint.Delete(ctx, checkpoint.ID); err != nil {
 		e.log.Error(ctx, "checkpoint_delete_failed", "checkpoint_id", checkpoint.ID, "error", err)
-		return dot.Err[ExecutionResult](fmt.Errorf("checkpoint cleanup failed: %w", err))
+		return domain.Err[ExecutionResult](fmt.Errorf("checkpoint cleanup failed: %w", err))
 	}
 
 	e.log.Info(ctx, "execution_complete", "operations", len(result.Executed))
 
-	return dot.Ok(result)
+	return domain.Ok(result)
 }
 
 // prepare validates all operations and checks preconditions.
-func (e *Executor) prepare(ctx context.Context, plan dot.Plan) error {
+func (e *Executor) prepare(ctx context.Context, plan domain.Plan) error {
 	ctx, span := e.tracer.Start(ctx, "executor.Prepare")
 	defer span.End()
 
@@ -125,23 +125,23 @@ func (e *Executor) prepare(ctx context.Context, plan dot.Plan) error {
 }
 
 // checkPreconditions verifies operation preconditions before execution.
-func (e *Executor) checkPreconditions(ctx context.Context, op dot.Operation) error {
+func (e *Executor) checkPreconditions(ctx context.Context, op domain.Operation) error {
 	switch operation := op.(type) {
-	case dot.LinkCreate:
+	case domain.LinkCreate:
 		return e.checkLinkCreatePreconditions(ctx, operation)
-	case dot.DirCreate:
+	case domain.DirCreate:
 		return e.checkDirCreatePreconditions(ctx, operation)
-	case dot.FileMove:
+	case domain.FileMove:
 		return e.checkFileMovePreconditions(ctx, operation)
 	default:
 		return nil
 	}
 }
 
-func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op dot.LinkCreate) error {
+func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op domain.LinkCreate) error {
 	// Verify source exists
 	if !e.fs.Exists(ctx, op.Source.String()) {
-		return dot.ErrSourceNotFound{Path: op.Source.String()}
+		return domain.ErrSourceNotFound{Path: op.Source.String()}
 	}
 
 	// Verify target parent directory exists
@@ -152,7 +152,7 @@ func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op dot.Link
 	parentPath := parent.Unwrap()
 
 	if !e.fs.Exists(ctx, parentPath.String()) {
-		return dot.ErrParentNotFound{Path: parentPath.String()}
+		return domain.ErrParentNotFound{Path: parentPath.String()}
 	}
 
 	// Check write permission on parent (simplified check)
@@ -162,7 +162,7 @@ func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op dot.Link
 	}
 
 	if info.Mode().Perm()&0200 == 0 {
-		return dot.ErrPermissionDenied{
+		return domain.ErrPermissionDenied{
 			Path:      parentPath.String(),
 			Operation: "write",
 		}
@@ -171,7 +171,7 @@ func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op dot.Link
 	return nil
 }
 
-func (e *Executor) checkDirCreatePreconditions(ctx context.Context, op dot.DirCreate) error {
+func (e *Executor) checkDirCreatePreconditions(ctx context.Context, op domain.DirCreate) error {
 	// Check parent directory exists
 	parent := op.Path.Parent()
 	if !parent.IsOk() {
@@ -181,16 +181,16 @@ func (e *Executor) checkDirCreatePreconditions(ctx context.Context, op dot.DirCr
 	parentPath := parent.Unwrap()
 
 	if !e.fs.Exists(ctx, parentPath.String()) {
-		return dot.ErrParentNotFound{Path: parentPath.String()}
+		return domain.ErrParentNotFound{Path: parentPath.String()}
 	}
 
 	return nil
 }
 
-func (e *Executor) checkFileMovePreconditions(ctx context.Context, op dot.FileMove) error {
+func (e *Executor) checkFileMovePreconditions(ctx context.Context, op domain.FileMove) error {
 	// Verify source exists
 	if !e.fs.Exists(ctx, op.Source.String()) {
-		return dot.ErrSourceNotFound{Path: op.Source.String()}
+		return domain.ErrSourceNotFound{Path: op.Source.String()}
 	}
 
 	// Verify destination parent exists
@@ -201,18 +201,18 @@ func (e *Executor) checkFileMovePreconditions(ctx context.Context, op dot.FileMo
 	parentPath := parent.Unwrap()
 
 	if !e.fs.Exists(ctx, parentPath.String()) {
-		return dot.ErrParentNotFound{Path: parentPath.String()}
+		return domain.ErrParentNotFound{Path: parentPath.String()}
 	}
 
 	return nil
 }
 
 // executeSequential executes operations sequentially, stopping on first failure.
-func (e *Executor) executeSequential(ctx context.Context, plan dot.Plan, checkpoint *Checkpoint) ExecutionResult {
+func (e *Executor) executeSequential(ctx context.Context, plan domain.Plan, checkpoint *Checkpoint) ExecutionResult {
 	result := ExecutionResult{
-		Executed:   []dot.OperationID{},
-		Failed:     []dot.OperationID{},
-		RolledBack: []dot.OperationID{},
+		Executed:   []domain.OperationID{},
+		Failed:     []domain.OperationID{},
+		RolledBack: []domain.OperationID{},
 		Errors:     []error{},
 	}
 
@@ -242,13 +242,13 @@ func (e *Executor) executeSequential(ctx context.Context, plan dot.Plan, checkpo
 }
 
 // rollback reverses executed operations in reverse order.
-func (e *Executor) rollback(ctx context.Context, executed []dot.OperationID, checkpoint *Checkpoint) []dot.OperationID {
+func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, checkpoint *Checkpoint) []domain.OperationID {
 	ctx, span := e.tracer.Start(ctx, "executor.Rollback")
 	defer span.End()
 
 	e.log.Warn(ctx, "starting_rollback", "operations", len(executed))
 
-	var rolledBack []dot.OperationID
+	var rolledBack []domain.OperationID
 
 	// Rollback in reverse order
 	for i := len(executed) - 1; i >= 0; i-- {
@@ -278,7 +278,7 @@ func (e *Executor) rollback(ctx context.Context, executed []dot.OperationID, che
 }
 
 // executeParallel executes operations in parallel batches based on dependencies.
-func (e *Executor) executeParallel(ctx context.Context, plan dot.Plan, checkpoint *Checkpoint) ExecutionResult {
+func (e *Executor) executeParallel(ctx context.Context, plan domain.Plan, checkpoint *Checkpoint) ExecutionResult {
 	batches := plan.ParallelBatches()
 
 	e.log.Info(ctx, "executing_parallel",
@@ -286,9 +286,9 @@ func (e *Executor) executeParallel(ctx context.Context, plan dot.Plan, checkpoin
 		"total_operations", len(plan.Operations))
 
 	result := ExecutionResult{
-		Executed:   []dot.OperationID{},
-		Failed:     []dot.OperationID{},
-		RolledBack: []dot.OperationID{},
+		Executed:   []domain.OperationID{},
+		Failed:     []domain.OperationID{},
+		RolledBack: []domain.OperationID{},
 		Errors:     []error{},
 	}
 
@@ -312,11 +312,11 @@ func (e *Executor) executeParallel(ctx context.Context, plan dot.Plan, checkpoin
 }
 
 // executeBatch executes a batch of operations concurrently.
-func (e *Executor) executeBatch(ctx context.Context, batch []dot.Operation, checkpoint *Checkpoint) ExecutionResult {
+func (e *Executor) executeBatch(ctx context.Context, batch []domain.Operation, checkpoint *Checkpoint) ExecutionResult {
 	result := ExecutionResult{
-		Executed:   []dot.OperationID{},
-		Failed:     []dot.OperationID{},
-		RolledBack: []dot.OperationID{},
+		Executed:   []domain.OperationID{},
+		Failed:     []domain.OperationID{},
+		RolledBack: []domain.OperationID{},
 		Errors:     []error{},
 	}
 
@@ -345,14 +345,14 @@ func (e *Executor) executeBatch(ctx context.Context, batch []dot.Operation, chec
 
 	// Execute multiple operations concurrently
 	type opResult struct {
-		id  dot.OperationID
+		id  domain.OperationID
 		err error
 	}
 
 	resultCh := make(chan opResult, len(batch))
 
 	for _, op := range batch {
-		go func(operation dot.Operation) {
+		go func(operation domain.Operation) {
 			opID := operation.ID()
 
 			e.log.Debug(ctx, "executing_operation_parallel",
@@ -365,7 +365,7 @@ func (e *Executor) executeBatch(ctx context.Context, batch []dot.Operation, chec
 	}
 
 	// Collect results
-	opMap := make(map[dot.OperationID]dot.Operation)
+	opMap := make(map[domain.OperationID]domain.Operation)
 	for _, op := range batch {
 		opMap[op.ID()] = op
 	}

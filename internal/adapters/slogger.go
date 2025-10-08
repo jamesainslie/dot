@@ -8,7 +8,7 @@ import (
 
 	console "github.com/phsym/console-slog"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // SlogLogger implements the Logger interface using log/slog.
@@ -57,7 +57,7 @@ func (l *SlogLogger) Error(ctx context.Context, msg string, args ...any) {
 }
 
 // With returns a new logger with additional context fields.
-func (l *SlogLogger) With(args ...any) dot.Logger {
+func (l *SlogLogger) With(args ...any) domain.Logger {
 	return &SlogLogger{
 		logger: l.logger.With(args...),
 	}

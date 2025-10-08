@@ -3,7 +3,7 @@ package planner
 import (
 	"fmt"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // ConflictType categorizes conflicts by their nature
@@ -54,14 +54,14 @@ type Suggestion struct {
 // Conflict represents a detected conflict during planning
 type Conflict struct {
 	Type        ConflictType
-	Path        dot.FilePath
+	Path        domain.FilePath
 	Details     string
 	Context     map[string]string // Additional context
 	Suggestions []Suggestion
 }
 
 // NewConflict creates a new Conflict with the given type, path, and details
-func NewConflict(ct ConflictType, path dot.FilePath, details string) Conflict {
+func NewConflict(ct ConflictType, path domain.FilePath, details string) Conflict {
 	return Conflict{
 		Type:        ct,
 		Path:        path,
@@ -149,22 +149,22 @@ func (rs ResolutionStatus) String() string {
 // ResolutionOutcome captures the result of resolving a single operation
 type ResolutionOutcome struct {
 	Status     ResolutionStatus
-	Operations []dot.Operation // Modified operations after resolution
-	Conflict   *Conflict       // If status is ResolveConflict
-	Warning    *Warning        // If status is ResolveWarning
+	Operations []domain.Operation // Modified operations after resolution
+	Conflict   *Conflict          // If status is ResolveConflict
+	Warning    *Warning           // If status is ResolveWarning
 }
 
 // ResolveResult contains all resolved operations, conflicts, and warnings
 type ResolveResult struct {
-	Operations []dot.Operation
+	Operations []domain.Operation
 	Conflicts  []Conflict
 	Warnings   []Warning
 }
 
 // NewResolveResult creates a new ResolveResult with the given operations
-func NewResolveResult(ops []dot.Operation) ResolveResult {
+func NewResolveResult(ops []domain.Operation) ResolveResult {
 	if ops == nil {
-		ops = []dot.Operation{}
+		ops = []domain.Operation{}
 	}
 	return ResolveResult{
 		Operations: ops,
@@ -219,7 +219,7 @@ type CurrentState struct {
 }
 
 // detectLinkCreateConflicts checks for conflicts when creating a symlink
-func detectLinkCreateConflicts(op dot.LinkCreate, current CurrentState) ResolutionOutcome {
+func detectLinkCreateConflicts(op domain.LinkCreate, current CurrentState) ResolutionOutcome {
 	targetKey := op.Target.String()
 
 	// Check if symlink already exists and points to the correct location
@@ -258,12 +258,12 @@ func detectLinkCreateConflicts(op dot.LinkCreate, current CurrentState) Resoluti
 	// No conflict
 	return ResolutionOutcome{
 		Status:     ResolveOK,
-		Operations: []dot.Operation{op},
+		Operations: []domain.Operation{op},
 	}
 }
 
 // detectDirCreateConflicts checks for conflicts when creating a directory
-func detectDirCreateConflicts(op dot.DirCreate, current CurrentState) ResolutionOutcome {
+func detectDirCreateConflicts(op domain.DirCreate, current CurrentState) ResolutionOutcome {
 	pathKey := op.Path.String()
 
 	// Check if directory already exists
@@ -290,45 +290,45 @@ func detectDirCreateConflicts(op dot.DirCreate, current CurrentState) Resolution
 	// No conflict
 	return ResolutionOutcome{
 		Status:     ResolveOK,
-		Operations: []dot.Operation{op},
+		Operations: []domain.Operation{op},
 	}
 }
 
 // resolveOperation applies policies to resolve conflicts for a single operation
 func resolveOperation(
-	op dot.Operation,
+	op domain.Operation,
 	current CurrentState,
 	policies ResolutionPolicies,
 ) ResolutionOutcome {
 	switch op := op.(type) {
-	case dot.LinkCreate:
+	case domain.LinkCreate:
 		return resolveLinkCreate(op, current, policies)
-	case dot.DirCreate:
+	case domain.DirCreate:
 		return resolveDirCreate(op, current, policies)
-	case dot.LinkDelete:
+	case domain.LinkDelete:
 		// LinkDelete operations have no conflicts with existing state
 		return ResolutionOutcome{
 			Status:     ResolveOK,
-			Operations: []dot.Operation{op},
+			Operations: []domain.Operation{op},
 		}
-	case dot.DirDelete:
+	case domain.DirDelete:
 		// DirDelete operations have no conflicts with existing state
 		return ResolutionOutcome{
 			Status:     ResolveOK,
-			Operations: []dot.Operation{op},
+			Operations: []domain.Operation{op},
 		}
 	default:
 		// Unknown operation types pass through
 		return ResolutionOutcome{
 			Status:     ResolveOK,
-			Operations: []dot.Operation{op},
+			Operations: []domain.Operation{op},
 		}
 	}
 }
 
 // resolveLinkCreate detects and resolves conflicts for LinkCreate operations
 func resolveLinkCreate(
-	op dot.LinkCreate,
+	op domain.LinkCreate,
 	current CurrentState,
 	policies ResolutionPolicies,
 ) ResolutionOutcome {
@@ -358,7 +358,7 @@ func resolveLinkCreate(
 
 // resolveDirCreate detects and resolves conflicts for DirCreate operations
 func resolveDirCreate(
-	op dot.DirCreate,
+	op domain.DirCreate,
 	current CurrentState,
 	policies ResolutionPolicies,
 ) ResolutionOutcome {
@@ -377,7 +377,7 @@ func resolveDirCreate(
 
 // applyPolicyToLinkCreate applies a policy to a link creation conflict
 func applyPolicyToLinkCreate(
-	op dot.LinkCreate,
+	op domain.LinkCreate,
 	conflict Conflict,
 	policy ResolutionPolicy,
 ) ResolutionOutcome {
@@ -397,7 +397,7 @@ func applyPolicyToLinkCreate(
 
 // applyPolicyToDirCreate applies a policy to a directory creation conflict
 func applyPolicyToDirCreate(
-	op dot.DirCreate,
+	op domain.DirCreate,
 	conflict Conflict,
 	policy ResolutionPolicy,
 ) ResolutionOutcome {
@@ -420,7 +420,7 @@ func applyPolicyToDirCreate(
 
 // Resolve applies conflict resolution to a list of operations
 func Resolve(
-	operations []dot.Operation,
+	operations []domain.Operation,
 	current CurrentState,
 	policies ResolutionPolicies,
 	backupDir string,

@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSuggestionEngine_Generate_InvalidPath(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "/some/path",
 		Reason: "invalid characters",
 	}
@@ -24,7 +24,7 @@ func TestSuggestionEngine_Generate_InvalidPath(t *testing.T) {
 
 func TestSuggestionEngine_Generate_InvalidPath_WithTilde(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "~/dotfiles",
 		Reason: "contains tilde",
 	}
@@ -44,7 +44,7 @@ func TestSuggestionEngine_Generate_InvalidPath_WithTilde(t *testing.T) {
 
 func TestSuggestionEngine_Generate_InvalidPath_WithDotDot(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "../relative/path",
 		Reason: "contains relative components",
 	}
@@ -64,7 +64,7 @@ func TestSuggestionEngine_Generate_InvalidPath_WithDotDot(t *testing.T) {
 
 func TestSuggestionEngine_Generate_PackageNotFound(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrPackageNotFound{
+	err := domain.ErrPackageNotFound{
 		Package: "vim",
 	}
 
@@ -82,7 +82,7 @@ func TestSuggestionEngine_Generate_PackageNotFound_WithContext(t *testing.T) {
 			},
 		},
 	}
-	err := dot.ErrPackageNotFound{
+	err := domain.ErrPackageNotFound{
 		Package: "vim",
 	}
 
@@ -101,7 +101,7 @@ func TestSuggestionEngine_Generate_PackageNotFound_WithContext(t *testing.T) {
 
 func TestSuggestionEngine_Generate_Conflict(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrConflict{
+	err := domain.ErrConflict{
 		Path:   "/home/user/.vimrc",
 		Reason: "file exists",
 	}
@@ -121,7 +121,7 @@ func TestSuggestionEngine_Generate_Conflict(t *testing.T) {
 
 func TestSuggestionEngine_Generate_CyclicDependency(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrCyclicDependency{
+	err := domain.ErrCyclicDependency{
 		Cycle: []string{"A", "B", "C", "A"},
 	}
 
@@ -140,7 +140,7 @@ func TestSuggestionEngine_Generate_CyclicDependency(t *testing.T) {
 
 func TestSuggestionEngine_Generate_PermissionDenied(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrPermissionDenied{
+	err := domain.ErrPermissionDenied{
 		Path:      "/root/.vimrc",
 		Operation: "write",
 	}
@@ -160,7 +160,7 @@ func TestSuggestionEngine_Generate_PermissionDenied(t *testing.T) {
 
 func TestSuggestionEngine_Generate_FilesystemOperation(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrFilesystemOperation{
+	err := domain.ErrFilesystemOperation{
 		Operation: "symlink",
 		Path:      "/home/user/.vimrc",
 		Err:       errors.New("no space left"),
@@ -181,7 +181,7 @@ func TestSuggestionEngine_Generate_FilesystemOperation(t *testing.T) {
 
 func TestSuggestionEngine_Generate_ExecutionFailed(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrExecutionFailed{
+	err := domain.ErrExecutionFailed{
 		Executed:   5,
 		Failed:     2,
 		RolledBack: 0,
@@ -196,7 +196,7 @@ func TestSuggestionEngine_Generate_ExecutionFailed(t *testing.T) {
 
 func TestSuggestionEngine_Generate_ExecutionFailed_WithRollback(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrExecutionFailed{
+	err := domain.ErrExecutionFailed{
 		Executed:   5,
 		Failed:     2,
 		RolledBack: 2,
@@ -224,7 +224,7 @@ func TestSuggestionEngine_Generate_ExecutionFailed_WithDryRun(t *testing.T) {
 			},
 		},
 	}
-	err := dot.ErrExecutionFailed{
+	err := domain.ErrExecutionFailed{
 		Executed: 0,
 		Failed:   5,
 		Errors:   []error{errors.New("error 1")},
@@ -245,7 +245,7 @@ func TestSuggestionEngine_Generate_ExecutionFailed_WithDryRun(t *testing.T) {
 
 func TestSuggestionEngine_Generate_SourceNotFound(t *testing.T) {
 	engine := SuggestionEngine{}
-	err := dot.ErrSourceNotFound{
+	err := domain.ErrSourceNotFound{
 		Path: "/packages/vim/vimrc",
 	}
 
@@ -270,7 +270,7 @@ func TestSuggestionEngine_Generate_SourceNotFound_WithContext(t *testing.T) {
 			},
 		},
 	}
-	err := dot.ErrSourceNotFound{
+	err := domain.ErrSourceNotFound{
 		Path: "/packages/vim/vimrc",
 	}
 
@@ -348,7 +348,7 @@ func TestSuggestionEngine_ContextInfluence(t *testing.T) {
 					PackageDir: "/custom/packages",
 				},
 			},
-			err: dot.ErrPackageNotFound{Package: "vim"},
+			err: domain.ErrPackageNotFound{Package: "vim"},
 			check: func(t *testing.T, suggestions []string) {
 				found := false
 				for _, s := range suggestions {
@@ -367,7 +367,7 @@ func TestSuggestionEngine_ContextInfluence(t *testing.T) {
 					DryRun: true,
 				},
 			},
-			err: dot.ErrExecutionFailed{
+			err: domain.ErrExecutionFailed{
 				Executed: 0,
 				Failed:   1,
 				Errors:   []error{errors.New("test")},

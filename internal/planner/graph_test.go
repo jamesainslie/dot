@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildGraph_Empty(t *testing.T) {
-	ops := []dot.Operation{}
+	ops := []domain.Operation{}
 
 	graph := BuildGraph(ops)
 
@@ -21,9 +21,9 @@ func TestBuildGraph_Empty(t *testing.T) {
 func TestBuildGraph_SingleOperation(t *testing.T) {
 	source := mustParsePath("/packages/package/file")
 	target := mustParsePath("/home/user/.config/file")
-	op := dot.NewLinkCreate("link1", source, target)
+	op := domain.NewLinkCreate("link1", source, target)
 
-	ops := []dot.Operation{op}
+	ops := []domain.Operation{op}
 	graph := BuildGraph(ops)
 
 	require.NotNil(t, graph)
@@ -32,18 +32,18 @@ func TestBuildGraph_SingleOperation(t *testing.T) {
 }
 
 func TestBuildGraph_IndependentOperations(t *testing.T) {
-	op1 := dot.NewLinkCreate(
+	op1 := domain.NewLinkCreate(
 		"link1",
 		mustParsePath("/packages/pkg/file1"),
 		mustParsePath("/home/user/file1"),
 	)
-	op2 := dot.NewLinkCreate(
+	op2 := domain.NewLinkCreate(
 		"link2",
 		mustParsePath("/packages/pkg/file2"),
 		mustParsePath("/home/user/file2"),
 	)
 
-	ops := []dot.Operation{op1, op2}
+	ops := []domain.Operation{op1, op2}
 	graph := BuildGraph(ops)
 
 	require.NotNil(t, graph)
@@ -61,9 +61,9 @@ func TestBuildGraph_IndependentOperations(t *testing.T) {
 func TestBuildGraph_LinearDependencies(t *testing.T) {
 	// Create a linear dependency chain: dirCreate -> linkCreate
 	dirPath := mustParsePath("/home/user/.config")
-	dirOp := dot.NewDirCreate("dir1", dirPath)
+	dirOp := domain.NewDirCreate("dir1", dirPath)
 
-	linkOp := dot.NewLinkCreate(
+	linkOp := domain.NewLinkCreate(
 		"link1",
 		mustParsePath("/packages/pkg/config"),
 		mustParsePath("/home/user/.config/app.conf"),
@@ -72,10 +72,10 @@ func TestBuildGraph_LinearDependencies(t *testing.T) {
 	// Mock linkOp to depend on dirOp
 	linkOpWithDep := &mockOperation{
 		op:   linkOp,
-		deps: []dot.Operation{dirOp},
+		deps: []domain.Operation{dirOp},
 	}
 
-	ops := []dot.Operation{linkOpWithDep, dirOp}
+	ops := []domain.Operation{linkOpWithDep, dirOp}
 	graph := BuildGraph(ops)
 
 	require.NotNil(t, graph)
@@ -93,21 +93,21 @@ func TestBuildGraph_LinearDependencies(t *testing.T) {
 
 func TestBuildGraph_DiamondPattern(t *testing.T) {
 	// Diamond dependency: A -> B, A -> C, B -> D, C -> D
-	opA := dot.NewDirCreate("dir1", mustParsePath("/home/user/.config"))
-	opB := dot.NewDirCreate("dir2", mustParsePath("/home/user/.config/app1"))
-	opC := dot.NewDirCreate("dir3", mustParsePath("/home/user/.config/app2"))
-	opD := dot.NewLinkCreate(
+	opA := domain.NewDirCreate("dir1", mustParsePath("/home/user/.config"))
+	opB := domain.NewDirCreate("dir2", mustParsePath("/home/user/.config/app1"))
+	opC := domain.NewDirCreate("dir3", mustParsePath("/home/user/.config/app2"))
+	opD := domain.NewLinkCreate(
 		"link1",
 		mustParsePath("/packages/pkg/file"),
 		mustParsePath("/home/user/.config/file"),
 	)
 
 	// Create mock operations with dependencies
-	opBWithDep := &mockOperation{op: opB, deps: []dot.Operation{opA}}
-	opCWithDep := &mockOperation{op: opC, deps: []dot.Operation{opA}}
-	opDWithDep := &mockOperation{op: opD, deps: []dot.Operation{opBWithDep, opCWithDep}}
+	opBWithDep := &mockOperation{op: opB, deps: []domain.Operation{opA}}
+	opCWithDep := &mockOperation{op: opC, deps: []domain.Operation{opA}}
+	opDWithDep := &mockOperation{op: opD, deps: []domain.Operation{opBWithDep, opCWithDep}}
 
-	ops := []dot.Operation{opDWithDep, opCWithDep, opBWithDep, opA}
+	ops := []domain.Operation{opDWithDep, opCWithDep, opBWithDep, opA}
 	graph := BuildGraph(ops)
 
 	require.NotNil(t, graph)
@@ -123,27 +123,27 @@ func TestBuildGraph_DiamondPattern(t *testing.T) {
 func TestGraph_Size(t *testing.T) {
 	tests := []struct {
 		name     string
-		ops      []dot.Operation
+		ops      []domain.Operation
 		expected int
 	}{
 		{
 			name:     "empty graph",
-			ops:      []dot.Operation{},
+			ops:      []domain.Operation{},
 			expected: 0,
 		},
 		{
 			name: "single operation",
-			ops: []dot.Operation{
-				dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
+			ops: []domain.Operation{
+				domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
 			},
 			expected: 1,
 		},
 		{
 			name: "multiple operations",
-			ops: []dot.Operation{
-				dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
-				dot.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d")),
-				dot.NewDirCreate("dir1", mustParsePath("/e")),
+			ops: []domain.Operation{
+				domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b")),
+				domain.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d")),
+				domain.NewDirCreate("dir1", mustParsePath("/e")),
 			},
 			expected: 3,
 		},
@@ -158,11 +158,11 @@ func TestGraph_Size(t *testing.T) {
 }
 
 func TestGraph_HasOperation(t *testing.T) {
-	op1 := dot.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
-	op2 := dot.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
-	op3 := dot.NewDirCreate("dir1", mustParsePath("/e"))
+	op1 := domain.NewLinkCreate("link1", mustParsePath("/a"), mustParsePath("/b"))
+	op2 := domain.NewLinkCreate("link2", mustParsePath("/c"), mustParsePath("/d"))
+	op3 := domain.NewDirCreate("dir1", mustParsePath("/e"))
 
-	graph := BuildGraph([]dot.Operation{op1, op2})
+	graph := BuildGraph([]domain.Operation{op1, op2})
 
 	assert.True(t, graph.HasOperation(op1))
 	assert.True(t, graph.HasOperation(op2))
@@ -171,15 +171,15 @@ func TestGraph_HasOperation(t *testing.T) {
 
 // mockOperation wraps an operation with custom dependencies for testing
 type mockOperation struct {
-	op   dot.Operation
-	deps []dot.Operation
+	op   domain.Operation
+	deps []domain.Operation
 }
 
-func (m *mockOperation) ID() dot.OperationID {
+func (m *mockOperation) ID() domain.OperationID {
 	return m.op.ID()
 }
 
-func (m *mockOperation) Kind() dot.OperationKind {
+func (m *mockOperation) Kind() domain.OperationKind {
 	return m.op.Kind()
 }
 
@@ -187,15 +187,15 @@ func (m *mockOperation) Validate() error {
 	return m.op.Validate()
 }
 
-func (m *mockOperation) Dependencies() []dot.Operation {
+func (m *mockOperation) Dependencies() []domain.Operation {
 	return m.deps
 }
 
-func (m *mockOperation) Execute(ctx context.Context, fs dot.FS) error {
+func (m *mockOperation) Execute(ctx context.Context, fs domain.FS) error {
 	return m.op.Execute(ctx, fs)
 }
 
-func (m *mockOperation) Rollback(ctx context.Context, fs dot.FS) error {
+func (m *mockOperation) Rollback(ctx context.Context, fs domain.FS) error {
 	return m.op.Rollback(ctx, fs)
 }
 
@@ -203,7 +203,7 @@ func (m *mockOperation) String() string {
 	return m.op.String()
 }
 
-func (m *mockOperation) Equals(other dot.Operation) bool {
+func (m *mockOperation) Equals(other domain.Operation) bool {
 	if otherMock, ok := other.(*mockOperation); ok {
 		return m.op.Equals(otherMock.op)
 	}
@@ -211,8 +211,8 @@ func (m *mockOperation) Equals(other dot.Operation) bool {
 }
 
 // mustParsePath creates a FilePath or panics (for test convenience)
-func mustParsePath(s string) dot.FilePath {
-	result := dot.NewFilePath(s)
+func mustParsePath(s string) domain.FilePath {
+	result := domain.NewFilePath(s)
 	if !result.IsOk() {
 		panic(result.UnwrapErr())
 	}

@@ -5,8 +5,8 @@ import (
 	"io/fs"
 	"testing"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/scanner"
-	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,20 +17,20 @@ type MockFS struct {
 	mock.Mock
 }
 
-func (m *MockFS) Stat(ctx context.Context, name string) (dot.FileInfo, error) {
+func (m *MockFS) Stat(ctx context.Context, name string) (domain.FileInfo, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(dot.FileInfo), args.Error(1)
+	return args.Get(0).(domain.FileInfo), args.Error(1)
 }
 
-func (m *MockFS) ReadDir(ctx context.Context, name string) ([]dot.DirEntry, error) {
+func (m *MockFS) ReadDir(ctx context.Context, name string) ([]domain.DirEntry, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]dot.DirEntry), args.Error(1)
+	return args.Get(0).([]domain.DirEntry), args.Error(1)
 }
 
 func (m *MockFS) ReadLink(ctx context.Context, name string) (string, error) {
@@ -100,7 +100,7 @@ func TestScanTree_SingleFile(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
 
-	path := dot.NewFilePath("/test/file.txt").Unwrap()
+	path := domain.NewFilePath("/test/file.txt").Unwrap()
 
 	// Mock: path is not a symlink, and is a file (not a directory)
 	mockFS.On("IsSymlink", ctx, "/test/file.txt").Return(false, nil)
@@ -111,7 +111,7 @@ func TestScanTree_SingleFile(t *testing.T) {
 
 	node := result.Unwrap()
 	assert.Equal(t, path, node.Path)
-	assert.Equal(t, dot.NodeFile, node.Type)
+	assert.Equal(t, domain.NodeFile, node.Type)
 	assert.Nil(t, node.Children)
 
 	mockFS.AssertExpectations(t)
@@ -121,19 +121,19 @@ func TestScanTree_EmptyDirectory(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
 
-	path := dot.NewFilePath("/test/dir").Unwrap()
+	path := domain.NewFilePath("/test/dir").Unwrap()
 
 	// Mock: path is not a symlink, is a directory with no children
 	mockFS.On("IsSymlink", ctx, "/test/dir").Return(false, nil)
 	mockFS.On("IsDir", ctx, "/test/dir").Return(true, nil)
-	mockFS.On("ReadDir", ctx, "/test/dir").Return([]dot.DirEntry{}, nil)
+	mockFS.On("ReadDir", ctx, "/test/dir").Return([]domain.DirEntry{}, nil)
 
 	result := scanner.ScanTree(ctx, mockFS, path)
 	require.True(t, result.IsOk())
 
 	node := result.Unwrap()
 	assert.Equal(t, path, node.Path)
-	assert.Equal(t, dot.NodeDir, node.Type)
+	assert.Equal(t, domain.NodeDir, node.Type)
 	assert.Empty(t, node.Children)
 
 	mockFS.AssertExpectations(t)
@@ -143,7 +143,7 @@ func TestScanTree_Symlink(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
 
-	path := dot.NewFilePath("/test/link").Unwrap()
+	path := domain.NewFilePath("/test/link").Unwrap()
 
 	// Mock: path is a symlink
 	mockFS.On("IsSymlink", ctx, "/test/link").Return(true, nil)
@@ -153,7 +153,7 @@ func TestScanTree_Symlink(t *testing.T) {
 
 	node := result.Unwrap()
 	assert.Equal(t, path, node.Path)
-	assert.Equal(t, dot.NodeSymlink, node.Type)
+	assert.Equal(t, domain.NodeSymlink, node.Type)
 	assert.Nil(t, node.Children)
 
 	mockFS.AssertExpectations(t)
@@ -163,7 +163,7 @@ func TestScanTree_Error(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
 
-	path := dot.NewFilePath("/test/error").Unwrap()
+	path := domain.NewFilePath("/test/error").Unwrap()
 
 	// Mock: IsSymlink returns an error
 	mockFS.On("IsSymlink", ctx, "/test/error").Return(false, assert.AnError)
@@ -176,24 +176,24 @@ func TestScanTree_Error(t *testing.T) {
 
 func TestWalk(t *testing.T) {
 	// Build a simple tree: dir -> file1, file2
-	root := dot.Node{
-		Path: dot.NewFilePath("/test").Unwrap(),
-		Type: dot.NodeDir,
-		Children: []dot.Node{
+	root := domain.Node{
+		Path: domain.NewFilePath("/test").Unwrap(),
+		Type: domain.NodeDir,
+		Children: []domain.Node{
 			{
-				Path: dot.NewFilePath("/test/file1").Unwrap(),
-				Type: dot.NodeFile,
+				Path: domain.NewFilePath("/test/file1").Unwrap(),
+				Type: domain.NodeFile,
 			},
 			{
-				Path: dot.NewFilePath("/test/file2").Unwrap(),
-				Type: dot.NodeFile,
+				Path: domain.NewFilePath("/test/file2").Unwrap(),
+				Type: domain.NodeFile,
 			},
 		},
 	}
 
 	// Collect all visited paths
 	var visited []string
-	err := scanner.Walk(root, func(n dot.Node) error {
+	err := scanner.Walk(root, func(n domain.Node) error {
 		visited = append(visited, n.Path.String())
 		return nil
 	})
@@ -206,19 +206,19 @@ func TestWalk(t *testing.T) {
 }
 
 func TestWalk_ErrorStopsTraversal(t *testing.T) {
-	root := dot.Node{
-		Path: dot.NewFilePath("/test").Unwrap(),
-		Type: dot.NodeDir,
-		Children: []dot.Node{
+	root := domain.Node{
+		Path: domain.NewFilePath("/test").Unwrap(),
+		Type: domain.NodeDir,
+		Children: []domain.Node{
 			{
-				Path: dot.NewFilePath("/test/file1").Unwrap(),
-				Type: dot.NodeFile,
+				Path: domain.NewFilePath("/test/file1").Unwrap(),
+				Type: domain.NodeFile,
 			},
 		},
 	}
 
 	// Return error on first visit
-	err := scanner.Walk(root, func(n dot.Node) error {
+	err := scanner.Walk(root, func(n domain.Node) error {
 		return assert.AnError
 	})
 
@@ -226,21 +226,21 @@ func TestWalk_ErrorStopsTraversal(t *testing.T) {
 }
 
 func TestCollectFiles(t *testing.T) {
-	root := dot.Node{
-		Path: dot.NewFilePath("/test").Unwrap(),
-		Type: dot.NodeDir,
-		Children: []dot.Node{
+	root := domain.Node{
+		Path: domain.NewFilePath("/test").Unwrap(),
+		Type: domain.NodeDir,
+		Children: []domain.Node{
 			{
-				Path: dot.NewFilePath("/test/file1.txt").Unwrap(),
-				Type: dot.NodeFile,
+				Path: domain.NewFilePath("/test/file1.txt").Unwrap(),
+				Type: domain.NodeFile,
 			},
 			{
-				Path: dot.NewFilePath("/test/subdir").Unwrap(),
-				Type: dot.NodeDir,
-				Children: []dot.Node{
+				Path: domain.NewFilePath("/test/subdir").Unwrap(),
+				Type: domain.NodeDir,
+				Children: []domain.Node{
 					{
-						Path: dot.NewFilePath("/test/subdir/file2.txt").Unwrap(),
-						Type: dot.NodeFile,
+						Path: domain.NewFilePath("/test/subdir/file2.txt").Unwrap(),
+						Type: domain.NodeFile,
 					},
 				},
 			},
@@ -260,21 +260,21 @@ func TestCollectFiles(t *testing.T) {
 }
 
 func TestCountNodes(t *testing.T) {
-	root := dot.Node{
-		Path: dot.NewFilePath("/test").Unwrap(),
-		Type: dot.NodeDir,
-		Children: []dot.Node{
+	root := domain.Node{
+		Path: domain.NewFilePath("/test").Unwrap(),
+		Type: domain.NodeDir,
+		Children: []domain.Node{
 			{
-				Path: dot.NewFilePath("/test/file1").Unwrap(),
-				Type: dot.NodeFile,
+				Path: domain.NewFilePath("/test/file1").Unwrap(),
+				Type: domain.NodeFile,
 			},
 			{
-				Path: dot.NewFilePath("/test/dir").Unwrap(),
-				Type: dot.NodeDir,
-				Children: []dot.Node{
+				Path: domain.NewFilePath("/test/dir").Unwrap(),
+				Type: domain.NodeDir,
+				Children: []domain.Node{
 					{
-						Path: dot.NewFilePath("/test/dir/file2").Unwrap(),
-						Type: dot.NodeFile,
+						Path: domain.NewFilePath("/test/dir/file2").Unwrap(),
+						Type: domain.NodeFile,
 					},
 				},
 			},
@@ -318,8 +318,8 @@ func TestRelativePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			base := dot.NewFilePath(tt.base).Unwrap()
-			target := dot.NewFilePath(tt.target).Unwrap()
+			base := domain.NewFilePath(tt.base).Unwrap()
+			target := domain.NewFilePath(tt.target).Unwrap()
 
 			result := scanner.RelativePath(base, target)
 

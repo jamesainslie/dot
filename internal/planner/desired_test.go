@@ -123,7 +123,7 @@ func TestComputeDesiredState_NestedFiles(t *testing.T) {
 
 func TestLinkSpec(t *testing.T) {
 	source := domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 
 	spec := planner.LinkSpec{
 		Source: source,
@@ -146,7 +146,7 @@ func TestDirSpec(t *testing.T) {
 
 func TestDesiredState(t *testing.T) {
 	source := domain.NewFilePath("/home/user/.dotfiles/vim/vimrc").Unwrap()
-	target := domain.NewFilePath("/home/user/.vimrc").Unwrap()
+	target := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dirPath := domain.NewFilePath("/home/user/.vim").Unwrap()
 
 	state := planner.DesiredState{
@@ -204,7 +204,7 @@ func TestPlanResult(t *testing.T) {
 
 func TestComputeOperationsFromDesiredState(t *testing.T) {
 	sourcePath := domain.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
-	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
+	targetPath := domain.NewTargetPath("/home/user/.bashrc").Unwrap()
 
 	desired := planner.DesiredState{
 		Links: map[string]planner.LinkSpec{
@@ -228,7 +228,7 @@ func TestComputeOperationsFromDesiredState(t *testing.T) {
 func TestComputeOperationsFromDesiredStateWithDirs(t *testing.T) {
 	dirPath := domain.NewFilePath("/home/user/.config").Unwrap()
 	sourcePath := domain.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
-	targetPath := domain.NewFilePath("/home/user/.config/bash").Unwrap()
+	targetPath := domain.NewTargetPath("/home/user/.config/bash").Unwrap()
 
 	desired := planner.DesiredState{
 		Links: map[string]planner.LinkSpec{
@@ -267,8 +267,10 @@ func TestComputeDesiredStateWithMultipleFiles(t *testing.T) {
 	// Create package with multiple files
 	pkgPath := domain.NewPackagePath("/packages/bash").Unwrap()
 	pkgRoot := domain.NewFilePath("/packages/bash").Unwrap()
-	file1 := pkgPath.Join("dot-bashrc")
-	file2 := pkgPath.Join("dot-profile")
+	file1Path := pkgPath.Join("dot-bashrc")
+	file2Path := pkgPath.Join("dot-profile")
+	file1 := domain.NewFilePath(file1Path.String()).Unwrap()
+	file2 := domain.NewFilePath(file2Path.String()).Unwrap()
 
 	tree := &domain.Node{
 		Path: pkgRoot,

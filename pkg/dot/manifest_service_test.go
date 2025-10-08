@@ -64,7 +64,7 @@ func TestManifestService_Update(t *testing.T) {
 
 		// Create plan
 		srcPath := NewFilePath(packageDir + "/test-pkg/dot-vimrc")
-		tgtPath := NewFilePath(targetDir + "/.vimrc")
+		tgtPath := NewTargetPath(targetDir + "/.vimrc")
 		require.True(t, srcPath.IsOk())
 		require.True(t, tgtPath.IsOk())
 

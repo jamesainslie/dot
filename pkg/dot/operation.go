@@ -42,12 +42,17 @@ type FileMove = domain.FileMove
 type FileBackup = domain.FileBackup
 
 // NewLinkCreate creates a new LinkCreate operation.
-func NewLinkCreate(id OperationID, source, target FilePath) LinkCreate {
+func NewLinkCreate(id OperationID, source FilePath, target TargetPath) LinkCreate {
 	return domain.NewLinkCreate(id, source, target)
 }
 
+// NewFileMove creates a new FileMove operation.
+func NewFileMove(id OperationID, source TargetPath, dest FilePath) FileMove {
+	return domain.NewFileMove(id, source, dest)
+}
+
 // NewLinkDelete creates a new LinkDelete operation.
-func NewLinkDelete(id OperationID, target FilePath) LinkDelete {
+func NewLinkDelete(id OperationID, target TargetPath) LinkDelete {
 	return domain.NewLinkDelete(id, target)
 }
 
@@ -59,11 +64,6 @@ func NewDirCreate(id OperationID, path FilePath) DirCreate {
 // NewDirDelete creates a new DirDelete operation.
 func NewDirDelete(id OperationID, path FilePath) DirDelete {
 	return domain.NewDirDelete(id, path)
-}
-
-// NewFileMove creates a new FileMove operation.
-func NewFileMove(id OperationID, source, dest FilePath) FileMove {
-	return domain.NewFileMove(id, source, dest)
 }
 
 // NewFileBackup creates a new FileBackup operation.

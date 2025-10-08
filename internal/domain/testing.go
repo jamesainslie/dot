@@ -9,3 +9,13 @@ func MustParsePath(s string) FilePath {
 	}
 	return result.Unwrap()
 }
+
+// MustParseTargetPath creates a TargetPath from a string, panicking on error.
+// This function is intended for use in tests only and should not be used in production code.
+func MustParseTargetPath(s string) TargetPath {
+	result := NewTargetPath(s)
+	if result.IsErr() {
+		panic(result.UnwrapErr())
+	}
+	return result.Unwrap()
+}

@@ -8,29 +8,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Bug Fixes
-- **client:** populate packages from plan when empty in updateManifest
 - **client:** properly propagate manifest errors in Doctor
-- **hooks:** check overall project coverage to match CI
-- **hooks:** show test output in pre-commit hook
+- **client:** populate packages from plan when empty in updateManifest
+- **config:** add missing KeyDoctorCheckPermissions constant
+- **config:** honor MarshalOptions.Indent in TOML strategy
+- **doctor:** detect and report permission errors on link targets
+- **domain:** make path validator tests OS-aware for Windows
 - **hooks:** show linting output in pre-commit hook
+- **hooks:** show test output in pre-commit hook
+- **hooks:** check overall project coverage to match CI
+- **manage:** implement proper unmanage in planFullRemanage
+- **manifest:** propagate non-not-found errors in Update
 - **path:** add method forwarding to Path wrapper type
+- **status:** propagate non-not-found manifest errors
 - **test:** rename ExecutionFailure test to match actual behavior
 - **test:** strengthen PackageOperations assertion in exhaustive test
+- **test:** skip file mode test on Windows
 - **test:** correct comment in PlanOperationsEmpty test
+- **test:** add proper error handling to CLI integration tests
+- **test:** add Windows build constraints to Unix-specific tests
+- **test:** add Windows compatibility to testutil symlink tests
 - **test:** correct mock variadic parameter handling in ports_test
 
 ### Code Refactoring
 - **api:** replace Client interface with concrete struct
-- **domain:** format code and fix linter issues
+- **config:** migrate writer to use strategy pattern
+- **config:** use permission constants
 - **domain:** clean up temporary migration scripts
 - **domain:** complete internal package migration and simplify pkg/dot
-- **domain:** update all internal package imports to use internal/domain
-- **domain:** move all remaining domain types to internal/domain
-- **domain:** move Path and errors types to internal/domain
-- **domain:** move Result monad to internal/domain
 - **domain:** create internal/domain package structure
+- **domain:** move Result monad to internal/domain
+- **domain:** move Path and errors types to internal/domain
+- **domain:** use validators in path constructors
+- **domain:** move MustParsePath to testing.go
+- **domain:** improve TraversalFreeValidator implementation
+- **domain:** move all remaining domain types to internal/domain
+- **domain:** update all internal package imports to use internal/domain
+- **domain:** use TargetPath for operation targets
+- **domain:** format code and fix linter issues
 - **hooks:** eliminate duplicate test run in pre-commit
 - **path:** remove Path generic wrapper to eliminate code smell
+- **pkg:** simplify scanForOrphanedLinks method
+- **pkg:** convert Client to facade pattern
+- **pkg:** extract helper methods in DoctorService
+- **pkg:** simplify DoctorWithScan method
+- **test:** improve benchmark tests with proper error handling
+
+### Features
+- **config:** implement TOML marshal strategy
+- **config:** implement JSON marshal strategy
+- **config:** implement YAML marshal strategy
+- **domain:** add chainable Result methods
+- **pkg:** extract DoctorService from Client
+- **pkg:** extract AdoptService from Client
+- **pkg:** extract StatusService from Client
+- **pkg:** extract UnmanageService from Client
+- **pkg:** extract ManageService from Client
+- **pkg:** extract ManifestService from Client
 
 
 ## v0.1.0 - 2025-10-07

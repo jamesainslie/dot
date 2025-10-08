@@ -6,9 +6,17 @@ set -e
 
 echo "Running pre-commit checks..."
 
-# Run tests with coverage
-echo "→ Checking test coverage..."
-go test ./... -coverprofile=coverage.out -covermode=atomic > /dev/null 2>&1
+# Run tests with coverage (also validates tests pass)
+echo "→ Running tests with coverage..."
+if ! go test ./... -coverprofile=coverage.out -covermode=atomic > /dev/null 2>&1; then
+    echo ""
+    echo "❌ COMMIT REJECTED: Tests failed"
+    echo ""
+    echo "Fix test failures before committing."
+    echo "Run: go test ./..."
+    rm -f coverage.out
+    exit 1
+fi
 
 # Extract coverage percentage
 COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
@@ -27,12 +35,12 @@ if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
     echo "   Shortfall: $(echo "$THRESHOLD - $COVERAGE" | bc)%"
     echo ""
     echo "Please add tests to reach 80% coverage before committing."
-    echo "Run: go test ./pkg/dot -coverprofile=coverage.out && go tool cover -html=coverage.out"
+    echo "Run: go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out"
     rm -f coverage.out
     exit 1
 fi
 
-echo "✅ Coverage check passed: ${COVERAGE}% >= ${THRESHOLD}%"
+echo "✅ Tests passed with ${COVERAGE}% coverage"
 
 # Run linters
 echo "→ Running linters..."
@@ -46,19 +54,6 @@ if ! make lint; then
 fi
 
 echo "✅ Linting passed"
-
-# Run all tests
-echo "→ Running full test suite..."
-if ! go test ./...; then
-    echo ""
-    echo "❌ COMMIT REJECTED: Tests failed"
-    echo ""
-    echo "Fix all test failures shown above before committing."
-    rm -f coverage.out
-    exit 1
-fi
-
-echo "✅ All tests passed"
 
 # Cleanup
 rm -f coverage.out

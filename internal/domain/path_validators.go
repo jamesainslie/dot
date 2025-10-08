@@ -40,20 +40,19 @@ type TraversalFreeValidator struct{}
 
 // Validate checks if the path is free of traversal sequences and in canonical form.
 func (v *TraversalFreeValidator) Validate(path string) error {
-	// Empty path handled by NonEmptyPathValidator
-	if path == "" {
-		return ErrInvalidPath{Path: path, Reason: "path contains traversal sequences"}
+	// Check for explicit ".." segments (segment-aware)
+	normalizedPath := filepath.ToSlash(path)
+	segments := strings.Split(normalizedPath, "/")
+	for _, segment := range segments {
+		if segment == ".." {
+			return ErrInvalidPath{Path: path, Reason: "path contains traversal sequences"}
+		}
 	}
 
-	// Check for explicit ".." references
-	if strings.Contains(path, "..") {
-		return ErrInvalidPath{Path: path, Reason: "path contains traversal sequences"}
-	}
-
-	// Verify path doesn't change when cleaned (detects //, /./, etc.)
+	// Verify path is in canonical form (detects //, /./, etc.)
 	cleaned := filepath.Clean(path)
 	if cleaned != path {
-		return ErrInvalidPath{Path: path, Reason: "path contains traversal sequences"}
+		return ErrInvalidPath{Path: path, Reason: "path is not canonical"}
 	}
 
 	return nil

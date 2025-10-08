@@ -112,23 +112,23 @@ type MockLogger struct {
 }
 
 func (m *MockLogger) Debug(ctx context.Context, msg string, args ...any) {
-	m.Called(ctx, msg, args)
+	m.Called(append([]any{ctx, msg}, args...)...)
 }
 
 func (m *MockLogger) Info(ctx context.Context, msg string, args ...any) {
-	m.Called(ctx, msg, args)
+	m.Called(append([]any{ctx, msg}, args...)...)
 }
 
 func (m *MockLogger) Warn(ctx context.Context, msg string, args ...any) {
-	m.Called(ctx, msg, args)
+	m.Called(append([]any{ctx, msg}, args...)...)
 }
 
 func (m *MockLogger) Error(ctx context.Context, msg string, args ...any) {
-	m.Called(ctx, msg, args)
+	m.Called(append([]any{ctx, msg}, args...)...)
 }
 
 func (m *MockLogger) With(args ...any) domain.Logger {
-	callArgs := m.Called(args)
+	callArgs := m.Called(args...)
 	return callArgs.Get(0).(domain.Logger)
 }
 
@@ -136,7 +136,7 @@ func TestMockLogger(t *testing.T) {
 	ctx := context.Background()
 	mockLogger := new(MockLogger)
 
-	mockLogger.On("Info", ctx, "test message", mock.Anything).Return()
+	mockLogger.On("Info", ctx, "test message", "key", "value").Return()
 	mockLogger.Info(ctx, "test message", "key", "value")
 	mockLogger.AssertExpectations(t)
 }
@@ -147,7 +147,11 @@ type MockTracer struct {
 }
 
 func (m *MockTracer) Start(ctx context.Context, name string, opts ...domain.SpanOption) (context.Context, domain.Span) {
-	args := m.Called(ctx, name, opts)
+	optsAsAny := make([]any, len(opts))
+	for i, opt := range opts {
+		optsAsAny[i] = opt
+	}
+	args := m.Called(append([]any{ctx, name}, optsAsAny...)...)
 	return args.Get(0).(context.Context), args.Get(1).(domain.Span)
 }
 
@@ -165,7 +169,11 @@ func (m *MockSpan) RecordError(err error) {
 }
 
 func (m *MockSpan) SetAttributes(attrs ...domain.Attribute) {
-	m.Called(attrs)
+	attrsAsAny := make([]any, len(attrs))
+	for i, attr := range attrs {
+		attrsAsAny[i] = attr
+	}
+	m.Called(attrsAsAny...)
 }
 
 func TestMockTracer(t *testing.T) {
@@ -191,17 +199,29 @@ type MockMetrics struct {
 }
 
 func (m *MockMetrics) Counter(name string, labels ...string) domain.Counter {
-	args := m.Called(name, labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	args := m.Called(append([]any{name}, labelsAsAny...)...)
 	return args.Get(0).(domain.Counter)
 }
 
 func (m *MockMetrics) Histogram(name string, labels ...string) domain.Histogram {
-	args := m.Called(name, labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	args := m.Called(append([]any{name}, labelsAsAny...)...)
 	return args.Get(0).(domain.Histogram)
 }
 
 func (m *MockMetrics) Gauge(name string, labels ...string) domain.Gauge {
-	args := m.Called(name, labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	args := m.Called(append([]any{name}, labelsAsAny...)...)
 	return args.Get(0).(domain.Gauge)
 }
 
@@ -211,11 +231,19 @@ type MockCounter struct {
 }
 
 func (m *MockCounter) Inc(labels ...string) {
-	m.Called(labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	m.Called(labelsAsAny...)
 }
 
 func (m *MockCounter) Add(delta float64, labels ...string) {
-	m.Called(delta, labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	m.Called(append([]any{delta}, labelsAsAny...)...)
 }
 
 // MockHistogram is a mock implementation of the Histogram interface.
@@ -224,7 +252,11 @@ type MockHistogram struct {
 }
 
 func (m *MockHistogram) Observe(value float64, labels ...string) {
-	m.Called(value, labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	m.Called(append([]any{value}, labelsAsAny...)...)
 }
 
 // MockGauge is a mock implementation of the Gauge interface.
@@ -233,15 +265,27 @@ type MockGauge struct {
 }
 
 func (m *MockGauge) Set(value float64, labels ...string) {
-	m.Called(value, labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	m.Called(append([]any{value}, labelsAsAny...)...)
 }
 
 func (m *MockGauge) Inc(labels ...string) {
-	m.Called(labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	m.Called(labelsAsAny...)
 }
 
 func (m *MockGauge) Dec(labels ...string) {
-	m.Called(labels)
+	labelsAsAny := make([]any, len(labels))
+	for i, label := range labels {
+		labelsAsAny[i] = label
+	}
+	m.Called(labelsAsAny...)
 }
 
 func TestMockMetrics(t *testing.T) {

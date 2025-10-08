@@ -3,6 +3,7 @@ package testutil
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,6 +41,10 @@ func TestFixtureBuilder_Package(t *testing.T) {
 }
 
 func TestFixtureBuilder_FileTree(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require elevated privileges on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	fb := NewFixtureBuilder(t, tmpDir)
 

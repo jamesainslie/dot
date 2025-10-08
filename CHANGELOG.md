@@ -20,6 +20,7 @@
 - add Phase 24 complete summary
 - **architecture:** update for service-based architecture
 - **changelog:** update for v0.1.1 release
+- **changelog:** update for v0.1.1 release
 - **navigation:** add root README links to all child documentation
 - **phase-12b:** update progress doc to reflect completion
 - **phase-12b:** add executive summary of Phase 12b completion
@@ -40,6 +41,7 @@
 - **pkg:** extract UnmanageService from Client
 - **pkg:** extract ManageService from Client
 - **pkg:** extract ManifestService from Client
+- **release:** automate release workflow with integrated changelog generation
 
 ### Fix
 - **client:** properly propagate manifest errors in Doctor

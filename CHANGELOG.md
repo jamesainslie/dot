@@ -2,6 +2,44 @@
 ## [Unreleased]
 
 
+<a name="v0.2.0"></a>
+## [v0.2.0] - 2025-10-08
+### Docs
+- **changelog:** update for v0.2.0 release
+- **developer:** add a mascot..because gopher
+- **packages:** update user documentation for package name mapping
+
+### Feat
+- **cli:** display usage help on invalid flags and arguments
+- **packages:** enable package name to target directory mapping
+
+### Test
+- **cli:** complete runtime error test assertions
+
+### Pull Requests
+- Merge pull request [#26](https://github.com/jamesainslie/dot/issues/26) from jamesainslie/pre-release-niggles
+
+### BREAKING CHANGE
+
+Package structure requirements changed.
+
+Before (v0.1.x):
+  dot-gnupg/
+  ├── common.conf         → ~/common.conf
+  └── public-keys.d/      → ~/public-keys.d/
+
+After (v0.2.0):
+  dot-gnupg/
+  ├── common.conf         → ~/.gnupg/common.conf
+  └── public-keys.d/      → ~/.gnupg/public-keys.d/
+
+Migration: Restructure packages to remove redundant nesting, or
+opt-out by setting dotfile.package_name_mapping: false in config.
+
+Rationale: Project is pre-1.0 (v0.1.1), establishing intuitive
+design before API stability commitment in 1.0.0 release.
+
+
 <a name="v0.1.1"></a>
 ## [v0.1.1] - 2025-10-08
 ### Chore
@@ -360,5 +398,6 @@ should not exist since it was an internal package.
 - Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
 
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/jamesainslie/dot/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/jamesainslie/dot/compare/v0.1.0...v0.1.1

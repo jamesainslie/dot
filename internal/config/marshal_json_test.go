@@ -1,10 +1,9 @@
-package marshal
+package config
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jamesainslie/dot/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +15,7 @@ func TestJSONStrategy_Name(t *testing.T) {
 
 func TestJSONStrategy_Marshal(t *testing.T) {
 	t.Run("marshals configuration to JSON", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		cfg.Logging.Level = "DEBUG"
 		cfg.Output.Verbosity = 2
 
@@ -29,7 +28,7 @@ func TestJSONStrategy_Marshal(t *testing.T) {
 		assert.NotEmpty(t, data)
 
 		// Verify JSON is valid and contains expected values
-		var decoded config.ExtendedConfig
+		var decoded ExtendedConfig
 		err = json.Unmarshal(data, &decoded)
 		require.NoError(t, err)
 		assert.Equal(t, "DEBUG", decoded.Logging.Level)
@@ -48,7 +47,7 @@ func TestJSONStrategy_Marshal(t *testing.T) {
 	})
 
 	t.Run("respects indent option", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewJSONStrategy()
 
 		// Test with custom indent
@@ -64,7 +63,7 @@ func TestJSONStrategy_Marshal(t *testing.T) {
 	})
 
 	t.Run("handles all config sections", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewJSONStrategy()
 		opts := DefaultMarshalOptions()
 
@@ -138,7 +137,7 @@ func TestJSONStrategy_Unmarshal(t *testing.T) {
 
 func TestJSONStrategy_RoundTrip(t *testing.T) {
 	t.Run("marshal then unmarshal preserves data", func(t *testing.T) {
-		original := config.DefaultExtended()
+		original := DefaultExtended()
 		original.Logging.Level = "WARN"
 		original.Output.Verbosity = 2
 		original.Symlinks.Folding = false
@@ -165,7 +164,7 @@ func TestJSONStrategy_RoundTrip(t *testing.T) {
 
 func TestJSONStrategy_FormatValidation(t *testing.T) {
 	t.Run("output is valid JSON", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewJSONStrategy()
 		opts := DefaultMarshalOptions()
 
@@ -179,7 +178,7 @@ func TestJSONStrategy_FormatValidation(t *testing.T) {
 	})
 
 	t.Run("output is pretty-printed", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewJSONStrategy()
 		opts := DefaultMarshalOptions()
 

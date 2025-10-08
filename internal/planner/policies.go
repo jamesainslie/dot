@@ -1,7 +1,7 @@
 package planner
 
 import (
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // ResolutionPolicy defines how to handle conflicts
@@ -63,7 +63,7 @@ func applyFailPolicy(c Conflict) ResolutionOutcome {
 }
 
 // applySkipPolicy skips operation with warning
-func applySkipPolicy(op dot.LinkCreate, c Conflict) ResolutionOutcome {
+func applySkipPolicy(op domain.LinkCreate, c Conflict) ResolutionOutcome {
 	warning := Warning{
 		Message:  "Skipping due to conflict: " + op.Target.String(),
 		Severity: WarnInfo,

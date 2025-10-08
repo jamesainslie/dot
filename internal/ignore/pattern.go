@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // Pattern represents a compiled pattern for matching paths.
@@ -18,27 +18,27 @@ type Pattern struct {
 
 // NewPattern creates a pattern from a glob pattern.
 // Converts glob syntax to regex for matching.
-func NewPattern(glob string) dot.Result[*Pattern] {
+func NewPattern(glob string) domain.Result[*Pattern] {
 	regex := GlobToRegex(glob)
 	compiled, err := regexp.Compile(regex)
 	if err != nil {
-		return dot.Err[*Pattern](fmt.Errorf("compile pattern %q: %w", glob, err))
+		return domain.Err[*Pattern](fmt.Errorf("compile pattern %q: %w", glob, err))
 	}
 
-	return dot.Ok(&Pattern{
+	return domain.Ok(&Pattern{
 		original: glob, // Store original glob, not regex
 		regex:    compiled,
 	})
 }
 
 // NewPatternFromRegex creates a pattern from a regex string.
-func NewPatternFromRegex(regex string) dot.Result[*Pattern] {
+func NewPatternFromRegex(regex string) domain.Result[*Pattern] {
 	compiled, err := regexp.Compile(regex)
 	if err != nil {
-		return dot.Err[*Pattern](fmt.Errorf("compile pattern: %w", err))
+		return domain.Err[*Pattern](fmt.Errorf("compile pattern: %w", err))
 	}
 
-	return dot.Ok(&Pattern{
+	return domain.Ok(&Pattern{
 		original: regex,
 		regex:    compiled,
 	})

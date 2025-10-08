@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jamesainslie/dot/internal/adapters"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,14 +49,14 @@ func TestExecute_EmptyPlan(t *testing.T) {
 	})
 
 	// Empty plan
-	plan := dot.Plan{
-		Operations: []dot.Operation{},
+	plan := domain.Plan{
+		Operations: []domain.Operation{},
 	}
 
 	result := exec.Execute(ctx, plan)
 
 	require.True(t, result.IsErr())
-	require.IsType(t, dot.ErrEmptyPlan{}, result.UnwrapErr())
+	require.IsType(t, domain.ErrEmptyPlan{}, result.UnwrapErr())
 }
 
 func TestExecute_SingleOperation_Success(t *testing.T) {
@@ -69,17 +69,17 @@ func TestExecute_SingleOperation_Success(t *testing.T) {
 	})
 
 	// Create source file with parent directories
-	source := dot.MustParsePath("/packages/pkg/file")
-	target := dot.MustParsePath("/home/file")
+	source := domain.MustParsePath("/packages/pkg/file")
+	target := domain.MustParsePath("/home/file")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source.String(), []byte("content"), 0644))
 
 	// Create operation
-	op := dot.NewLinkCreate("link1", source, target)
+	op := domain.NewLinkCreate("link1", source, target)
 
-	plan := dot.Plan{
-		Operations: []dot.Operation{op},
+	plan := domain.Plan{
+		Operations: []domain.Operation{op},
 	}
 
 	result := exec.Execute(ctx, plan)
@@ -101,12 +101,12 @@ func TestExecute_OperationFailure(t *testing.T) {
 	})
 
 	// Create operation that will fail (source doesn't exist)
-	source := dot.MustParsePath("/nonexistent")
-	target := dot.MustParsePath("/home/file")
-	op := dot.NewLinkCreate("link1", source, target)
+	source := domain.MustParsePath("/nonexistent")
+	target := domain.MustParsePath("/home/file")
+	op := domain.NewLinkCreate("link1", source, target)
 
-	plan := dot.Plan{
-		Operations: []dot.Operation{op},
+	plan := domain.Plan{
+		Operations: []domain.Operation{op},
 	}
 
 	result := exec.Execute(ctx, plan)
@@ -124,20 +124,20 @@ func TestExecute_MultipleOperations_PartialFailure(t *testing.T) {
 	})
 
 	// First operation succeeds
-	source1 := dot.MustParsePath("/packages/pkg/file1")
-	target1 := dot.MustParsePath("/home/file1")
+	source1 := domain.MustParsePath("/packages/pkg/file1")
+	target1 := domain.MustParsePath("/home/file1")
 	require.NoError(t, fs.MkdirAll(ctx, "/packages/pkg", 0755))
 	require.NoError(t, fs.MkdirAll(ctx, "/home", 0755))
 	require.NoError(t, fs.WriteFile(ctx, source1.String(), []byte("content1"), 0644))
-	op1 := dot.NewLinkCreate("link1", source1, target1)
+	op1 := domain.NewLinkCreate("link1", source1, target1)
 
 	// Second operation fails (source doesn't exist)
-	source2 := dot.MustParsePath("/nonexistent")
-	target2 := dot.MustParsePath("/home/file2")
-	op2 := dot.NewLinkCreate("link2", source2, target2)
+	source2 := domain.MustParsePath("/nonexistent")
+	target2 := domain.MustParsePath("/home/file2")
+	op2 := domain.NewLinkCreate("link2", source2, target2)
 
-	plan := dot.Plan{
-		Operations: []dot.Operation{op1, op2},
+	plan := domain.Plan{
+		Operations: []domain.Operation{op1, op2},
 	}
 
 	result := exec.Execute(ctx, plan)

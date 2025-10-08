@@ -5,6 +5,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
@@ -28,14 +29,14 @@ func (r *YAMLRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 }
 
 // RenderDiagnostics renders diagnostic report as YAML.
-func (r *YAMLRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error {
+func (r *YAMLRenderer) RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error {
 	encoder := r.newEncoder(w)
 	defer encoder.Close()
 	return encoder.Encode(report)
 }
 
 // RenderPlan renders an execution plan as YAML.
-func (r *YAMLRenderer) RenderPlan(w io.Writer, plan dot.Plan) error {
+func (r *YAMLRenderer) RenderPlan(w io.Writer, plan domain.Plan) error {
 	encoder := r.newEncoder(w)
 	defer encoder.Close()
 	return encoder.Encode(plan)

@@ -4,17 +4,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // InstrumentedExecutor wraps Executor with metrics collection.
 type InstrumentedExecutor struct {
 	inner   *Executor
-	metrics dot.Metrics
+	metrics domain.Metrics
 }
 
 // NewInstrumented creates an executor with metrics instrumentation.
-func NewInstrumented(inner *Executor, metrics dot.Metrics) *InstrumentedExecutor {
+func NewInstrumented(inner *Executor, metrics domain.Metrics) *InstrumentedExecutor {
 	return &InstrumentedExecutor{
 		inner:   inner,
 		metrics: metrics,
@@ -22,7 +22,7 @@ func NewInstrumented(inner *Executor, metrics dot.Metrics) *InstrumentedExecutor
 }
 
 // Execute executes a plan with metrics collection.
-func (e *InstrumentedExecutor) Execute(ctx context.Context, plan dot.Plan) dot.Result[ExecutionResult] {
+func (e *InstrumentedExecutor) Execute(ctx context.Context, plan domain.Plan) domain.Result[ExecutionResult] {
 	start := time.Now()
 
 	e.metrics.Counter("executor.executions.total").Inc()

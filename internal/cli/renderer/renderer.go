@@ -10,14 +10,15 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
 // Renderer defines the interface for output formatting.
 type Renderer interface {
 	RenderStatus(w io.Writer, status dot.Status) error
-	RenderDiagnostics(w io.Writer, report dot.DiagnosticReport) error
-	RenderPlan(w io.Writer, plan dot.Plan) error
+	RenderDiagnostics(w io.Writer, report domain.DiagnosticReport) error
+	RenderPlan(w io.Writer, plan domain.Plan) error
 }
 
 // ColorScheme defines semantic colors for terminal output.
@@ -248,19 +249,19 @@ func wrapText(text string, width int) string {
 // normalizeOperation dereferences pointer operations to their value types.
 // This allows switching on a single set of type cases instead of duplicating
 // for both value and pointer variants.
-func normalizeOperation(op dot.Operation) dot.Operation {
+func normalizeOperation(op domain.Operation) domain.Operation {
 	switch typed := op.(type) {
-	case *dot.DirCreate:
+	case *domain.DirCreate:
 		return *typed
-	case *dot.LinkCreate:
+	case *domain.LinkCreate:
 		return *typed
-	case *dot.FileMove:
+	case *domain.FileMove:
 		return *typed
-	case *dot.FileBackup:
+	case *domain.FileBackup:
 		return *typed
-	case *dot.DirDelete:
+	case *domain.DirDelete:
 		return *typed
-	case *dot.LinkDelete:
+	case *domain.LinkDelete:
 		return *typed
 	default:
 		// Return as-is (already a value type or unknown)

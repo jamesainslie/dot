@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -121,11 +121,11 @@ func TestPrinter_PrintSummary_Quiet(t *testing.T) {
 
 func TestPrinter_PrintDryRunSummary(t *testing.T) {
 	printer := NewPrinter(false, 0, false)
-	plan := dot.Plan{
-		Operations: []dot.Operation{
-			dot.LinkCreate{
-				Source: dot.MustParsePath("/src"),
-				Target: dot.MustParsePath("/tgt"),
+	plan := domain.Plan{
+		Operations: []domain.Operation{
+			domain.LinkCreate{
+				Source: domain.MustParsePath("/src"),
+				Target: domain.MustParsePath("/tgt"),
 			},
 		},
 	}
@@ -136,14 +136,14 @@ func TestPrinter_PrintDryRunSummary(t *testing.T) {
 
 func TestPrinter_PrintDryRunSummary_Verbose(t *testing.T) {
 	printer := NewPrinter(false, 1, false)
-	plan := dot.Plan{
-		Operations: []dot.Operation{
-			dot.LinkCreate{
-				Source: dot.MustParsePath("/src"),
-				Target: dot.MustParsePath("/tgt"),
+	plan := domain.Plan{
+		Operations: []domain.Operation{
+			domain.LinkCreate{
+				Source: domain.MustParsePath("/src"),
+				Target: domain.MustParsePath("/tgt"),
 			},
-			dot.DirCreate{
-				Path: dot.MustParsePath("/dir"),
+			domain.DirCreate{
+				Path: domain.MustParsePath("/dir"),
 			},
 		},
 	}
@@ -154,11 +154,11 @@ func TestPrinter_PrintDryRunSummary_Verbose(t *testing.T) {
 
 func TestPrinter_PrintDryRunSummary_Quiet(t *testing.T) {
 	printer := NewPrinter(false, 1, true)
-	plan := dot.Plan{
-		Operations: []dot.Operation{
-			dot.LinkCreate{
-				Source: dot.MustParsePath("/src"),
-				Target: dot.MustParsePath("/tgt"),
+	plan := domain.Plan{
+		Operations: []domain.Operation{
+			domain.LinkCreate{
+				Source: domain.MustParsePath("/src"),
+				Target: domain.MustParsePath("/tgt"),
 			},
 		},
 	}

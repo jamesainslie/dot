@@ -3,7 +3,7 @@ package planner
 import (
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,7 +56,7 @@ func TestDefaultPolicies(t *testing.T) {
 
 // Task 7.2.3: Test PolicyFail
 func TestPolicyFail(t *testing.T) {
-	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 	conflict := NewConflict(
 		ConflictFileExists,
 		targetPath,
@@ -77,10 +77,10 @@ func TestPolicyFail(t *testing.T) {
 
 // Task 7.2.6: Test PolicySkip
 func TestPolicySkip(t *testing.T) {
-	sourcePath := dot.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
-	targetPath := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+	sourcePath := domain.NewFilePath("/packages/bash/dot-bashrc").Unwrap()
+	targetPath := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 
-	op := dot.NewLinkCreate("link-auto", sourcePath, targetPath)
+	op := domain.NewLinkCreate("link-auto", sourcePath, targetPath)
 
 	conflict := NewConflict(ConflictFileExists, targetPath, "File exists")
 

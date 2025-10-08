@@ -6,7 +6,7 @@ import (
 
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/scanner"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,14 +15,14 @@ func TestScanPackage(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
 
-	packagePath := dot.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
+	packagePath := domain.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
 	ignoreSet := ignore.NewIgnoreSet()
 
 	// Mock: package directory exists and is empty
 	mockFS.On("Exists", ctx, "/home/user/.dotfiles/vim").Return(true)
 	mockFS.On("IsSymlink", ctx, "/home/user/.dotfiles/vim").Return(false, nil)
 	mockFS.On("IsDir", ctx, "/home/user/.dotfiles/vim").Return(true, nil)
-	mockFS.On("ReadDir", ctx, "/home/user/.dotfiles/vim").Return([]dot.DirEntry{}, nil)
+	mockFS.On("ReadDir", ctx, "/home/user/.dotfiles/vim").Return([]domain.DirEntry{}, nil)
 
 	result := scanner.ScanPackage(ctx, mockFS, packagePath, "vim", ignoreSet)
 	require.True(t, result.IsOk())
@@ -31,7 +31,7 @@ func TestScanPackage(t *testing.T) {
 	assert.Equal(t, "vim", pkg.Name)
 	assert.Equal(t, packagePath, pkg.Path)
 	require.NotNil(t, pkg.Tree, "Tree should be populated")
-	assert.Equal(t, dot.NodeDir, pkg.Tree.Type)
+	assert.Equal(t, domain.NodeDir, pkg.Tree.Type)
 
 	mockFS.AssertExpectations(t)
 }
@@ -40,7 +40,7 @@ func TestScanPackage_PackageNotFound(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
 
-	packagePath := dot.NewPackagePath("/home/user/.dotfiles/missing").Unwrap()
+	packagePath := domain.NewPackagePath("/home/user/.dotfiles/missing").Unwrap()
 	ignoreSet := ignore.NewIgnoreSet()
 
 	// Mock: package directory does not exist
@@ -51,7 +51,7 @@ func TestScanPackage_PackageNotFound(t *testing.T) {
 
 	// Should return ErrPackageNotFound
 	err := result.UnwrapErr()
-	_, ok := err.(dot.ErrPackageNotFound)
+	_, ok := err.(domain.ErrPackageNotFound)
 	assert.True(t, ok, "Expected ErrPackageNotFound")
 
 	mockFS.AssertExpectations(t)
@@ -61,7 +61,7 @@ func TestScanPackage_WithIgnorePatterns(t *testing.T) {
 	ctx := context.Background()
 	mockFS := new(MockFS)
 
-	packagePath := dot.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
+	packagePath := domain.NewPackagePath("/home/user/.dotfiles/vim").Unwrap()
 	ignoreSet := ignore.NewIgnoreSet()
 	ignoreSet.Add(".git")
 
@@ -69,7 +69,7 @@ func TestScanPackage_WithIgnorePatterns(t *testing.T) {
 	mockFS.On("Exists", ctx, "/home/user/.dotfiles/vim").Return(true)
 	mockFS.On("IsSymlink", ctx, "/home/user/.dotfiles/vim").Return(false, nil)
 	mockFS.On("IsDir", ctx, "/home/user/.dotfiles/vim").Return(true, nil)
-	mockFS.On("ReadDir", ctx, "/home/user/.dotfiles/vim").Return([]dot.DirEntry{}, nil)
+	mockFS.On("ReadDir", ctx, "/home/user/.dotfiles/vim").Return([]domain.DirEntry{}, nil)
 
 	result := scanner.ScanPackage(ctx, mockFS, packagePath, "vim", ignoreSet)
 	require.True(t, result.IsOk())

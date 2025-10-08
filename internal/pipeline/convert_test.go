@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/jamesainslie/dot/internal/planner"
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func TestConvertConflicts(t *testing.T) {
 	})
 
 	t.Run("single conflict", func(t *testing.T) {
-		path := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+		path := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 		conflict := planner.NewConflict(
 			planner.ConflictFileExists,
 			path,
@@ -39,8 +39,8 @@ func TestConvertConflicts(t *testing.T) {
 	})
 
 	t.Run("multiple conflicts", func(t *testing.T) {
-		path1 := dot.NewFilePath("/home/user/.bashrc").Unwrap()
-		path2 := dot.NewFilePath("/home/user/.vimrc").Unwrap()
+		path1 := domain.NewFilePath("/home/user/.bashrc").Unwrap()
+		path2 := domain.NewFilePath("/home/user/.vimrc").Unwrap()
 
 		conflicts := []planner.Conflict{
 			planner.NewConflict(planner.ConflictFileExists, path1, "File 1 exists"),
@@ -147,7 +147,7 @@ func TestCopyContext(t *testing.T) {
 
 func TestConvertConflicts_ContextIsolation(t *testing.T) {
 	t.Run("mutating converted conflict context does not affect original", func(t *testing.T) {
-		path := dot.NewFilePath("/home/user/.bashrc").Unwrap()
+		path := domain.NewFilePath("/home/user/.bashrc").Unwrap()
 		originalContext := map[string]string{
 			"package": "bash",
 		}

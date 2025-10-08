@@ -1,6 +1,6 @@
 package planner
 
-import "github.com/jamesainslie/dot/pkg/dot"
+import "github.com/jamesainslie/dot/internal/domain"
 
 // ParallelizationPlan computes batches of operations that can execute concurrently.
 // Returns a slice of batches where operations within each batch have no dependencies
@@ -13,18 +13,18 @@ import "github.com/jamesainslie/dot/pkg/dot"
 //
 // Time complexity: O(n + e) where n is the number of operations and e is the number
 // of dependency edges.
-func (g *DependencyGraph) ParallelizationPlan() [][]dot.Operation {
+func (g *DependencyGraph) ParallelizationPlan() [][]domain.Operation {
 	if len(g.ops) == 0 {
 		return nil
 	}
 
 	// Compute level for each operation
-	levels := make(map[int][]dot.Operation)
-	opLevels := make(map[dot.Operation]int, len(g.ops))
+	levels := make(map[int][]domain.Operation)
+	opLevels := make(map[domain.Operation]int, len(g.ops))
 
 	// computeLevel recursively computes the level of an operation with memoization
-	var computeLevel func(dot.Operation) int
-	computeLevel = func(op dot.Operation) int {
+	var computeLevel func(domain.Operation) int
+	computeLevel = func(op domain.Operation) int {
 		// Return cached result if already computed
 		if level, exists := opLevels[op]; exists {
 			return level
@@ -73,7 +73,7 @@ func (g *DependencyGraph) ParallelizationPlan() [][]dot.Operation {
 	}
 
 	// Build batches in order
-	batches := make([][]dot.Operation, maxLevel+1)
+	batches := make([][]domain.Operation, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
 		if ops, exists := levels[level]; exists {
 			batches[level] = ops

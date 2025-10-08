@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jamesainslie/dot/pkg/dot"
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +14,7 @@ func TestGetExitCode_Success(t *testing.T) {
 }
 
 func TestGetExitCode_InvalidPath(t *testing.T) {
-	err := dot.ErrInvalidPath{
+	err := domain.ErrInvalidPath{
 		Path:   "/invalid",
 		Reason: "test",
 	}
@@ -23,7 +23,7 @@ func TestGetExitCode_InvalidPath(t *testing.T) {
 }
 
 func TestGetExitCode_PackageNotFound(t *testing.T) {
-	err := dot.ErrPackageNotFound{
+	err := domain.ErrPackageNotFound{
 		Package: "vim",
 	}
 	code := GetExitCode(err)
@@ -31,7 +31,7 @@ func TestGetExitCode_PackageNotFound(t *testing.T) {
 }
 
 func TestGetExitCode_Conflict(t *testing.T) {
-	err := dot.ErrConflict{
+	err := domain.ErrConflict{
 		Path:   "/conflict",
 		Reason: "test",
 	}
@@ -40,7 +40,7 @@ func TestGetExitCode_Conflict(t *testing.T) {
 }
 
 func TestGetExitCode_PermissionDenied(t *testing.T) {
-	err := dot.ErrPermissionDenied{
+	err := domain.ErrPermissionDenied{
 		Path:      "/root",
 		Operation: "write",
 	}
@@ -55,7 +55,7 @@ func TestGetExitCode_GeneralError(t *testing.T) {
 }
 
 func TestGetExitCode_WrappedError(t *testing.T) {
-	innerErr := dot.ErrPackageNotFound{Package: "vim"}
+	innerErr := domain.ErrPackageNotFound{Package: "vim"}
 	wrappedErr := errors.Join(innerErr, errors.New("additional context"))
 
 	code := GetExitCode(wrappedErr)

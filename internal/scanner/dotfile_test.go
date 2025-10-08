@@ -180,3 +180,69 @@ func TestUntranslatePath(t *testing.T) {
 		})
 	}
 }
+
+func TestTranslatePackageName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "dot- prefix becomes dot",
+			input:    "dot-gnupg",
+			expected: ".gnupg",
+		},
+		{
+			name:     "dot-config becomes .config",
+			input:    "dot-config",
+			expected: ".config",
+		},
+		{
+			name:     "dot-vim becomes .vim",
+			input:    "dot-vim",
+			expected: ".vim",
+		},
+		{
+			name:     "no prefix stays as is",
+			input:    "vim",
+			expected: "vim",
+		},
+		{
+			name:     "no prefix with path",
+			input:    "config",
+			expected: "config",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "just dot-",
+			input:    "dot-",
+			expected: ".",
+		},
+		{
+			name:     "already dotfile",
+			input:    ".gnupg",
+			expected: ".gnupg",
+		},
+		{
+			name:     "multiple dashes",
+			input:    "dot-my-package",
+			expected: ".my-package",
+		},
+		{
+			name:     "dot- in middle not translated",
+			input:    "my-dot-package",
+			expected: "my-dot-package",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := scanner.TranslatePackageName(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

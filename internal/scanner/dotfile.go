@@ -65,3 +65,21 @@ func UntranslatePath(path string) string {
 
 	return filepath.Join(dir, untranslated)
 }
+
+// TranslatePackageName converts package names to target directory names.
+// Package names with "dot-" prefix become dotfiles in the target directory.
+//
+// This enables intuitive package naming where "dot-gnupg" targets ~/.gnupg/
+// instead of requiring redundant nesting like dot-gnupg/dot-gnupg/.
+//
+// Examples:
+//   - "dot-gnupg" -> ".gnupg"
+//   - "dot-config" -> ".config"
+//   - "vim" -> "vim"
+//   - "" -> ""
+func TranslatePackageName(name string) string {
+	if strings.HasPrefix(name, "dot-") {
+		return "." + name[4:] // Replace "dot-" with "."
+	}
+	return name
+}

@@ -3,6 +3,7 @@ package planner
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/scanner"
@@ -43,10 +44,11 @@ func (pr PlanResult) HasConflicts() bool {
 // For each file in each package:
 // 1. Compute relative path from package root
 // 2. Apply dotfile translation (dot-vimrc -> .vimrc)
-// 3. Join with target to get target path
-// 4. Create LinkSpec (source -> target)
-// 5. Create DirSpec for parent directories
-func ComputeDesiredState(packages []domain.Package, target domain.TargetPath) domain.Result[DesiredState] {
+// 3. If packageNameMapping enabled, prepend translated package name
+// 4. Join with target to get target path
+// 5. Create LinkSpec (source -> target)
+// 6. Create DirSpec for parent directories
+func ComputeDesiredState(packages []domain.Package, target domain.TargetPath, packageNameMapping bool) domain.Result[DesiredState] {
 	state := DesiredState{
 		Links: make(map[string]LinkSpec),
 		Dirs:  make(map[string]DirSpec),
@@ -59,7 +61,7 @@ func ComputeDesiredState(packages []domain.Package, target domain.TargetPath) do
 		}
 
 		// Process all files in the package tree
-		if err := processPackageTree(pkg, target, &state); err != nil {
+		if err := processPackageTree(pkg, target, packageNameMapping, &state); err != nil {
 			return domain.Err[DesiredState](err)
 		}
 	}
@@ -68,12 +70,12 @@ func ComputeDesiredState(packages []domain.Package, target domain.TargetPath) do
 }
 
 // processPackageTree walks a package tree and adds link/dir specs to state.
-func processPackageTree(pkg domain.Package, target domain.TargetPath, state *DesiredState) error {
-	return walkPackageFiles(*pkg.Tree, pkg.Path, target, state)
+func processPackageTree(pkg domain.Package, target domain.TargetPath, packageNameMapping bool, state *DesiredState) error {
+	return walkPackageFiles(*pkg.Tree, pkg.Path, pkg.Name, target, packageNameMapping, state)
 }
 
 // walkPackageFiles recursively processes files in a package tree.
-func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, target domain.TargetPath, state *DesiredState) error {
+func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, pkgName string, target domain.TargetPath, packageNameMapping bool, state *DesiredState) error {
 	// Process files only (not directories or symlinks)
 	if node.Type == domain.NodeFile {
 		// Compute relative path from package root
@@ -87,7 +89,16 @@ func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, target domai
 		translated := translatePath(relPath)
 
 		// Compute target path
-		targetPath := target.Join(translated)
+		var targetPath domain.TargetPath
+		if packageNameMapping {
+			// Apply package name translation and prepend to path
+			translatedPkgName := scanner.TranslatePackageName(pkgName)
+			combinedPath := filepath.Join(translatedPkgName, translated)
+			targetPath = target.Join(combinedPath)
+		} else {
+			// Legacy behavior: no package name mapping
+			targetPath = target.Join(translated)
+		}
 
 		// Add link spec
 		state.Links[targetPath.String()] = LinkSpec{
@@ -103,7 +114,7 @@ func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, target domai
 
 	// Recurse on children
 	for _, child := range node.Children {
-		if err := walkPackageFiles(child, pkgRoot, target, state); err != nil {
+		if err := walkPackageFiles(child, pkgRoot, pkgName, target, packageNameMapping, state); err != nil {
 			return err
 		}
 	}

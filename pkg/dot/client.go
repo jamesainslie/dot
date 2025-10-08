@@ -157,7 +157,14 @@ func (c *Client) updateManifest(ctx context.Context, packages []string, plan Pla
 	}
 	// Update package entries using package-operation mapping from plan
 	hasher := manifest.NewContentHasher(c.config.FS)
-	for _, pkg := range packages {
+
+	// If packages slice is empty, populate from plan
+	packagesToUpdate := packages
+	if len(packagesToUpdate) == 0 && plan.PackageOperations != nil {
+		packagesToUpdate = plan.PackageNames()
+	}
+
+	for _, pkg := range packagesToUpdate {
 		// Extract links from package operations
 		ops := plan.OperationsForPackage(pkg)
 		links := extractLinksFromOperations(ops, c.config.TargetDir)

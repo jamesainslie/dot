@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -28,7 +29,7 @@ func NewWriter(path string) *Writer {
 func (w *Writer) Write(cfg *ExtendedConfig, opts WriteOptions) error {
 	// Ensure directory exists
 	dir := filepath.Dir(w.path)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, domain.PermUserRWX); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
 	}
 
@@ -39,7 +40,7 @@ func (w *Writer) Write(cfg *ExtendedConfig, opts WriteOptions) error {
 	}
 
 	// Write to file with secure permissions
-	if err := os.WriteFile(w.path, data, 0600); err != nil {
+	if err := os.WriteFile(w.path, data, domain.PermUserRW); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 

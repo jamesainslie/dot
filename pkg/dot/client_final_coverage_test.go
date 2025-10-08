@@ -94,7 +94,8 @@ func TestClient_PlanOperationsEmpty(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, plan.Operations)
 
-	// Remanage on non-existent should fallback to manage
+	// Remanage on non-existent package should error
+	// (fallback to manage still errors if package doesn't exist in filesystem)
 	plan, err = client.PlanRemanage(ctx, "notinstalled")
-	require.Error(t, err) // Should error for non-existent package
+	require.Error(t, err)
 }

@@ -1,0 +1,115 @@
+package dot
+
+import (
+	"context"
+	"path/filepath"
+	"time"
+
+	"github.com/jamesainslie/dot/internal/domain"
+	"github.com/jamesainslie/dot/internal/manifest"
+)
+
+// ManifestService manages manifest operations.
+type ManifestService struct {
+	fs     FS
+	logger Logger
+	store  manifest.ManifestStore
+}
+
+// newManifestService creates a new manifest service.
+func newManifestService(fs FS, logger Logger, store manifest.ManifestStore) *ManifestService {
+	return &ManifestService{
+		fs:     fs,
+		logger: logger,
+		store:  store,
+	}
+}
+
+// Load loads the manifest from the target directory.
+func (s *ManifestService) Load(ctx context.Context, targetPath TargetPath) domain.Result[manifest.Manifest] {
+	return s.store.Load(ctx, targetPath)
+}
+
+// Save saves the manifest to the target directory.
+func (s *ManifestService) Save(ctx context.Context, targetPath TargetPath, m manifest.Manifest) error {
+	return s.store.Save(ctx, targetPath, m)
+}
+
+// Update updates the manifest with package information from a plan.
+func (s *ManifestService) Update(ctx context.Context, targetPath TargetPath, packageDir string, packages []string, plan Plan) error {
+	// Load existing manifest or create new
+	manifestResult := s.Load(ctx, targetPath)
+	var m manifest.Manifest
+	if manifestResult.IsOk() {
+		m = manifestResult.Unwrap()
+	} else {
+		m = manifest.New()
+	}
+
+	// Update package entries
+	hasher := manifest.NewContentHasher(s.fs)
+
+	// If packages slice is empty, populate from plan
+	packagesToUpdate := packages
+	if len(packagesToUpdate) == 0 && plan.PackageOperations != nil {
+		packagesToUpdate = plan.PackageNames()
+	}
+
+	for _, pkg := range packagesToUpdate {
+		// Extract links from package operations
+		ops := plan.OperationsForPackage(pkg)
+		links := s.extractLinksFromOperations(ops, targetPath.String())
+
+		m.AddPackage(manifest.PackageInfo{
+			Name:        pkg,
+			InstalledAt: time.Now(),
+			LinkCount:   len(links),
+			Links:       links,
+		})
+
+		// Compute and store package hash
+		pkgPathStr := filepath.Join(packageDir, pkg)
+		pkgPathResult := NewPackagePath(pkgPathStr)
+		if pkgPathResult.IsOk() {
+			pkgPath := pkgPathResult.Unwrap()
+			hash, err := hasher.HashPackage(ctx, pkgPath)
+			if err != nil {
+				s.logger.Warn(ctx, "failed_to_compute_hash", "package", pkg, "error", err)
+			} else {
+				m.SetHash(pkg, hash)
+			}
+		}
+	}
+
+	// Save manifest
+	return s.Save(ctx, targetPath, m)
+}
+
+// RemovePackage removes a package from the manifest.
+func (s *ManifestService) RemovePackage(ctx context.Context, targetPath TargetPath, pkg string) error {
+	manifestResult := s.Load(ctx, targetPath)
+	if !manifestResult.IsOk() {
+		return manifestResult.UnwrapErr()
+	}
+
+	m := manifestResult.Unwrap()
+	m.RemovePackage(pkg)
+
+	return s.Save(ctx, targetPath, m)
+}
+
+// extractLinksFromOperations extracts link paths from LinkCreate operations.
+func (s *ManifestService) extractLinksFromOperations(ops []Operation, targetDir string) []string {
+	links := make([]string, 0, len(ops))
+	for _, op := range ops {
+		if linkOp, ok := op.(LinkCreate); ok {
+			targetPath := linkOp.Target.String()
+			relPath, err := filepath.Rel(targetDir, targetPath)
+			if err != nil {
+				relPath = targetPath
+			}
+			links = append(links, relPath)
+		}
+	}
+	return links
+}

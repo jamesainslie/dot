@@ -370,6 +370,7 @@ Complete documentation index available at [docs/README.md](docs/README.md).
 ### Developer Documentation
 
 - [Documentation Index](docs/README.md)
+- [Architecture Documentation](docs/developer/architecture.md)
 - [Contributing Guide](CONTRIBUTING.md)
 - [Release Workflow](docs/developer/release-workflow.md)
 
@@ -522,7 +523,7 @@ This project adheres to strict development standards:
 
 ## Comparison with GNU Stow
 
-Dot is inspired by the awesome [GNU Stow](https://www.gnu.org/software/stow/) tool. Dot provides feature parity with GNU Stow plus additional capabilities:
+dot is inspired by [GNU Stow](https://www.gnu.org/software/stow/). dot provides feature parity with GNU Stow plus additional capabilities:
 
 | Feature | dot | GNU Stow |
 |---------|-----|----------|

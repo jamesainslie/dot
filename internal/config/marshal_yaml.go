@@ -1,11 +1,10 @@
-package marshal
+package config
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 
-	"github.com/jamesainslie/dot/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,7 +22,7 @@ func (s *YAMLStrategy) Name() string {
 }
 
 // Marshal converts configuration to YAML bytes.
-func (s *YAMLStrategy) Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) ([]byte, error) {
+func (s *YAMLStrategy) Marshal(cfg *ExtendedConfig, opts MarshalOptions) ([]byte, error) {
 	if cfg == nil {
 		return nil, errors.New("cannot marshal nil config")
 	}
@@ -41,12 +40,12 @@ func (s *YAMLStrategy) Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) 
 }
 
 // Unmarshal converts YAML bytes to configuration.
-func (s *YAMLStrategy) Unmarshal(data []byte) (*config.ExtendedConfig, error) {
+func (s *YAMLStrategy) Unmarshal(data []byte) (*ExtendedConfig, error) {
 	if len(data) == 0 {
 		return nil, errors.New("cannot unmarshal empty data")
 	}
 
-	var cfg config.ExtendedConfig
+	var cfg ExtendedConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal yaml: %w", err)
 	}
@@ -55,7 +54,7 @@ func (s *YAMLStrategy) Unmarshal(data []byte) (*config.ExtendedConfig, error) {
 }
 
 // marshalWithComments creates YAML with helpful comments.
-func (s *YAMLStrategy) marshalWithComments(cfg *config.ExtendedConfig) ([]byte, error) {
+func (s *YAMLStrategy) marshalWithComments(cfg *ExtendedConfig) ([]byte, error) {
 	var buf bytes.Buffer
 
 	buf.WriteString("# Dot Configuration File\n")

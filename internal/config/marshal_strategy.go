@@ -1,10 +1,8 @@
-package marshal
+package config
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/jamesainslie/dot/internal/config"
 )
 
 // Strategy defines the interface for configuration marshaling and unmarshaling.
@@ -14,10 +12,10 @@ type Strategy interface {
 	Name() string
 
 	// Marshal converts configuration to bytes in the strategy's format
-	Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) ([]byte, error)
+	Marshal(cfg *ExtendedConfig, opts MarshalOptions) ([]byte, error)
 
 	// Unmarshal converts bytes to configuration from the strategy's format
-	Unmarshal(data []byte) (*config.ExtendedConfig, error)
+	Unmarshal(data []byte) (*ExtendedConfig, error)
 }
 
 // MarshalOptions controls marshaling behavior.

@@ -1,4 +1,4 @@
-package marshal
+package config
 
 import (
 	"bytes"
@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/jamesainslie/dot/internal/config"
 )
 
 // JSONStrategy implements Strategy for JSON format.
@@ -24,7 +22,7 @@ func (s *JSONStrategy) Name() string {
 }
 
 // Marshal converts configuration to JSON bytes.
-func (s *JSONStrategy) Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) ([]byte, error) {
+func (s *JSONStrategy) Marshal(cfg *ExtendedConfig, opts MarshalOptions) ([]byte, error) {
 	if cfg == nil {
 		return nil, errors.New("cannot marshal nil config")
 	}
@@ -46,12 +44,12 @@ func (s *JSONStrategy) Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) 
 }
 
 // Unmarshal converts JSON bytes to configuration.
-func (s *JSONStrategy) Unmarshal(data []byte) (*config.ExtendedConfig, error) {
+func (s *JSONStrategy) Unmarshal(data []byte) (*ExtendedConfig, error) {
 	if len(data) == 0 {
 		return nil, errors.New("cannot unmarshal empty data")
 	}
 
-	var cfg config.ExtendedConfig
+	var cfg ExtendedConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal json: %w", err)
 	}

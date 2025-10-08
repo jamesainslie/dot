@@ -1,10 +1,9 @@
-package marshal
+package config
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/jamesainslie/dot/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +15,7 @@ func TestYAMLStrategy_Name(t *testing.T) {
 
 func TestYAMLStrategy_Marshal(t *testing.T) {
 	t.Run("marshals configuration to YAML", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		cfg.Logging.Level = "DEBUG"
 		cfg.Output.Verbosity = 2
 
@@ -35,7 +34,7 @@ func TestYAMLStrategy_Marshal(t *testing.T) {
 	})
 
 	t.Run("marshals with comments when requested", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewYAMLStrategy()
 		opts := MarshalOptions{
 			IncludeComments: true,
@@ -66,7 +65,7 @@ func TestYAMLStrategy_Marshal(t *testing.T) {
 	})
 
 	t.Run("handles all config sections", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewYAMLStrategy()
 		opts := DefaultMarshalOptions()
 
@@ -157,7 +156,7 @@ logging:
 
 func TestYAMLStrategy_RoundTrip(t *testing.T) {
 	t.Run("marshal then unmarshal preserves data", func(t *testing.T) {
-		original := config.DefaultExtended()
+		original := DefaultExtended()
 		original.Logging.Level = "WARN"
 		original.Output.Verbosity = 2
 		original.Symlinks.Folding = false
@@ -182,7 +181,7 @@ func TestYAMLStrategy_RoundTrip(t *testing.T) {
 	})
 
 	t.Run("round trip with comments preserves data", func(t *testing.T) {
-		original := config.DefaultExtended()
+		original := DefaultExtended()
 		original.Logging.Level = "DEBUG"
 
 		strategy := NewYAMLStrategy()
@@ -205,7 +204,7 @@ func TestYAMLStrategy_RoundTrip(t *testing.T) {
 
 func TestYAMLStrategy_Comments(t *testing.T) {
 	t.Run("comments include all major sections", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewYAMLStrategy()
 		opts := MarshalOptions{IncludeComments: true}
 
@@ -234,7 +233,7 @@ func TestYAMLStrategy_Comments(t *testing.T) {
 	})
 
 	t.Run("comments include field descriptions", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewYAMLStrategy()
 		opts := MarshalOptions{IncludeComments: true}
 
@@ -258,7 +257,7 @@ func TestYAMLStrategy_Comments(t *testing.T) {
 
 func TestYAMLStrategy_FormatValidation(t *testing.T) {
 	t.Run("output is valid YAML", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewYAMLStrategy()
 		opts := DefaultMarshalOptions()
 
@@ -271,7 +270,7 @@ func TestYAMLStrategy_FormatValidation(t *testing.T) {
 	})
 
 	t.Run("no trailing whitespace on lines", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewYAMLStrategy()
 		opts := MarshalOptions{IncludeComments: true}
 

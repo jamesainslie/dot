@@ -1,9 +1,8 @@
-package marshal
+package config
 
 import (
 	"testing"
 
-	"github.com/jamesainslie/dot/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -88,9 +87,7 @@ func TestStrategySelection(t *testing.T) {
 
 func TestStrategyRoundTrip(t *testing.T) {
 	t.Run("strategy preserves configuration data", func(t *testing.T) {
-		t.Skip("Skipping until strategies are implemented (Tasks 3.1.1-3.1.3)")
-
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		cfg.Logging.Level = "DEBUG"
 		cfg.Output.Verbosity = 2
 
@@ -160,16 +157,16 @@ func (m *mockStrategy) Name() string {
 	return m.name
 }
 
-func (m *mockStrategy) Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) ([]byte, error) {
+func (m *mockStrategy) Marshal(cfg *ExtendedConfig, opts MarshalOptions) ([]byte, error) {
 	if cfg == nil {
 		return nil, assert.AnError
 	}
 	return []byte("mock marshaled data"), nil
 }
 
-func (m *mockStrategy) Unmarshal(data []byte) (*config.ExtendedConfig, error) {
+func (m *mockStrategy) Unmarshal(data []byte) (*ExtendedConfig, error) {
 	if len(data) == 0 {
 		return nil, assert.AnError
 	}
-	return config.DefaultExtended(), nil
+	return DefaultExtended(), nil
 }

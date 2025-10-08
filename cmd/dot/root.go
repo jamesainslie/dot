@@ -108,13 +108,14 @@ func buildConfig() (dot.Config, error) {
 	logger := createLogger()
 
 	cfg := dot.Config{
-		PackageDir: packageDir,
-		TargetDir:  targetDir,
-		BackupDir:  globalCfg.backupDir,
-		DryRun:     globalCfg.dryRun,
-		Verbosity:  globalCfg.verbose,
-		FS:         fs,
-		Logger:     logger,
+		PackageDir:         packageDir,
+		TargetDir:          targetDir,
+		BackupDir:          globalCfg.backupDir,
+		DryRun:             globalCfg.dryRun,
+		Verbosity:          globalCfg.verbose,
+		PackageNameMapping: true, // Default: true (pre-1.0 breaking change)
+		FS:                 fs,
+		Logger:             logger,
 	}
 
 	return cfg.WithDefaults(), nil

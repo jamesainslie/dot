@@ -1,9 +1,8 @@
-package marshal
+package config
 
 import (
 	"testing"
 
-	"github.com/jamesainslie/dot/internal/config"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +15,7 @@ func TestTOMLStrategy_Name(t *testing.T) {
 
 func TestTOMLStrategy_Marshal(t *testing.T) {
 	t.Run("marshals configuration to TOML", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		cfg.Logging.Level = "DEBUG"
 		cfg.Output.Verbosity = 2
 
@@ -29,7 +28,7 @@ func TestTOMLStrategy_Marshal(t *testing.T) {
 		assert.NotEmpty(t, data)
 
 		// Verify TOML is valid and contains expected values
-		var decoded config.ExtendedConfig
+		var decoded ExtendedConfig
 		err = toml.Unmarshal(data, &decoded)
 		require.NoError(t, err)
 		assert.Equal(t, "DEBUG", decoded.Logging.Level)
@@ -48,7 +47,7 @@ func TestTOMLStrategy_Marshal(t *testing.T) {
 	})
 
 	t.Run("handles all config sections", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewTOMLStrategy()
 		opts := DefaultMarshalOptions()
 
@@ -121,7 +120,7 @@ progress = false
 
 func TestTOMLStrategy_RoundTrip(t *testing.T) {
 	t.Run("marshal then unmarshal preserves data", func(t *testing.T) {
-		original := config.DefaultExtended()
+		original := DefaultExtended()
 		original.Logging.Level = "WARN"
 		original.Output.Verbosity = 2
 		original.Symlinks.Folding = false
@@ -148,7 +147,7 @@ func TestTOMLStrategy_RoundTrip(t *testing.T) {
 
 func TestTOMLStrategy_FormatValidation(t *testing.T) {
 	t.Run("output is valid TOML", func(t *testing.T) {
-		cfg := config.DefaultExtended()
+		cfg := DefaultExtended()
 		strategy := NewTOMLStrategy()
 		opts := DefaultMarshalOptions()
 

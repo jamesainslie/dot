@@ -1,11 +1,10 @@
-package marshal
+package config
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 
-	"github.com/jamesainslie/dot/internal/config"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -23,7 +22,7 @@ func (s *TOMLStrategy) Name() string {
 }
 
 // Marshal converts configuration to TOML bytes.
-func (s *TOMLStrategy) Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) ([]byte, error) {
+func (s *TOMLStrategy) Marshal(cfg *ExtendedConfig, opts MarshalOptions) ([]byte, error) {
 	if cfg == nil {
 		return nil, errors.New("cannot marshal nil config")
 	}
@@ -39,12 +38,12 @@ func (s *TOMLStrategy) Marshal(cfg *config.ExtendedConfig, opts MarshalOptions) 
 }
 
 // Unmarshal converts TOML bytes to configuration.
-func (s *TOMLStrategy) Unmarshal(data []byte) (*config.ExtendedConfig, error) {
+func (s *TOMLStrategy) Unmarshal(data []byte) (*ExtendedConfig, error) {
 	if len(data) == 0 {
 		return nil, errors.New("cannot unmarshal empty data")
 	}
 
-	var cfg config.ExtendedConfig
+	var cfg ExtendedConfig
 	if err := toml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal toml: %w", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -27,8 +28,14 @@ func (s *TOMLStrategy) Marshal(cfg *ExtendedConfig, opts MarshalOptions) ([]byte
 		return nil, errors.New("cannot marshal nil config")
 	}
 
+	indent := opts.Indent
+	if indent == 0 {
+		indent = 2
+	}
+
 	var buf bytes.Buffer
 	encoder := toml.NewEncoder(&buf)
+	encoder.SetIndentSymbol(strings.Repeat(" ", indent))
 
 	if err := encoder.Encode(cfg); err != nil {
 		return nil, fmt.Errorf("encode toml: %w", err)

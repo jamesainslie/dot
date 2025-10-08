@@ -171,13 +171,17 @@ release-tag:
 	@git commit --amend --no-edit
 	@echo "✓ Changelog finalized"
 	@echo ""
+	@echo "Step 5: Moving tag to amended commit..."
+	@git tag -f $(VERSION)
+	@echo "✓ Tag moved to final commit"
+	@echo ""
 	@echo "══════════════════════════════════════════════════════════"
 	@echo "Release $(VERSION) ready to push!"
 	@echo "══════════════════════════════════════════════════════════"
 	@echo ""
 	@echo "Push with:"
 	@echo "  git push origin main"
-	@echo "  git push origin $(VERSION)"
+	@echo "  git push --force origin $(VERSION)"
 	@echo ""
 
 ## build-all: Build for all platforms

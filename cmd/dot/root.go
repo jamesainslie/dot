@@ -41,6 +41,13 @@ comprehensive conflict detection, and incremental updates.`,
 		SilenceErrors: true,
 	}
 
+	// Set up flag error function to show usage on flag parsing errors
+	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n\n", err)
+		_ = cmd.Usage()
+		return err
+	})
+
 	// Global flags
 	rootCmd.PersistentFlags().StringVarP(&globalCfg.packageDir, "dir", "d", ".",
 		"Source directory containing packages")
@@ -150,6 +157,19 @@ func formatError(err error) error {
 	// For now, just return the error
 	// In the future, this can be enhanced to provide better error messages
 	return err
+}
+
+// argsWithUsage wraps a Cobra Args validator to show usage on validation errors.
+func argsWithUsage(validator cobra.PositionalArgs) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		err := validator(cmd, args)
+		if err != nil {
+			// Print error and usage
+			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n\n", err)
+			_ = cmd.Usage()
+		}
+		return err
+	}
 }
 
 // shouldColorize determines if output should be colorized based on the color flag.

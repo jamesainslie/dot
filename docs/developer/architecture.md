@@ -36,6 +36,41 @@ This separation enables:
 
 The system comprises six distinct layers, each with specific responsibilities and dependency constraints.
 
+```mermaid
+graph TB
+    CLI[CLI Layer<br/>cmd/dot/]:::cliLayer
+    API[API Layer<br/>pkg/dot/]:::apiLayer
+    Pipeline[Pipeline Layer<br/>internal/pipeline/]:::pipelineLayer
+    Executor[Executor Layer<br/>internal/executor/]:::executorLayer
+    Core[Core Layer<br/>internal/scanner/<br/>internal/planner/<br/>internal/ignore/]:::coreLayer
+    Domain[Domain Layer<br/>internal/domain/]:::domainLayer
+    Adapters[Adapters<br/>internal/adapters/]:::adaptersLayer
+    
+    CLI --> API
+    API --> Pipeline
+    API --> Executor
+    Pipeline --> Core
+    Executor --> Domain
+    Core --> Domain
+    Adapters --> Domain
+    
+    style CLI fill:#4A90E2,stroke:#2C5F8D,color:#fff
+    style API fill:#50C878,stroke:#2D7A4A,color:#fff
+    style Pipeline fill:#9B59B6,stroke:#6C3A7C,color:#fff
+    style Executor fill:#E67E22,stroke:#A84E0F,color:#fff
+    style Core fill:#3498DB,stroke:#1F618D,color:#fff
+    style Domain fill:#2ECC71,stroke:#1E8449,color:#fff
+    style Adapters fill:#95A5A6,stroke:#5D6D7E,color:#fff
+    
+    classDef cliLayer stroke-width:3px
+    classDef apiLayer stroke-width:3px
+    classDef pipelineLayer stroke-width:3px
+    classDef executorLayer stroke-width:3px
+    classDef coreLayer stroke-width:3px
+    classDef domainLayer stroke-width:3px
+    classDef adaptersLayer stroke-width:2px,stroke-dasharray: 5 5
+```
+
 ### 1. Domain Layer
 
 **Location**: `internal/domain/`
@@ -139,6 +174,56 @@ ScanInput -> ScanStage -> []Package -> PlanStage -> DesiredState -> ResolveStage
 4. **Rollback Phase**: Undo operations if failures occur
 5. **Checkpoint Cleanup**: Remove checkpoint on success
 
+```mermaid
+stateDiagram-v2
+    [*] --> Prepare: Receive Plan
+    
+    Prepare --> ValidateOps: Validate Operations
+    ValidateOps --> CheckPreconditions: Check Preconditions
+    CheckPreconditions --> CreateCheckpoint: All Valid
+    CheckPreconditions --> Failed: Validation Failed
+    
+    CreateCheckpoint --> CommitPhase: Checkpoint Saved
+    CreateCheckpoint --> Failed: Checkpoint Failed
+    
+    CommitPhase --> ExecuteBatch1: Batch 1 (Parallel)
+    ExecuteBatch1 --> ExecuteBatch2: Success
+    ExecuteBatch1 --> Rollback: Operation Failed
+    
+    ExecuteBatch2 --> ExecuteBatch3: Success
+    ExecuteBatch2 --> Rollback: Operation Failed
+    
+    ExecuteBatch3 --> UpdateManifest: All Batches Complete
+    ExecuteBatch3 --> Rollback: Operation Failed
+    
+    UpdateManifest --> CleanupCheckpoint: Manifest Updated
+    UpdateManifest --> Rollback: Manifest Update Failed
+    
+    CleanupCheckpoint --> Success: Checkpoint Removed
+    
+    Rollback --> RestoreState: Undo Operations
+    RestoreState --> RemoveCheckpoint: State Restored
+    RemoveCheckpoint --> Failed: Rollback Complete
+    
+    Success --> [*]
+    Failed --> [*]
+    
+    note right of Prepare
+        Validate all operations
+        can be executed
+    end note
+    
+    note right of CommitPhase
+        Execute in topologically
+        sorted batches
+    end note
+    
+    note right of Rollback
+        Automatic rollback ensures
+        no partial state
+    end note
+```
+
 **Characteristics**:
 - All-or-nothing transaction semantics
 - Automatic rollback on any failure
@@ -171,6 +256,58 @@ The Client uses a service-based architecture where each major operation is imple
 - Independent testing of each service
 - Clear boundaries between concerns
 - Maintainable codebase
+
+```mermaid
+graph LR
+    Client[Client<br/>Facade]:::clientNode
+    
+    ManageService[ManageService<br/>Package Installation]:::serviceNode
+    UnmanageService[UnmanageService<br/>Package Removal]:::serviceNode
+    StatusService[StatusService<br/>Status Queries]:::serviceNode
+    DoctorService[DoctorService<br/>Health Checks]:::serviceNode
+    AdoptService[AdoptService<br/>File Adoption]:::serviceNode
+    ManifestService[ManifestService<br/>State Persistence]:::serviceNode
+    
+    Pipeline[Pipeline Layer]:::layerNode
+    Executor[Executor Layer]:::layerNode
+    Manifest[Manifest Store]:::layerNode
+    
+    Client --> ManageService
+    Client --> UnmanageService
+    Client --> StatusService
+    Client --> DoctorService
+    Client --> AdoptService
+    Client --> ManifestService
+    
+    ManageService --> Pipeline
+    ManageService --> Executor
+    ManageService --> Manifest
+    
+    UnmanageService --> Executor
+    UnmanageService --> Manifest
+    
+    StatusService --> Manifest
+    DoctorService --> Manifest
+    AdoptService --> Executor
+    AdoptService --> Manifest
+    
+    ManifestService --> Manifest
+    
+    style Client fill:#4A90E2,stroke:#2C5F8D,color:#fff,stroke-width:4px
+    style ManageService fill:#50C878,stroke:#2D7A4A,color:#fff
+    style UnmanageService fill:#E67E22,stroke:#A84E0F,color:#fff
+    style StatusService fill:#3498DB,stroke:#1F618D,color:#fff
+    style DoctorService fill:#9B59B6,stroke:#6C3A7C,color:#fff
+    style AdoptService fill:#1ABC9C,stroke:#148F77,color:#fff
+    style ManifestService fill:#F39C12,stroke:#B97A0F,color:#fff
+    style Pipeline fill:#34495E,stroke:#1C2833,color:#fff
+    style Executor fill:#34495E,stroke:#1C2833,color:#fff
+    style Manifest fill:#34495E,stroke:#1C2833,color:#fff
+    
+    classDef clientNode stroke-width:4px
+    classDef serviceNode stroke-width:2px
+    classDef layerNode stroke-width:2px,stroke-dasharray: 5 5
+```
 
 **Characteristics**:
 - Stable public API
@@ -359,82 +496,259 @@ type PackageManifest struct {
 
 ### Manage Operation Flow
 
-```
-1. CLI Layer: Parse command and flags
-   ↓
-2. API Layer: Client.Manage(packages...)
-   ↓
-3. Pipeline Layer: ManagePipeline
-   a. ScanStage: Scan packages from filesystem
-   b. PlanStage: Compute desired link state
-   c. ResolveStage: Detect conflicts and create operations
-   ↓
-4. Planner Layer: Build dependency graph
-   a. Topological sort for operation ordering
-   b. Compute parallel execution batches
-   ↓
-5. Executor Layer: Execute plan with two-phase commit
-   a. Prepare: Validate all operations
-   b. Checkpoint: Save state for rollback
-   c. Commit: Execute operations (parallel or sequential)
-   d. On Failure: Automatic rollback
-   e. On Success: Update manifest
-   ↓
-6. Manifest Layer: Persist installation state
-   ↓
-7. CLI Layer: Render results to user
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as CLI Layer
+    participant API as API Layer
+    participant Pipeline as Pipeline Layer
+    participant Scanner as Scanner
+    participant Planner as Planner
+    participant Executor as Executor Layer
+    participant FS as Filesystem
+    participant Manifest as Manifest Store
+    
+    User->>CLI: dot manage vim tmux
+    CLI->>CLI: Parse flags & config
+    CLI->>API: Client.Manage(ctx, packages)
+    
+    API->>Pipeline: ManagePipeline.Execute()
+    
+    rect rgb(40, 70, 100)
+        note right of Pipeline: Scan Stage
+        Pipeline->>Scanner: Scan packages
+        Scanner->>FS: Read package directories
+        FS-->>Scanner: File tree
+        Scanner-->>Pipeline: []Package
+    end
+    
+    rect rgb(60, 50, 100)
+        note right of Pipeline: Plan Stage
+        Pipeline->>Planner: Compute desired state
+        Planner->>Planner: Build dependency graph
+        Planner->>Planner: Topological sort
+        Planner-->>Pipeline: Plan with operations
+    end
+    
+    rect rgb(80, 100, 50)
+        note right of Pipeline: Execute Stage
+        Pipeline->>Executor: Execute plan
+        Executor->>Executor: Validate preconditions
+        Executor->>FS: Create checkpoint
+        
+        loop For each operation batch
+            Executor->>FS: Execute operations (parallel)
+            alt Success
+                FS-->>Executor: OK
+            else Failure
+                FS-->>Executor: Error
+                Executor->>FS: Rollback changes
+                Executor-->>API: ExecutionError
+            end
+        end
+        
+        Executor->>Manifest: Update package records
+        Manifest->>FS: Write .dotmanifest
+        Executor-->>Pipeline: Success
+    end
+    
+    Pipeline-->>API: Result
+    API-->>CLI: ManageResult
+    CLI->>User: Display results
 ```
 
 ### Unmanage Operation Flow
 
-```
-1. CLI Layer: Parse command and flags
-   ↓
-2. API Layer: Client.Unmanage(packages...)
-   ↓
-3. Manifest Layer: Load package manifests
-   ↓
-4. Operation Generation: Create delete operations for links
-   ↓
-5. Planner Layer: Build dependency graph (reverse order)
-   ↓
-6. Executor Layer: Execute deletions with two-phase commit
-   ↓
-7. Manifest Layer: Remove package records
-   ↓
-8. CLI Layer: Render results to user
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as CLI Layer
+    participant API as API Layer
+    participant Manifest as Manifest Store
+    participant Planner as Planner
+    participant Executor as Executor Layer
+    participant FS as Filesystem
+    
+    User->>CLI: dot unmanage vim
+    CLI->>CLI: Parse flags & config
+    CLI->>API: Client.Unmanage(ctx, packages)
+    
+    API->>Manifest: Load package manifests
+    Manifest->>FS: Read .dotmanifest
+    FS-->>Manifest: Manifest data
+    Manifest-->>API: Package records
+    
+    rect rgb(100, 60, 60)
+        note right of API: Generate Delete Operations
+        API->>API: Create delete operations
+        API->>Planner: Build dependency graph (reverse)
+        Planner->>Planner: Topological sort (deletion order)
+        Planner-->>API: Deletion plan
+    end
+    
+    rect rgb(80, 100, 50)
+        note right of API: Execute Deletions
+        API->>Executor: Execute deletion plan
+        Executor->>Executor: Validate preconditions
+        Executor->>FS: Create checkpoint
+        
+        loop For each operation batch (reverse order)
+            Executor->>FS: Delete links/dirs
+            alt Success
+                FS-->>Executor: OK
+            else Failure
+                FS-->>Executor: Error
+                Executor->>FS: Rollback deletions
+                Executor-->>API: ExecutionError
+            end
+        end
+        
+        Executor-->>API: Success
+    end
+    
+    API->>Manifest: Remove package records
+    Manifest->>FS: Update .dotmanifest
+    API-->>CLI: UnmanageResult
+    CLI->>User: Display results
 ```
 
 ### Status Query Flow
 
-```
-1. CLI Layer: Parse command and flags
-   ↓
-2. API Layer: Client.Status(packages...)
-   ↓
-3. Manifest Layer: Load package manifests
-   ↓
-4. Status Computation: Build status structures
-   ↓
-5. CLI Layer: Render status (table, JSON, YAML)
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as CLI Layer
+    participant API as API Layer
+    participant StatusService as Status Service
+    participant Manifest as Manifest Store
+    participant FS as Filesystem
+    participant Renderer as Output Renderer
+    
+    User->>CLI: dot status [packages]
+    CLI->>CLI: Parse flags & config
+    CLI->>API: Client.Status(ctx, packages)
+    
+    API->>StatusService: Query status
+    
+    rect rgb(50, 80, 120)
+        note right of StatusService: Load Manifests
+        StatusService->>Manifest: Load package manifests
+        Manifest->>FS: Read .dotmanifest
+        FS-->>Manifest: Manifest data
+        Manifest-->>StatusService: Package records
+    end
+    
+    rect rgb(70, 90, 70)
+        note right of StatusService: Build Status
+        StatusService->>StatusService: Build status structures
+        StatusService->>StatusService: Compute installation state
+        StatusService->>StatusService: Calculate timestamps
+        StatusService->>StatusService: Count links per package
+    end
+    
+    StatusService-->>API: StatusResult
+    API-->>CLI: Status data
+    
+    rect rgb(90, 70, 100)
+        note right of CLI: Render Output
+        CLI->>Renderer: Format output (table/JSON/YAML)
+        
+        alt Table Format
+            Renderer->>Renderer: Build table structure
+            Renderer->>Renderer: Format columns
+            Renderer-->>CLI: Table output
+        else JSON Format
+            Renderer->>Renderer: Marshal to JSON
+            Renderer-->>CLI: JSON output
+        else YAML Format
+            Renderer->>Renderer: Marshal to YAML
+            Renderer-->>CLI: YAML output
+        end
+    end
+    
+    CLI->>User: Display status
 ```
 
 ### Doctor Health Check Flow
 
-```
-1. CLI Layer: Parse command and flags
-   ↓
-2. API Layer: Client.Doctor()
-   ↓
-3. Manifest Layer: Load all package manifests
-   ↓
-4. Filesystem Scanning: Verify links exist and point correctly
-   ↓
-5. Diagnosis: Detect broken links, orphaned files, conflicts
-   ↓
-6. Report Generation: Create diagnostic report
-   ↓
-7. CLI Layer: Render diagnostics with suggestions
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as CLI Layer
+    participant API as API Layer
+    participant DoctorService as Doctor Service
+    participant Manifest as Manifest Store
+    participant FS as Filesystem
+    participant Renderer as Diagnostic Renderer
+    
+    User->>CLI: dot doctor
+    CLI->>CLI: Parse flags & config
+    CLI->>API: Client.Doctor(ctx)
+    
+    API->>DoctorService: Run health checks
+    
+    rect rgb(50, 80, 120)
+        note right of DoctorService: Load State
+        DoctorService->>Manifest: Load all package manifests
+        Manifest->>FS: Read .dotmanifest
+        FS-->>Manifest: All package records
+        Manifest-->>DoctorService: Installed packages
+    end
+    
+    rect rgb(70, 90, 70)
+        note right of DoctorService: Verify Links
+        loop For each package
+            DoctorService->>FS: Check symlink exists
+            DoctorService->>FS: Read symlink target
+            
+            alt Link Valid
+                FS-->>DoctorService: Target matches expected
+                DoctorService->>DoctorService: Mark as healthy
+            else Link Broken
+                FS-->>DoctorService: Target missing/wrong
+                DoctorService->>DoctorService: Record issue
+            else Link Missing
+                FS-->>DoctorService: Symlink not found
+                DoctorService->>DoctorService: Record issue
+            end
+        end
+    end
+    
+    rect rgb(100, 70, 80)
+        note right of DoctorService: Detect Issues
+        DoctorService->>FS: Scan target directory
+        FS-->>DoctorService: All files/links
+        
+        DoctorService->>DoctorService: Detect broken links
+        DoctorService->>DoctorService: Detect orphaned files
+        DoctorService->>DoctorService: Detect conflicts
+        DoctorService->>DoctorService: Detect wrong targets
+        DoctorService->>DoctorService: Check manifest integrity
+    end
+    
+    rect rgb(90, 70, 100)
+        note right of DoctorService: Generate Report
+        DoctorService->>DoctorService: Categorize issues by severity
+        DoctorService->>DoctorService: Generate suggestions
+        DoctorService->>DoctorService: Build diagnostic report
+    end
+    
+    DoctorService-->>API: DiagnosticReport
+    API-->>CLI: Report data
+    
+    CLI->>Renderer: Render diagnostics
+    
+    alt All Healthy
+        Renderer->>Renderer: Format success message
+        Renderer-->>CLI: Health report
+    else Issues Found
+        Renderer->>Renderer: Format issue list
+        Renderer->>Renderer: Add suggestions
+        Renderer->>Renderer: Add fix commands
+        Renderer-->>CLI: Diagnostic report with fixes
+    end
+    
+    CLI->>User: Display diagnostics
 ```
 
 ## Type System
@@ -610,6 +924,61 @@ Batch 3 (depends on Batch 2):
   - CreateLink ~/.config/nvim/init.vim
 ```
 
+```mermaid
+graph TB
+    subgraph "Batch 1 - Parallel Execution"
+        A[CreateDir<br/>~/.config]:::batch1
+        B[CreateDir<br/>~/.local]:::batch1
+        C[CreateDir<br/>~/.cache]:::batch1
+    end
+    
+    subgraph "Batch 2 - Parallel Execution"
+        D[CreateLink<br/>~/.config/nvim]:::batch2
+        E[CreateLink<br/>~/.local/bin]:::batch2
+        F[CreateLink<br/>~/.cache/app]:::batch2
+    end
+    
+    subgraph "Batch 3 - Parallel Execution"
+        G[CreateLink<br/>~/.config/nvim/init.vim]:::batch3
+        H[CreateLink<br/>~/.config/nvim/lua]:::batch3
+        I[CreateLink<br/>~/.local/bin/script]:::batch3
+    end
+    
+    subgraph "Batch 4 - Sequential"
+        J[CreateLink<br/>~/.config/nvim/lua/config.lua]:::batch4
+    end
+    
+    A --> D
+    A --> G
+    A --> H
+    B --> E
+    B --> I
+    C --> F
+    
+    D --> G
+    D --> H
+    E --> I
+    
+    G --> J
+    H --> J
+    
+    style A fill:#3498DB,stroke:#1F618D,color:#fff
+    style B fill:#3498DB,stroke:#1F618D,color:#fff
+    style C fill:#3498DB,stroke:#1F618D,color:#fff
+    style D fill:#50C878,stroke:#2D7A4A,color:#fff
+    style E fill:#50C878,stroke:#2D7A4A,color:#fff
+    style F fill:#50C878,stroke:#2D7A4A,color:#fff
+    style G fill:#9B59B6,stroke:#6C3A7C,color:#fff
+    style H fill:#9B59B6,stroke:#6C3A7C,color:#fff
+    style I fill:#9B59B6,stroke:#6C3A7C,color:#fff
+    style J fill:#E67E22,stroke:#A84E0F,color:#fff
+    
+    classDef batch1 stroke-width:3px
+    classDef batch2 stroke-width:3px
+    classDef batch3 stroke-width:3px
+    classDef batch4 stroke-width:3px
+```
+
 ### Context Support
 
 All operations support `context.Context` for cancellation:
@@ -677,10 +1046,62 @@ err := client.Manage(ctx, packages...)
 
 Dependencies flow inward toward the domain:
 
-```
-CLI Layer → API Layer → (Pipeline, Executor) → (Scanner, Planner, Ignore) → Domain
-   ↓            ↓              ↓                        ↓                      ↓
-Adapters → Domain Ports                                                  (no deps)
+```mermaid
+graph TD
+    CLI[CLI Layer<br/>cmd/dot/]:::cliLayer
+    API[API Layer<br/>pkg/dot/]:::apiLayer
+    
+    Pipeline[Pipeline Layer<br/>internal/pipeline/]:::middlewareLayer
+    Executor[Executor Layer<br/>internal/executor/]:::middlewareLayer
+    
+    Scanner[Scanner<br/>internal/scanner/]:::coreLayer
+    Planner[Planner<br/>internal/planner/]:::coreLayer
+    Ignore[Ignore<br/>internal/ignore/]:::coreLayer
+    
+    Domain[Domain Layer<br/>internal/domain/<br/><br/>No Dependencies<br/>Standard Library Only]:::domainLayer
+    
+    Adapters[Adapters<br/>internal/adapters/]:::adapterLayer
+    DomainPorts[Domain Ports<br/>Interfaces: FS, Logger,<br/>Tracer, Metrics]:::portsLayer
+    
+    CLI -->|depends on| API
+    API -->|depends on| Pipeline
+    API -->|depends on| Executor
+    API -->|depends on| Scanner
+    API -->|depends on| Planner
+    API -->|depends on| Ignore
+    
+    Pipeline -->|depends on| Scanner
+    Pipeline -->|depends on| Planner
+    Pipeline -->|depends on| Ignore
+    Pipeline -->|depends on| Domain
+    
+    Executor -->|depends on| Domain
+    
+    Scanner -->|depends on| Domain
+    Planner -->|depends on| Domain
+    Ignore -->|depends on| Domain
+    
+    Adapters -->|implements| DomainPorts
+    DomainPorts -.defined in.-> Domain
+    
+    style CLI fill:#4A90E2,stroke:#2C5F8D,color:#fff,stroke-width:3px
+    style API fill:#50C878,stroke:#2D7A4A,color:#fff,stroke-width:3px
+    style Pipeline fill:#9B59B6,stroke:#6C3A7C,color:#fff,stroke-width:2px
+    style Executor fill:#E67E22,stroke:#A84E0F,color:#fff,stroke-width:2px
+    style Scanner fill:#3498DB,stroke:#1F618D,color:#fff,stroke-width:2px
+    style Planner fill:#3498DB,stroke:#1F618D,color:#fff,stroke-width:2px
+    style Ignore fill:#3498DB,stroke:#1F618D,color:#fff,stroke-width:2px
+    style Domain fill:#2ECC71,stroke:#1E8449,color:#fff,stroke-width:4px
+    style Adapters fill:#95A5A6,stroke:#5D6D7E,color:#fff,stroke-width:2px
+    style DomainPorts fill:#7F8C8D,stroke:#5D6D7E,color:#fff,stroke-width:2px,stroke-dasharray: 5 5
+    
+    classDef cliLayer stroke-width:3px
+    classDef apiLayer stroke-width:3px
+    classDef middlewareLayer stroke-width:2px
+    classDef coreLayer stroke-width:2px
+    classDef domainLayer stroke-width:4px
+    classDef adapterLayer stroke-width:2px,stroke-dasharray: 5 5
+    classDef portsLayer stroke-width:2px,stroke-dasharray: 5 5
 ```
 
 **Rules**:

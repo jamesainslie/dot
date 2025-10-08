@@ -150,8 +150,8 @@ func (rs ResolutionStatus) String() string {
 type ResolutionOutcome struct {
 	Status     ResolutionStatus
 	Operations []domain.Operation // Modified operations after resolution
-	Conflict   *Conflict       // If status is ResolveConflict
-	Warning    *Warning        // If status is ResolveWarning
+	Conflict   *Conflict          // If status is ResolveConflict
+	Warning    *Warning           // If status is ResolveWarning
 }
 
 // ResolveResult contains all resolved operations, conflicts, and warnings

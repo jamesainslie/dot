@@ -4,8 +4,8 @@ package planner
 import (
 	"fmt"
 
-	"github.com/jamesainslie/dot/internal/scanner"
 	"github.com/jamesainslie/dot/internal/domain"
+	"github.com/jamesainslie/dot/internal/scanner"
 )
 
 // LinkSpec specifies a desired symbolic link.

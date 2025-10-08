@@ -62,4 +62,3 @@ func TestWarningInfo(t *testing.T) {
 		assert.Nil(t, info.Context)
 	})
 }
-

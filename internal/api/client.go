@@ -5,7 +5,6 @@ package api
 import (
 	"fmt"
 
-	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/executor"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/manifest"
@@ -45,15 +44,9 @@ func newClient(cfg dot.Config) (dot.Client, error) {
 		OnFileExists: planner.PolicyFail, // Safe default
 	}
 
-	// Convert config types to domain types
-	// Since dot types are defined as domain types, we can type assert
-	domainFS := cfg.FS.(domain.FS)
-	domainLogger := cfg.Logger.(domain.Logger)
-	domainTracer := cfg.Tracer.(domain.Tracer)
-
 	// Create manage pipeline
 	managePipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
-		FS:        domainFS,
+		FS:        cfg.FS,
 		IgnoreSet: ignoreSet,
 		Policies:  policies,
 		BackupDir: cfg.BackupDir,
@@ -61,13 +54,13 @@ func newClient(cfg dot.Config) (dot.Client, error) {
 
 	// Create executor
 	exec := executor.New(executor.Opts{
-		FS:     domainFS,
-		Logger: domainLogger,
-		Tracer: domainTracer,
+		FS:     cfg.FS,
+		Logger: cfg.Logger,
+		Tracer: cfg.Tracer,
 	})
 
 	// Create manifest store
-	manifestStore := manifest.NewFSManifestStore(domainFS)
+	manifestStore := manifest.NewFSManifestStore(cfg.FS)
 
 	return &client{
 		config:     cfg,

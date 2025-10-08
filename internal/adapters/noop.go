@@ -40,8 +40,8 @@ func (t *NoopTracer) Start(ctx context.Context, name string, opts ...domain.Span
 // NoopSpan is a span that does nothing.
 type NoopSpan struct{}
 
-func (s *NoopSpan) End()                                 {}
-func (s *NoopSpan) RecordError(err error)                {}
+func (s *NoopSpan) End()                                    {}
+func (s *NoopSpan) RecordError(err error)                   {}
 func (s *NoopSpan) SetAttributes(attrs ...domain.Attribute) {}
 
 // NoopMetrics is a metrics collector that does nothing.

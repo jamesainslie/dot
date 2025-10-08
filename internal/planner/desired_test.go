@@ -3,8 +3,8 @@ package planner_test
 import (
 	"testing"
 
-	"github.com/jamesainslie/dot/internal/planner"
 	"github.com/jamesainslie/dot/internal/domain"
+	"github.com/jamesainslie/dot/internal/planner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

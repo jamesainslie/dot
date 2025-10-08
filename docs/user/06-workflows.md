@@ -250,4 +250,7 @@ jobs:
 - [Troubleshooting Guide](08-troubleshooting.md): Solve common issues
 - [Configuration Reference](04-configuration.md): Customize behavior
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

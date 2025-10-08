@@ -488,4 +488,7 @@ If symlinks are unsupported, dot cannot function. Use alternative filesystem or 
 - [Configuration Reference](04-configuration.md): Configure dot for your environment
 - [Command Reference](05-commands.md): Learn all available commands
 
+## Navigation
+
+**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
 

@@ -3,8 +3,8 @@ package scanner
 import (
 	"context"
 
-	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/domain"
+	"github.com/jamesainslie/dot/internal/ignore"
 )
 
 // ScanPackage scans a single package directory.

@@ -4,9 +4,9 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/planner"
-	"github.com/jamesainslie/dot/internal/domain"
 )
 
 // ManagePipelineOpts contains options for the Manage pipeline

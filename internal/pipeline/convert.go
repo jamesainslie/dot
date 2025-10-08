@@ -1,8 +1,8 @@
 package pipeline
 
 import (
-	"github.com/jamesainslie/dot/internal/planner"
 	"github.com/jamesainslie/dot/internal/domain"
+	"github.com/jamesainslie/dot/internal/planner"
 )
 
 // convertConflicts converts planner.Conflict to domain.ConflictInfo for plan metadata.

@@ -7,83 +7,154 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- CLI command handlers for manage, unmanage, remanage, adopt (Phase 22.1)
-- Package-operation mapping in Plan type for accurate link tracking (Phase 22.2)
-- Per-package link tracking in manifest (Phase 22.2)
-- Plan helper methods: OperationsForPackage, PackageNames, HasPackage (Phase 22.2)
-- Backup directory configuration support via CLI flag, config file, environment variable (Phase 22.3)
-- DoctorWithScan method for explicit scan configuration control (Phase 22.4)
-- Incremental remanage with SHA256 hash-based change detection (Phase 22.5)
-- Package content hash storage in manifest for change detection (Phase 22.5)
-- ADR-002 documenting package-operation mapping design
-- ADR-003 documenting streaming API design (future)
-- ADR-004 documenting ConfigBuilder design (future)
+### Bug Fixes
+- **client:** populate packages from plan when empty in updateManifest
+- **client:** properly propagate manifest errors in Doctor
+- **hooks:** check overall project coverage to match CI
+- **hooks:** show test output in pre-commit hook
+- **hooks:** show linting output in pre-commit hook
+- **path:** add method forwarding to Path wrapper type
+- **test:** rename ExecutionFailure test to match actual behavior
+- **test:** strengthen PackageOperations assertion in exhaustive test
+- **test:** correct comment in PlanOperationsEmpty test
+- **test:** correct mock variadic parameter handling in ports_test
 
-### Changed
-- Manifest now accurately tracks LinkCount and Links per package (was always 0/empty) (Phase 22.2)
-- Remanage operations use incremental planning by default (99% faster for unchanged) (Phase 22.5)
-- Backup directory configuration now functional throughout system (Phase 22.3)
-- Doctor(ctx) now exists as simple wrapper around DoctorWithScan (Phase 22.4)
-- Pipeline properly uses configured backup directory (was hardcoded to empty) (Phase 22.3)
+### Code Refactoring
+- **api:** replace Client interface with concrete struct
+- **domain:** format code and fix linter issues
+- **domain:** clean up temporary migration scripts
+- **domain:** complete internal package migration and simplify pkg/dot
+- **domain:** update all internal package imports to use internal/domain
+- **domain:** move all remaining domain types to internal/domain
+- **domain:** move Path and errors types to internal/domain
+- **domain:** move Result monad to internal/domain
+- **domain:** create internal/domain package structure
+- **hooks:** eliminate duplicate test run in pre-commit
+- **path:** remove Path generic wrapper to eliminate code smell
 
-### Fixed
-- CLI commands no longer stubbed, fully implemented and functional (Phase 22.1)
-- Manifest LinkCount now shows actual count instead of always 0 (Phase 22.2)
-- Manifest Links array now populated instead of always empty (Phase 22.2)
-- Backup directory configuration now wired through pipeline (Phase 22.3)
-- Status command now shows accurate link counts per package (Phase 22.2)
-- Unmanage command can now properly remove package links (Phase 22.2)
 
-### Added
-- Project initialization with Go 1.25 module
-- Standard directory structure (cmd, pkg, internal, tests)
-- Makefile with semantic versioning targets and build automation
-- golangci-lint configuration with 15 linters enabled
-- GitHub Actions CI/CD workflows for lint, format, vet, test, build
-- GoReleaser v2 configuration for automated releases
-- Configuration management package with Viper and XDG compliance
-- Support for YAML, JSON, TOML configuration formats
-- Environment variable overrides with DOT_ prefix
-- Phantom-typed paths (PackagePath, TargetPath, FilePath) for compile-time safety
-- Result monad for functional error handling with Map, FlatMap, Collect
-- Error taxonomy with domain and infrastructure error types
-- User-facing error messages without technical jargon
-- Operation type hierarchy (LinkCreate, LinkDelete, DirCreate, DirDelete, FileMove, FileBackup)
-- Domain value objects (Package, Node, Plan, PlanMetadata)
-- Infrastructure port interfaces (FS, Logger, Tracer, Metrics)
-- Mock implementations for all ports enabling pure functional testing
-- OS filesystem adapter wrapping os package with context cancellation
-- Slog logger adapter with console-slog integration for human-readable output
-- No-op adapters for logger, tracer, and metrics (testing and performance)
-- Tree scanner with recursive directory traversal
-- Dotfile translation (dot- prefix to . prefix and reverse)
-- Tree utility functions (Walk, CollectFiles, CountNodes, RelativePath)
-- Ignore pattern engine with glob-to-regex conversion
-- IgnoreSet for aggregating multiple ignore patterns
-- Default ignore patterns (.git, .DS_Store, etc.)
-- Package scanner with ignore pattern support
-- Planner foundation (DesiredState, LinkSpec, DirSpec, ComputeDesiredState)
-- Conflict type enumeration with 6 conflict categories
-- Conflict value object with context and suggestions
-- Resolution status types (OK, Conflict, Warning, Skip)
-- ResolveResult aggregation for conflicts and warnings
-- CurrentState representation for filesystem state
-- Conflict detection for LinkCreate and DirCreate operations
-- Resolution policies (Fail, Backup, Overwrite, Skip)
-- ResolutionPolicies configuration with fail-safe defaults
-- Warning severity levels (Info, Caution, Danger)
-- Context-aware suggestion generation for all conflict types
-- Conflict enrichment with actionable suggestions and examples
-- Main Resolve() function for conflict resolution orchestration
-- Policy dispatcher with operation-specific resolution logic
-- PlanResult type for planning with optional conflict resolution
-- ComputeOperationsFromDesiredState for state-to-operation conversion
-- README.md with project overview and architecture
-- Command terminology: manage/unmanage/remanage for clarity
-- CHANGELOG.md following Keep a Changelog format
-- MIT LICENSE file
-- .gitignore for Go project artifacts
+## v0.1.0 - 2025-10-07
+### Bug Fixes
+- **api:** address CodeRabbit feedback on Phase 12
+- **api:** use configured skip patterns in recursive orphan scanning
+- **api:** improve error handling and test robustness
+- **api:** use package-operation mapping for accurate manifest tracking
+- **api:** normalize paths for cross-platform link lookup
+- **api:** enforce depth and context limits in recursive orphan scanning
+- **cli:** resolve critical bugs in progress, config, and rendering
+- **cli:** handle both pointer and value operation types in renderers
+- **cli:** improve config format detection and help text indentation
+- **cli:** correct scan flag variable scope in NewDoctorCommand
+- **cli:** add error templates for checkpoint and not implemented errors
+- **cli:** respect NO_COLOR environment variable in shouldColorize
+- **cli:** improve JSON/YAML output and doctor performance
+- **cli:** render execution plan in dry-run mode
+- **cli:** improve TTY detection portability and path truncation
+- **config:** enable CodeRabbit auto-review for all pull requests
+- **executor:** make Checkpoint operations map thread-safe
+- **executor:** address code review feedback for concurrent safety and error handling
+- **manifest:** add security guards and prevent hash collisions
+- **pipeline:** prevent shared mutation of context maps in metadata conversion
+- **release:** separate archive configs for Homebrew compatibility
+- **scanner:** implement real package tree scanning with ignore filtering
+- **test:** improve test isolation and cross-platform compatibility
+- **test:** make Adopt execution error test deterministic
 
-[Unreleased]: https://github.com/jamesainslie/dot/commits/main
+### Build System
+- **make:** add buildvcs flag for reproducible builds
+- **makefile:** add build infrastructure with semantic versioning
+- **release:** add Homebrew tap integration
 
+### Code Refactoring
+- **adopt:** update Adopt and PlanAdopt methods to use files-first signature
+- **api:** reduce cyclomatic complexity in PlanRemanage
+- **api:** extract orphan scan logic to reduce complexity
+- **cli:** address code review nitpicks for improved code quality
+- **cli:** reduce cyclomatic complexity in table renderer
+- **cli:** add default case and eliminate type assertion duplication
+- **pipeline:** use safe unwrap pattern in path construction tests
+- **pipeline:** improve test quality and organization
+- **quality:** improve error handling documentation and panic messages
+- **terminology:** update suggestion text from unstow to unmanage
+- **terminology:** replace stow with package directory terminology
+- **terminology:** complete stow removal from test fixtures
+- **terminology:** rename stow-prefixed variables to package/manage
+
+### Features
+- **adapters:** implement slog logger and no-op adapters
+- **adapters:** implement OS filesystem adapter
+- **api:** implement Unmanage, Remanage, and Adopt operations
+- **api:** add foundational types for Phase 12 Client API
+- **api:** define Client interface for public API
+- **api:** implement Client with Manage operation
+- **api:** add comprehensive tests and documentation
+- **api:** implement directory extraction and link set optimization
+- **api:** update Doctor API to accept ScanConfig parameter
+- **api:** update Doctor API to accept ScanConfig parameter
+- **api:** implement incremental remanage with hash-based change detection
+- **api:** add depth calculation and directory skip logic
+- **api:** implement link count extraction from plan
+- **api:** add DoctorWithScan for explicit scan configuration
+- **api:** wire up orphaned link detection with safety limits
+- **cli:** implement list command for package inventory
+- **cli:** add scan control flags to doctor command
+- **cli:** implement help system with examples and completion
+- **cli:** implement progress indicators for operation feedback
+- **cli:** implement terminal styling and layout system
+- **cli:** implement output renderer infrastructure
+- **cli:** add minimal CLI entry point for build validation
+- **cli:** add config command for XDG configuration management
+- **cli:** implement error formatting foundation for Phase 15
+- **cli:** implement status command for installation state inspection
+- **cli:** implement doctor command for health checks
+- **cli:** implement Phase 13 CLI infrastructure with core commands
+- **cli:** implement UX polish with output formatting
+- **cli:** implement command handlers for manage, unmanage, remanage, adopt
+- **cli:** show complete operation breakdown in table summary
+- **config:** wire backup directory through system
+- **config:** implement extended configuration infrastructure
+- **config:** implement configuration management with Viper and XDG compliance
+- **config:** add Config struct with validation
+- **domain:** implement operation type hierarchy
+- **domain:** implement error taxonomy with user-facing messages
+- **domain:** implement Result monad for functional error handling
+- **domain:** implement phantom-typed paths for compile-time safety
+- **domain:** implement domain value objects
+- **domain:** add package-operation mapping to Plan
+- **dot:** add ScanConfig types for orphaned link detection
+- **executor:** add metrics instrumentation wrapper
+- **executor:** implement parallel batch execution
+- **executor:** implement Phase 10 executor with two-phase commit
+- **ignore:** implement pattern matching engine and ignore sets
+- **manifest:** implement FSManifestStore persistence
+- **manifest:** add core manifest domain types
+- **manifest:** implement content hashing for packages
+- **manifest:** define ManifestStore interface
+- **manifest:** implement manifest validation
+- **operation:** add Execute and Rollback methods to operations
+- **pipeline:** track package ownership in operation plans
+- **pipeline:** surface conflicts and warnings in plan metadata
+- **pipeline:** enhance context cancellation handling in pipeline stages
+- **pipeline:** implement stow pipeline with scanning, planning, resolution, and sorting stages
+- **planner:** implement suggestion generation and conflict enrichment
+- **planner:** implement conflict detection for links and directories
+- **planner:** define conflict type enumeration
+- **planner:** implement real desired state computation
+- **planner:** implement desired state computation foundation
+- **planner:** define resolution status types
+- **planner:** implement resolve result type
+- **planner:** implement conflict value object
+- **planner:** implement resolution policy types and basic policies
+- **planner:** implement main resolver function and policy dispatcher
+- **planner:** integrate resolver with planning pipeline
+- **planner:** implement dependency graph construction
+- **planner:** implement parallelization analysis
+- **planner:** implement topological sort with cycle detection
+- **ports:** define infrastructure port interfaces
+- **scanner:** implement tree scanning with recursive traversal
+- **scanner:** implement dotfile translation logic
+- **scanner:** implement package scanner with ignore support
+- **types:** add Status and PackageInfo types
+
+
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.1.0...HEAD

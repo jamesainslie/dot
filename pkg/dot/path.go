@@ -2,54 +2,23 @@ package dot
 
 import "github.com/jamesainslie/dot/internal/domain"
 
-// PathKind is a marker interface for phantom type parameters.
-// Re-exported from internal/domain.
-type PathKind = domain.PathKind
-
-// PackageDirKind marks paths pointing to package directories.
-type PackageDirKind = domain.PackageDirKind
-
-// TargetDirKind marks paths pointing to target directories.
-type TargetDirKind = domain.TargetDirKind
-
-// FileDirKind marks paths pointing to file directories.
-type FileDirKind = domain.FileDirKind
-
-// Path represents a filesystem path with phantom typing for compile-time safety.
-// Re-exported from internal/domain.
-type Path[K PathKind] domain.Path[K]
-
-// String returns the string representation of the path.
-func (p Path[K]) String() string {
-	return domain.Path[K](p).String()
-}
-
-// Join appends a path component, returning a FilePath.
-func (p Path[K]) Join(elem string) FilePath {
-	return domain.Path[K](p).Join(elem)
-}
-
-// Parent returns the parent directory of this path.
-func (p Path[K]) Parent() Result[Path[K]] {
-	r := domain.Path[K](p).Parent()
-	if r.IsErr() {
-		return Err[Path[K]](r.UnwrapErr())
-	}
-	return Ok(Path[K](r.Unwrap()))
-}
-
-// Equals checks if two paths are equal.
-func (p Path[K]) Equals(other Path[K]) bool {
-	return domain.Path[K](p).Equals(domain.Path[K](other))
-}
+// Concrete path types re-exported from internal/domain.
+// These use proper type aliases (=) and include all methods from domain types.
+//
+// Note: The generic Path[K PathKind] type is NOT re-exported to avoid
+// Go 1.25.1 generic type alias limitations. Users should use the concrete
+// types (PackagePath, TargetPath, FilePath) which work perfectly as aliases.
 
 // PackagePath is a path to a package directory.
+// Includes methods: String(), Join(), Parent(), Equals()
 type PackagePath = domain.PackagePath
 
 // TargetPath is a path to a target directory.
+// Includes methods: String(), Join(), Parent(), Equals()
 type TargetPath = domain.TargetPath
 
 // FilePath is a path to a file or directory within a package.
+// Includes methods: String(), Join(), Parent(), Equals()
 type FilePath = domain.FilePath
 
 // NewPackagePath creates a new package path with validation.

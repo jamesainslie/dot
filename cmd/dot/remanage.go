@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -25,30 +24,7 @@ creating new ones.`,
 
 // runRemanage handles the remanage command execution.
 func runRemanage(cmd *cobra.Command, args []string) error {
-	cfg, err := buildConfig()
-	if err != nil {
-		return formatError(err)
-	}
-
-	client, err := dot.NewClient(cfg)
-	if err != nil {
-		return formatError(err)
-	}
-
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	packages := args
-
-	if err := client.Remanage(ctx, packages...); err != nil {
-		return formatError(err)
-	}
-
-	if !cfg.DryRun {
-		fmt.Printf("Successfully remanaged %d package(s)\n", len(packages))
-	}
-
-	return nil
+	return executePackageCommand(cmd, args, func(client *dot.Client, ctx context.Context, packages []string) error {
+		return client.Remanage(ctx, packages...)
+	}, "remanaged")
 }

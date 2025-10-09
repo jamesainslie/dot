@@ -6,6 +6,7 @@ package integration
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/jamesainslie/dot/tests/integration/testutil"
@@ -142,6 +143,10 @@ func TestConflict_BrokenSymlinkConflict(t *testing.T) {
 func TestConflict_PermissionConflict(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("skipping permission test when running as root")
+	}
+
+	if runtime.GOOS == "darwin" {
+		t.Skip("skipping permission test on macOS - directory permissions behave differently")
 	}
 
 	env := testutil.NewTestEnvironment(t)

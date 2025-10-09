@@ -29,12 +29,14 @@ directory to the target directory.`,
 func runManage(cmd *cobra.Command, args []string) error {
 	cfg, err := buildConfig()
 	if err != nil {
-		return formatError(err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		return err
 	}
 
 	client, err := dot.NewClient(cfg)
 	if err != nil {
-		return formatError(err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		return err
 	}
 
 	ctx := cmd.Context()
@@ -48,17 +50,20 @@ func runManage(cmd *cobra.Command, args []string) error {
 	if cfg.DryRun {
 		plan, err := client.PlanManage(ctx, packages...)
 		if err != nil {
-			return formatError(err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+			return err
 		}
 
 		// Create renderer and render the plan
 		rend, err := renderer.NewRenderer("text", true)
 		if err != nil {
-			return formatError(err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+			return err
 		}
 
 		if err := rend.RenderPlan(os.Stdout, plan); err != nil {
-			return formatError(err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+			return err
 		}
 
 		return nil
@@ -66,7 +71,8 @@ func runManage(cmd *cobra.Command, args []string) error {
 
 	// Normal execution
 	if err := client.Manage(ctx, packages...); err != nil {
-		return formatError(err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		return err
 	}
 
 	fmt.Printf("Successfully managed %d package(s)\n", len(packages))

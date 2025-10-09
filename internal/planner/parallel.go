@@ -30,8 +30,8 @@ func (g *DependencyGraph) ParallelizationPlan() [][]domain.Operation {
 			return level
 		}
 
-		// Get dependencies
-		deps := op.Dependencies()
+		// Get dependencies from graph, not operation
+		deps := g.Dependencies(op)
 		if len(deps) == 0 {
 			// No dependencies = level 0
 			opLevels[op] = 0

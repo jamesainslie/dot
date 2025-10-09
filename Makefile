@@ -36,7 +36,7 @@ test:
 
 ## lint: Run golangci-lint
 lint:
-	golangci-lint run --config .golangci.yml
+	/opt/homebrew/bin/golangci-lint run --config .golangci.yml
 
 ## vet: Run go vet
 vet:

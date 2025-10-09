@@ -141,15 +141,22 @@ func createLogger() dot.Logger {
 }
 
 // verbosityToLevel converts verbosity count to log level.
+// Level mapping:
+//   - 0 (no flag): ERROR only - suppress all logs, show only user messages
+//   - 1 (-v): INFO - show high-level progress
+//   - 2 (-vv): DEBUG - show detailed operation info
+//   - 3+ (-vvv): More verbose DEBUG levels
 func verbosityToLevel(v int) slog.Level {
 	switch {
 	case v == 0:
-		return slog.LevelInfo
+		return slog.LevelError // Suppress INFO/DEBUG/WARN, only show errors
 	case v == 1:
-		return slog.LevelDebug
+		return slog.LevelInfo // Show high-level progress
+	case v == 2:
+		return slog.LevelDebug // Show detailed operations
 	default:
 		// Even more verbose
-		return slog.LevelDebug - slog.Level(v-1)
+		return slog.LevelDebug - slog.Level(v-2)
 	}
 }
 

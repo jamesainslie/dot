@@ -18,6 +18,8 @@ type DependencyGraph struct {
 
 // BuildGraph constructs a dependency graph from a list of operations.
 // It analyzes the Dependencies() of each operation to build the graph edges.
+// Additionally, it computes implicit dependencies for DirCreate operations,
+// ensuring parent directories are created before child directories.
 //
 // Time complexity: O(n + e) where n is the number of operations and e is
 // the total number of dependencies across all operations.
@@ -28,15 +30,53 @@ func BuildGraph(ops []domain.Operation) *DependencyGraph {
 		edges: make(map[domain.Operation][]domain.Operation, len(ops)),
 	}
 
+	// Track DirCreate operations by path for dependency resolution
+	dirOps := make(map[string]domain.Operation)
+
 	// Add all operations as nodes
 	for i, op := range ops {
 		graph.nodes[op] = i
 		graph.ops = append(graph.ops, op)
 
-		// Build edges from dependencies
+		// Track directory creation operations
+		if dirOp, ok := op.(domain.DirCreate); ok {
+			dirOps[dirOp.Path.String()] = op
+		}
+
+		// Build edges from explicit dependencies
 		deps := op.Dependencies()
 		if len(deps) > 0 {
 			graph.edges[op] = deps
+		}
+	}
+
+	// Add implicit dependencies for directory operations
+	for _, op := range graph.ops {
+		dirOp, ok := op.(domain.DirCreate)
+		if !ok {
+			continue
+		}
+
+		// Check if parent directory is also being created
+		parentResult := dirOp.Path.Parent()
+		if !parentResult.IsOk() {
+			// No parent (root directory)
+			continue
+		}
+
+		parentPath := parentResult.Unwrap()
+		parentOp, exists := dirOps[parentPath.String()]
+		if !exists {
+			// Parent directory not being created by this plan
+			continue
+		}
+
+		// Add dependency: child directory depends on parent directory
+		if graph.edges[op] == nil {
+			graph.edges[op] = []domain.Operation{parentOp}
+		} else {
+			// Append to existing dependencies
+			graph.edges[op] = append(graph.edges[op], parentOp)
 		}
 	}
 

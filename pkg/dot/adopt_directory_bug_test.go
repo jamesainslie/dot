@@ -39,13 +39,13 @@ func TestAdopt_Directory_MovesContents(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	// Adopt the directory
-	err = client.Adopt(ctx, []string{".testdir"}, "mypackage")
+	// Adopt the directory (package name gets dot- prefix)
+	err = client.Adopt(ctx, []string{".testdir"}, "dot-testdir")
 	require.NoError(t, err)
 
-	// Check the package directory structure
+	// Check the package directory structure (NEW FLAT STRUCTURE)
 	t.Log("After adopt, checking package directory...")
-	pkgDir := packageDir + "/mypackage/dot-testdir"
+	pkgDir := packageDir + "/dot-testdir" // Changed: flat structure, no nested dir
 	assert.True(t, fs.Exists(ctx, pkgDir), "Package directory should exist")
 
 	if fs.Exists(ctx, pkgDir) {
@@ -56,9 +56,9 @@ func TestAdopt_Directory_MovesContents(t *testing.T) {
 		}
 	}
 
-	// FILES SHOULD BE IN THE PACKAGE DIRECTORY
-	assert.True(t, fs.Exists(ctx, pkgDir+"/file1.txt"), "file1.txt should be moved to package")
-	assert.True(t, fs.Exists(ctx, pkgDir+"/file2.txt"), "file2.txt should be moved to package")
+	// FILES SHOULD BE AT PACKAGE ROOT (FLAT STRUCTURE)
+	assert.True(t, fs.Exists(ctx, pkgDir+"/file1.txt"), "file1.txt should be at package root")
+	assert.True(t, fs.Exists(ctx, pkgDir+"/file2.txt"), "file2.txt should be at package root")
 
 	// Verify contents
 	data, err := fs.ReadFile(ctx, pkgDir+"/file1.txt")

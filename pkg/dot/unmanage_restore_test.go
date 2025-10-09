@@ -34,18 +34,18 @@ func TestUnmanage_AdoptedPackage_Restore(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	// Adopt the file
-	err = client.Adopt(ctx, []string{".config"}, "mypackage")
+	// Adopt the file (package gets dot- prefix)
+	err = client.Adopt(ctx, []string{".config"}, "dot-config")
 	require.NoError(t, err)
 
 	// Verify file was moved to package
-	assert.True(t, fs.Exists(ctx, packageDir+"/mypackage/dot-config"))
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-config/dot-config"))
 	// Verify symlink was created
 	isLink, _ := fs.IsSymlink(ctx, targetDir+"/.config")
 	assert.True(t, isLink)
 
 	// Unmanage (should restore the file)
-	err = client.Unmanage(ctx, "mypackage")
+	err = client.Unmanage(ctx, "dot-config")
 	require.NoError(t, err)
 
 	// Verify symlink was removed
@@ -62,8 +62,8 @@ func TestUnmanage_AdoptedPackage_Restore(t *testing.T) {
 	assert.Equal(t, []byte("my config"), data)
 
 	// Verify file ALSO remains in package directory (copied, not moved)
-	assert.True(t, fs.Exists(ctx, packageDir+"/mypackage/dot-config"), "File should remain in package directory")
-	data, err = fs.ReadFile(ctx, packageDir+"/mypackage/dot-config")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-config/dot-config"), "File should remain in package directory")
+	data, err = fs.ReadFile(ctx, packageDir+"/dot-config/dot-config")
 	require.NoError(t, err)
 	assert.Equal(t, []byte("my config"), data, "Package file should have same content")
 }
@@ -231,23 +231,23 @@ func TestUnmanage_AdoptedDirectory_Restore(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	// Adopt the entire .ssh directory
-	err = client.Adopt(ctx, []string{".ssh"}, "ssh")
+	// Adopt the entire .ssh directory (package gets dot- prefix)
+	err = client.Adopt(ctx, []string{".ssh"}, "dot-ssh")
 	require.NoError(t, err)
 
-	// Verify directory was moved to package
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh"))
+	// Verify directory was moved to package (flat structure)
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh"))
 
 	// Debug: Check what's in the package BEFORE unmanage
 	t.Log("Before unmanage, checking package directory...")
-	if fs.Exists(ctx, packageDir+"/ssh/dot-ssh") {
-		entries, _ := fs.ReadDir(ctx, packageDir+"/ssh/dot-ssh")
-		t.Logf("Package /ssh/dot-ssh contains %d entries:", len(entries))
+	if fs.Exists(ctx, packageDir+"/dot-ssh") {
+		entries, _ := fs.ReadDir(ctx, packageDir+"/dot-ssh")
+		t.Logf("Package /dot-ssh contains %d entries:", len(entries))
 		for _, e := range entries {
 			t.Logf("  - %s", e.Name())
 		}
-		// Check if config file exists
-		configExists := fs.Exists(ctx, packageDir+"/ssh/dot-ssh/config")
+		// Check if config file exists at root
+		configExists := fs.Exists(ctx, packageDir+"/dot-ssh/config")
 		t.Logf("config file exists: %v", configExists)
 	}
 
@@ -256,19 +256,19 @@ func TestUnmanage_AdoptedDirectory_Restore(t *testing.T) {
 	assert.True(t, isLink)
 
 	// Unmanage (should restore the entire directory)
-	err = client.Unmanage(ctx, "ssh")
+	err = client.Unmanage(ctx, "dot-ssh")
 	require.NoError(t, err)
 
-	// Debug: Check package directory before assertions
+	// Debug: Check package directory after unmanage
 	t.Log("After unmanage, checking package directory...")
-	if fs.Exists(ctx, packageDir+"/ssh") {
-		entries, _ := fs.ReadDir(ctx, packageDir+"/ssh")
-		t.Logf("Package /ssh contains %d entries:", len(entries))
+	if fs.Exists(ctx, packageDir+"/dot-ssh") {
+		entries, _ := fs.ReadDir(ctx, packageDir+"/dot-ssh")
+		t.Logf("Package /dot-ssh contains %d entries:", len(entries))
 		for _, e := range entries {
 			t.Logf("  - %s (isDir: %v)", e.Name(), e.IsDir())
 		}
 	} else {
-		t.Log("Package /ssh directory does NOT exist")
+		t.Log("Package /dot-ssh directory does NOT exist")
 	}
 
 	// Verify .ssh directory was restored
@@ -288,12 +288,12 @@ func TestUnmanage_AdoptedDirectory_Restore(t *testing.T) {
 
 	// Verify directory ALSO remains in package directory (copied, not moved)
 	t.Log("Verifying package directory preserved...")
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh"), "Directory should remain in package directory")
-	if fs.Exists(ctx, packageDir+"/ssh/dot-ssh") {
-		assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh/config"), "Files should remain in package directory")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh"), "Directory should remain in package directory")
+	if fs.Exists(ctx, packageDir+"/dot-ssh") {
+		assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh/config"), "Files should remain at package root")
 
 		// Verify package directory has same content
-		data, _ = fs.ReadFile(ctx, packageDir+"/ssh/dot-ssh/config")
+		data, _ = fs.ReadFile(ctx, packageDir+"/dot-ssh/config")
 		assert.Equal(t, []byte("ssh config"), data, "Package files should have same content")
 	}
 }

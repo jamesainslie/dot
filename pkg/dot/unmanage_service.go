@@ -300,57 +300,89 @@ func (s *UnmanageService) createRestoreOperations(ctx context.Context, pkg strin
 	operations := make([]Operation, 0, len(links))
 
 	for _, link := range links {
-		// The link in manifest is the target path (e.g., ".config")
-		// The file in package directory has untranslated name (e.g., "dot-config")
-		// We need to untranslate the basename to find the actual file
+		// The link in manifest is the target path (e.g., ".ssh")
+		// With flat structure, package root contains the directory contents
+		// So for link ".ssh", we copy from package root to target ".ssh"
 
-		linkDir := filepath.Dir(link)
-		linkBase := filepath.Base(link)
+		targetFilePath := filepath.Join(s.targetDir, link)
+		pkgRootPath := filepath.Join(s.packageDir, pkg)
 
-		// Untranslate the basename: ".config" -> "dot-config"
-		pkgFileName := scanner.UntranslateDotfile(linkBase)
-
-		// Build package file path
-		var pkgFilePath string
-		if linkDir == "." {
-			pkgFilePath = filepath.Join(s.packageDir, pkg, pkgFileName)
-		} else {
-			pkgFilePath = filepath.Join(s.packageDir, pkg, linkDir, pkgFileName)
-		}
-
-		if !s.fs.Exists(ctx, pkgFilePath) {
-			s.logger.Warn(ctx, "package_file_not_found", "package", pkg, "file", pkgFilePath)
+		// Check if the target link was a directory
+		// If manifest has link ".ssh", check if package root is the directory
+		if !s.fs.Exists(ctx, pkgRootPath) {
+			s.logger.Warn(ctx, "package_directory_not_found", "package", pkg, "path", pkgRootPath)
 			continue
 		}
 
-		// Destination: original location in target
-		targetFilePath := filepath.Join(s.targetDir, link)
-
-		// Check if source is a directory or file
-		isDir, err := s.fs.IsDir(ctx, pkgFilePath)
+		// Check if package root is a directory with contents
+		isDir, err := s.fs.IsDir(ctx, pkgRootPath)
 		if err != nil {
-			s.logger.Warn(ctx, "failed_to_check_if_directory", "path", pkgFilePath, "error", err)
+			s.logger.Warn(ctx, "failed_to_check_package_type", "path", pkgRootPath, "error", err)
 			continue
 		}
 
 		if isDir {
-			// For directories, create a DirCopy operation (copies without removing source)
-			s.logger.Info(ctx, "directory_restoration_uses_copy", "package", pkg, "link", link)
+			// Check if this is a directory adoption or single file in package directory
+			// For directory adoption: package root contains the adopted directory's contents
+			// For file adoption: package root contains a single file with translated name
 
-			sourceResult := NewFilePath(pkgFilePath)
-			if !sourceResult.IsOk() {
-				continue
+			linkBase := filepath.Base(link)
+			translatedName := scanner.UntranslateDotfile(linkBase)
+			fileInPackage := filepath.Join(pkgRootPath, translatedName)
+
+			if s.fs.Exists(ctx, fileInPackage) {
+				// Single file in package directory - restore just the file
+				s.logger.Info(ctx, "restoring_adopted_file", "package", pkg, "file", translatedName)
+
+				sourceResult := NewFilePath(fileInPackage)
+				if !sourceResult.IsOk() {
+					continue
+				}
+
+				destResult := NewFilePath(targetFilePath)
+				if !destResult.IsOk() {
+					continue
+				}
+
+				id := OperationID(fmt.Sprintf("restore-file-%s", link))
+				operations = append(operations, NewFileBackup(id, sourceResult.Unwrap(), destResult.Unwrap()))
+			} else {
+				// Directory adoption - package root IS the adopted directory
+				s.logger.Info(ctx, "restoring_adopted_directory", "package", pkg, "link", link)
+
+				sourceResult := NewFilePath(pkgRootPath)
+				if !sourceResult.IsOk() {
+					continue
+				}
+
+				destResult := NewFilePath(targetFilePath)
+				if !destResult.IsOk() {
+					continue
+				}
+
+				id := OperationID(fmt.Sprintf("restore-dir-%s", pkg))
+				operations = append(operations, NewDirCopy(id, sourceResult.Unwrap(), destResult.Unwrap()))
 			}
-
-			destResult := NewFilePath(targetFilePath)
-			if !destResult.IsOk() {
-				continue
-			}
-
-			id := OperationID(fmt.Sprintf("restore-dir-copy-%s-%s", pkg, link))
-			operations = append(operations, NewDirCopy(id, sourceResult.Unwrap(), destResult.Unwrap()))
 		} else {
-			// For files, use FileBackup which copies (doesn't move)
+			// Single file adoption - old behavior
+			// For files, the package structure is pkg/dot-filename
+			linkDir := filepath.Dir(link)
+			linkBase := filepath.Base(link)
+
+			pkgFileName := scanner.UntranslateDotfile(linkBase)
+
+			var pkgFilePath string
+			if linkDir == "." {
+				pkgFilePath = filepath.Join(s.packageDir, pkg, pkgFileName)
+			} else {
+				pkgFilePath = filepath.Join(s.packageDir, pkg, linkDir, pkgFileName)
+			}
+
+			if !s.fs.Exists(ctx, pkgFilePath) {
+				s.logger.Warn(ctx, "package_file_not_found", "package", pkg, "file", pkgFilePath)
+				continue
+			}
+
 			sourceResult := NewFilePath(pkgFilePath)
 			if !sourceResult.IsOk() {
 				continue

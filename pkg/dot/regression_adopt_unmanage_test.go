@@ -52,19 +52,19 @@ func TestRegression_AdoptUnmanage_PreservesPackageDirectory(t *testing.T) {
 	require.NoError(t, err)
 
 	// Step 1: Adopt the directory
-	err = client.Adopt(ctx, []string{".ssh"}, "ssh")
+	err = client.Adopt(ctx, []string{".ssh"}, "dot-ssh")
 	require.NoError(t, err, "Adopt should succeed")
 
-	// Verify adoption moved the directory to package
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh"), "Package directory should exist")
+	// Verify adoption created flat structure at package root
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh"), "Package directory should exist")
 
-	// CRITICAL: Verify all files were moved WITH the directory (regression check)
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh/config"), "config file should be in package directory")
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh/known_hosts"), "known_hosts should be in package directory")
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh/id_ed25519"), "id_ed25519 should be in package directory")
+	// CRITICAL: Verify all files at package root (flat structure - regression check)
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh/config"), "config file should be at package root")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh/known_hosts"), "known_hosts should be at package root")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh/id_ed25519"), "id_ed25519 should be at package root")
 
 	// Verify contents are intact
-	data, err := fs.ReadFile(ctx, packageDir+"/ssh/dot-ssh/config")
+	data, err := fs.ReadFile(ctx, packageDir+"/dot-ssh/config")
 	require.NoError(t, err)
 	assert.Equal(t, []byte("ssh config content"), data, "File content should be preserved during adopt")
 
@@ -74,7 +74,7 @@ func TestRegression_AdoptUnmanage_PreservesPackageDirectory(t *testing.T) {
 	assert.True(t, isLink, "Target should be a symlink")
 
 	// Step 2: Unmanage (restore)
-	err = client.Unmanage(ctx, "ssh")
+	err = client.Unmanage(ctx, "dot-ssh")
 	require.NoError(t, err, "Unmanage should succeed")
 
 	// Verify directory was restored to target
@@ -96,13 +96,13 @@ func TestRegression_AdoptUnmanage_PreservesPackageDirectory(t *testing.T) {
 	assert.Equal(t, []byte("ssh config content"), data, "File content should be preserved in target")
 
 	// CRITICAL REGRESSION CHECK: Files should ALSO remain in package directory
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh"), "Package directory should still exist after unmanage")
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh/config"), "config should remain in package directory")
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh/known_hosts"), "known_hosts should remain in package directory")
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh/id_ed25519"), "id_ed25519 should remain in package directory")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh"), "Package directory should still exist after unmanage")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh/config"), "config should remain at package root")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh/known_hosts"), "known_hosts should remain at package root")
+	assert.True(t, fs.Exists(ctx, packageDir+"/dot-ssh/id_ed25519"), "id_ed25519 should remain at package root")
 
 	// Verify contents in package directory
-	data, err = fs.ReadFile(ctx, packageDir+"/ssh/dot-ssh/config")
+	data, err = fs.ReadFile(ctx, packageDir+"/dot-ssh/config")
 	require.NoError(t, err)
 	assert.Equal(t, []byte("ssh config content"), data, "Package directory should have same content as target")
 }

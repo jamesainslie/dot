@@ -66,7 +66,7 @@ install: build
 	go install -buildvcs=false $(LDFLAGS) ./cmd/$(BINARY_NAME)
 
 ## check: Run tests and linting (machine-readable output for CI/AI agents)
-check: test lint vet
+check: test check-coverage lint vet
 
 ## qa: Run tests with tparse, linting, and vetting (human-friendly output)
 qa: test-tparse lint vet
@@ -80,6 +80,28 @@ test-tparse:
 coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
+
+## check-coverage: Verify test coverage meets 80% threshold
+check-coverage:
+	@if [ ! -f coverage.out ]; then \
+		echo "Error: coverage.out not found. Run 'make test' first."; \
+		exit 1; \
+	fi
+	@COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	THRESHOLD=80.0; \
+	echo "Coverage: $${COVERAGE}% (threshold: $${THRESHOLD}%)"; \
+	if [ "$$(echo "$${COVERAGE} < $${THRESHOLD}" | bc)" -eq 1 ]; then \
+		echo ""; \
+		echo "ERROR: Test coverage below threshold"; \
+		echo "  Current:   $${COVERAGE}%"; \
+		echo "  Required:  $${THRESHOLD}%"; \
+		echo "  Shortfall: $$(echo "$${THRESHOLD} - $${COVERAGE}" | bc)%"; \
+		echo ""; \
+		echo "Add tests to reach 80% coverage."; \
+		echo "Run: go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out"; \
+		exit 1; \
+	fi; \
+	echo "Coverage check passed: $${COVERAGE}%"
 
 ## deps: Download dependencies
 deps:

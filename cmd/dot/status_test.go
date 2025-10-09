@@ -17,6 +17,7 @@ func TestNewStatusCommand(t *testing.T) {
 	assert.Contains(t, cmd.Use, "status")
 	assert.NotEmpty(t, cmd.Short)
 	assert.NotNil(t, cmd.RunE)
+	assert.NotNil(t, cmd.ValidArgsFunction)
 }
 
 func TestStatusCommand_Flags(t *testing.T) {

@@ -16,21 +16,35 @@ const manifestFileName = ".dot-manifest.json"
 
 // FSManifestStore implements ManifestStore using filesystem
 type FSManifestStore struct {
-	fs domain.FS
+	fs          domain.FS
+	manifestDir string // Directory to store manifest (empty means use target directory)
 }
 
-// NewFSManifestStore creates filesystem-based manifest store
+// NewFSManifestStore creates filesystem-based manifest store.
+// Manifest is stored in the target directory for backward compatibility.
 func NewFSManifestStore(fs domain.FS) *FSManifestStore {
-	return &FSManifestStore{fs: fs}
+	return &FSManifestStore{
+		fs:          fs,
+		manifestDir: "", // Empty means use target directory
+	}
 }
 
-// Load retrieves manifest from target directory
+// NewFSManifestStoreWithDir creates filesystem-based manifest store with custom directory.
+// Manifest is stored in the specified manifestDir instead of target directory.
+func NewFSManifestStoreWithDir(fs domain.FS, manifestDir string) *FSManifestStore {
+	return &FSManifestStore{
+		fs:          fs,
+		manifestDir: manifestDir,
+	}
+}
+
+// Load retrieves manifest from configured directory
 func (s *FSManifestStore) Load(ctx context.Context, targetDir domain.TargetPath) domain.Result[Manifest] {
 	if ctx.Err() != nil {
 		return domain.Err[Manifest](ctx.Err())
 	}
 
-	manifestPath := filepath.Join(targetDir.String(), manifestFileName)
+	manifestPath := s.getManifestPath(targetDir)
 
 	data, err := s.fs.ReadFile(ctx, manifestPath)
 	if err != nil {
@@ -49,7 +63,16 @@ func (s *FSManifestStore) Load(ctx context.Context, targetDir domain.TargetPath)
 	return domain.Ok(m)
 }
 
-// Save persists manifest to target directory
+// getManifestPath returns the full path to the manifest file.
+// Uses manifestDir if configured, otherwise falls back to targetDir.
+func (s *FSManifestStore) getManifestPath(targetDir domain.TargetPath) string {
+	if s.manifestDir != "" {
+		return filepath.Join(s.manifestDir, manifestFileName)
+	}
+	return filepath.Join(targetDir.String(), manifestFileName)
+}
+
+// Save persists manifest to configured directory
 func (s *FSManifestStore) Save(ctx context.Context, targetDir domain.TargetPath, manifest Manifest) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -64,7 +87,15 @@ func (s *FSManifestStore) Save(ctx context.Context, targetDir domain.TargetPath,
 		return fmt.Errorf("failed to marshal manifest: %w", err)
 	}
 
-	manifestPath := filepath.Join(targetDir.String(), manifestFileName)
+	manifestPath := s.getManifestPath(targetDir)
+
+	// Ensure manifest directory exists
+	manifestDir := filepath.Dir(manifestPath)
+	if !s.fs.Exists(ctx, manifestDir) {
+		if err := s.fs.MkdirAll(ctx, manifestDir, 0755); err != nil {
+			return fmt.Errorf("failed to create manifest directory: %w", err)
+		}
+	}
 
 	// Atomic write via temp file and rename
 	tempPath := manifestPath + ".tmp"

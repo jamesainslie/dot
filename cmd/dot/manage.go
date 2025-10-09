@@ -18,8 +18,9 @@ func newManageCommand() *cobra.Command {
 		Short: "Install packages by creating symlinks",
 		Long: `Install one or more packages by creating symlinks from the package 
 directory to the target directory.`,
-		Args: argsWithUsage(cobra.MinimumNArgs(1)),
-		RunE: runManage,
+		Args:              argsWithUsage(cobra.MinimumNArgs(1)),
+		RunE:              runManage,
+		ValidArgsFunction: packageCompletion(false), // Complete with available packages
 	}
 
 	return cmd

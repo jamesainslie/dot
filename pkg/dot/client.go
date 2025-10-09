@@ -71,11 +71,16 @@ func NewClient(cfg Config) (*Client, error) {
 	})
 
 	// Create manifest store and service
-	manifestStore := manifest.NewFSManifestStore(cfg.FS)
+	var manifestStore *manifest.FSManifestStore
+	if cfg.ManifestDir != "" {
+		manifestStore = manifest.NewFSManifestStoreWithDir(cfg.FS, cfg.ManifestDir)
+	} else {
+		manifestStore = manifest.NewFSManifestStore(cfg.FS)
+	}
 	manifestSvc := newManifestService(cfg.FS, cfg.Logger, manifestStore)
 
 	// Create specialized services (unmanageSvc first since manageSvc depends on it)
-	unmanageSvc := newUnmanageService(cfg.FS, cfg.Logger, exec, manifestSvc, cfg.TargetDir, cfg.DryRun)
+	unmanageSvc := newUnmanageService(cfg.FS, cfg.Logger, exec, manifestSvc, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
 	manageSvc := newManageService(cfg.FS, cfg.Logger, managePipe, exec, manifestSvc, unmanageSvc, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
 	statusSvc := newStatusService(manifestSvc, cfg.TargetDir)
 	doctorSvc := newDoctorService(cfg.FS, cfg.Logger, manifestSvc, cfg.TargetDir)
@@ -141,8 +146,14 @@ func countLinksInPlan(plan Plan) int {
 // === Methods from unmanage.go ===
 
 // Unmanage removes the specified packages by deleting symlinks.
+// Adopted packages are automatically restored unless disabled.
 func (c *Client) Unmanage(ctx context.Context, packages ...string) error {
 	return c.unmanageSvc.Unmanage(ctx, packages...)
+}
+
+// UnmanageWithOptions removes packages with specified options.
+func (c *Client) UnmanageWithOptions(ctx context.Context, opts UnmanageOptions, packages ...string) error {
+	return c.unmanageSvc.UnmanageWithOptions(ctx, opts, packages...)
 }
 
 // PlanUnmanage computes the execution plan for unmanaging packages.

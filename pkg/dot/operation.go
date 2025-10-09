@@ -15,6 +15,7 @@ const (
 	OpKindDirDelete  = domain.OpKindDirDelete
 	OpKindFileMove   = domain.OpKindFileMove
 	OpKindFileBackup = domain.OpKindFileBackup
+	OpKindDirCopy    = domain.OpKindDirCopy
 )
 
 // OperationID uniquely identifies an operation.
@@ -40,6 +41,9 @@ type FileMove = domain.FileMove
 
 // FileBackup backs up a file before modification.
 type FileBackup = domain.FileBackup
+
+// DirCopy recursively copies a directory.
+type DirCopy = domain.DirCopy
 
 // NewLinkCreate creates a new LinkCreate operation.
 func NewLinkCreate(id OperationID, source FilePath, target TargetPath) LinkCreate {
@@ -69,4 +73,9 @@ func NewDirDelete(id OperationID, path FilePath) DirDelete {
 // NewFileBackup creates a new FileBackup operation.
 func NewFileBackup(id OperationID, source, backup FilePath) FileBackup {
 	return domain.NewFileBackup(id, source, backup)
+}
+
+// NewDirCopy creates a new DirCopy operation.
+func NewDirCopy(id OperationID, source, dest FilePath) DirCopy {
+	return domain.NewDirCopy(id, source, dest)
 }

@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // OperationKind identifies the type of operation.
@@ -26,6 +27,9 @@ const (
 
 	// OpKindFileBackup creates a backup copy of a file.
 	OpKindFileBackup
+
+	// OpKindDirCopy recursively copies a directory.
+	OpKindDirCopy
 )
 
 // String returns the string representation of an OperationKind.
@@ -43,6 +47,8 @@ func (k OperationKind) String() string {
 		return "FileMove"
 	case OpKindFileBackup:
 		return "FileBackup"
+	case OpKindDirCopy:
+		return "DirCopy"
 	default:
 		return "Unknown"
 	}
@@ -343,11 +349,83 @@ func (op FileMove) Dependencies() []Operation {
 }
 
 func (op FileMove) Execute(ctx context.Context, fs FS) error {
-	return fs.Rename(ctx, op.Source.String(), op.Dest.String())
+	// Try rename first (fast path for same filesystem)
+	err := fs.Rename(ctx, op.Source.String(), op.Dest.String())
+	if err == nil {
+		return nil
+	}
+
+	// Check if error is due to cross-device link
+	// For cross-device moves, copy then delete
+	if isCrossDeviceError(err) {
+		return op.copyAndDelete(ctx, fs)
+	}
+
+	return err
+}
+
+// copyAndDelete performs a cross-device move by copying then deleting.
+func (op FileMove) copyAndDelete(ctx context.Context, fs FS) error {
+	// Check if source is a directory or file
+	info, err := fs.Stat(ctx, op.Source.String())
+	if err != nil {
+		return fmt.Errorf("stat source for cross-device move: %w", err)
+	}
+
+	if info.IsDir() {
+		// Handle directory move
+		if err := copyDirRecursiveHelper(ctx, fs, op.Source.String(), op.Dest.String()); err != nil {
+			return fmt.Errorf("copy directory for cross-device move: %w", err)
+		}
+	} else {
+		// Handle file move
+		data, err := fs.ReadFile(ctx, op.Source.String())
+		if err != nil {
+			return fmt.Errorf("read source for cross-device move: %w", err)
+		}
+
+		// Write to destination with same permissions
+		if err := fs.WriteFile(ctx, op.Dest.String(), data, info.Mode().Perm()); err != nil {
+			return fmt.Errorf("write dest for cross-device move: %w", err)
+		}
+	}
+
+	// Remove source (works for both files and directories)
+	if err := fs.RemoveAll(ctx, op.Source.String()); err != nil {
+		// Try to clean up the destination
+		_ = fs.RemoveAll(ctx, op.Dest.String())
+		return fmt.Errorf("remove source for cross-device move: %w", err)
+	}
+
+	return nil
+}
+
+// isCrossDeviceError checks if an error is a cross-device link error.
+func isCrossDeviceError(err error) bool {
+	// Check error message for cross-device indicators
+	msg := err.Error()
+	return strings.Contains(msg, "cross-device") || strings.Contains(msg, "invalid cross-device link")
 }
 
 func (op FileMove) Rollback(ctx context.Context, fs FS) error {
-	return fs.Rename(ctx, op.Dest.String(), op.Source.String())
+	// Try rename first (fast path for same filesystem)
+	err := fs.Rename(ctx, op.Dest.String(), op.Source.String())
+	if err == nil {
+		return nil
+	}
+
+	// Check if error is due to cross-device link
+	if isCrossDeviceError(err) {
+		// Create a reversed FileMove operation for rollback
+		reversedOp := FileMove{
+			OpID:   op.OpID + "-rollback",
+			Source: TargetPath{path: op.Dest.path},
+			Dest:   FilePath{path: op.Source.path},
+		}
+		return reversedOp.copyAndDelete(ctx, fs)
+	}
+
+	return err
 }
 
 func (op FileMove) String() string {
@@ -425,4 +503,112 @@ func (op FileBackup) Equals(other Operation) bool {
 		return false
 	}
 	return op.Source.Equals(o.Source) && op.Backup.Equals(o.Backup)
+}
+
+// DirCopy recursively copies a directory without removing the source.
+type DirCopy struct {
+	OpID   OperationID
+	Source FilePath
+	Dest   FilePath
+}
+
+// NewDirCopy creates a new directory copy operation.
+func NewDirCopy(id OperationID, source, dest FilePath) DirCopy {
+	return DirCopy{
+		OpID:   id,
+		Source: source,
+		Dest:   dest,
+	}
+}
+
+func (op DirCopy) ID() OperationID {
+	return op.OpID
+}
+
+func (op DirCopy) Kind() OperationKind {
+	return OpKindDirCopy
+}
+
+func (op DirCopy) Validate() error {
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
+	return nil
+}
+
+func (op DirCopy) Dependencies() []Operation {
+	return nil
+}
+
+func (op DirCopy) Execute(ctx context.Context, fs FS) error {
+	return copyDirRecursiveHelper(ctx, fs, op.Source.String(), op.Dest.String())
+}
+
+func (op DirCopy) Rollback(ctx context.Context, fs FS) error {
+	// Remove the destination directory
+	return fs.RemoveAll(ctx, op.Dest.String())
+}
+
+func (op DirCopy) String() string {
+	return fmt.Sprintf("copy directory %s -> %s", op.Source.String(), op.Dest.String())
+}
+
+func (op DirCopy) Equals(other Operation) bool {
+	if other.Kind() != OpKindDirCopy {
+		return false
+	}
+	o, ok := other.(DirCopy)
+	if !ok {
+		return false
+	}
+	return op.Source.Equals(o.Source) && op.Dest.Equals(o.Dest)
+}
+
+// copyDirRecursiveHelper recursively copies a directory and all its contents.
+// This is a package-level helper used by both FileMove and DirCopy operations.
+func copyDirRecursiveHelper(ctx context.Context, fs FS, src, dst string) error {
+	// Create destination directory
+	srcInfo, err := fs.Stat(ctx, src)
+	if err != nil {
+		return err
+	}
+	if err := fs.Mkdir(ctx, dst, srcInfo.Mode().Perm()); err != nil {
+		return err
+	}
+
+	// Read source directory entries
+	entries, err := fs.ReadDir(ctx, src)
+	if err != nil {
+		return err
+	}
+
+	// Copy each entry
+	for _, entry := range entries {
+		srcPath := src + "/" + entry.Name()
+		dstPath := dst + "/" + entry.Name()
+
+		if entry.IsDir() {
+			// Recursively copy subdirectory
+			if err := copyDirRecursiveHelper(ctx, fs, srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			// Copy file
+			data, err := fs.ReadFile(ctx, srcPath)
+			if err != nil {
+				return err
+			}
+
+			info, err := fs.Stat(ctx, srcPath)
+			if err != nil {
+				return err
+			}
+
+			if err := fs.WriteFile(ctx, dstPath, data, info.Mode().Perm()); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

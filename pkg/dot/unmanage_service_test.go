@@ -40,7 +40,7 @@ func TestUnmanageService_Unmanage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
 		manageSvc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
 		err := manageSvc.Manage(ctx, "test-pkg")
@@ -60,7 +60,9 @@ func TestUnmanageService_Unmanage(t *testing.T) {
 	t.Run("handles non-existent package", func(t *testing.T) {
 		fs := adapters.NewMemFS()
 		ctx := context.Background()
+		packageDir := "/test/packages"
 		targetDir := "/test/target"
+		require.NoError(t, fs.MkdirAll(ctx, packageDir, 0755))
 		require.NoError(t, fs.MkdirAll(ctx, targetDir, 0755))
 
 		exec := executor.New(executor.Opts{
@@ -71,7 +73,7 @@ func TestUnmanageService_Unmanage(t *testing.T) {
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
 
-		svc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		svc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
 		err := svc.Unmanage(ctx, "non-existent")
 		require.NoError(t, err) // Should not error, just no-op
 	})
@@ -102,7 +104,7 @@ func TestUnmanageService_PlanUnmanage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
 		manageSvc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
 		err := manageSvc.Manage(ctx, "test-pkg")
@@ -117,7 +119,9 @@ func TestUnmanageService_PlanUnmanage(t *testing.T) {
 	t.Run("returns empty plan when no manifest exists", func(t *testing.T) {
 		fs := adapters.NewMemFS()
 		ctx := context.Background()
+		packageDir := "/test/packages"
 		targetDir := "/test/target"
+		require.NoError(t, fs.MkdirAll(ctx, packageDir, 0755))
 		require.NoError(t, fs.MkdirAll(ctx, targetDir, 0755))
 
 		exec := executor.New(executor.Opts{
@@ -128,7 +132,7 @@ func TestUnmanageService_PlanUnmanage(t *testing.T) {
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
 
-		svc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		svc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
 		plan, err := svc.PlanUnmanage(ctx, "test-pkg")
 		require.NoError(t, err)
 		assert.Len(t, plan.Operations, 0)

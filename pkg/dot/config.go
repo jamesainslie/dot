@@ -33,6 +33,10 @@ type Config struct {
 	// If empty, backups go to <TargetDir>/.dot-backup/
 	BackupDir string
 
+	// ManifestDir specifies where to store the manifest file.
+	// If empty, manifest is stored in TargetDir for backward compatibility.
+	ManifestDir string
+
 	// Concurrency limits parallel operation execution.
 	// If zero, defaults to runtime.NumCPU().
 	Concurrency int

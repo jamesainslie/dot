@@ -13,7 +13,8 @@ import (
 
 func TestFSManifestStore_Load_MissingFile(t *testing.T) {
 	fs := adapters.NewMemFS()
-	store := NewFSManifestStore(fs)
+	manifestDir := "/home/user/.local/share/dot/manifest"
+	store := NewFSManifestStoreWithDir(fs, manifestDir)
 	targetDir := mustTargetPath(t, "/home/user")
 
 	result := store.Load(context.Background(), targetDir)
@@ -22,6 +23,46 @@ func TestFSManifestStore_Load_MissingFile(t *testing.T) {
 	m := result.Unwrap()
 	assert.Equal(t, "1.0", m.Version)
 	assert.Empty(t, m.Packages)
+}
+
+func TestFSManifestStore_CustomManifestDir(t *testing.T) {
+	fs := adapters.NewMemFS()
+	ctx := context.Background()
+
+	// Custom manifest directory
+	manifestDir := "/custom/manifest/dir"
+	require.NoError(t, fs.MkdirAll(ctx, manifestDir, 0755))
+
+	store := NewFSManifestStoreWithDir(fs, manifestDir)
+	targetDir := mustTargetPath(t, "/home/user")
+
+	// Save manifest
+	m := New()
+	m.AddPackage(PackageInfo{
+		Name:        "test",
+		InstalledAt: time.Now(),
+		LinkCount:   1,
+		Links:       []string{".test"},
+	})
+
+	err := store.Save(ctx, targetDir, m)
+	require.NoError(t, err)
+
+	// Verify manifest saved in custom directory, not target directory
+	manifestPath := filepath.Join(manifestDir, ".dot-manifest.json")
+	exists := fs.Exists(ctx, manifestPath)
+	assert.True(t, exists, "Manifest should be in custom directory")
+
+	// Should NOT be in target directory
+	targetManifestPath := filepath.Join(targetDir.String(), ".dot-manifest.json")
+	exists = fs.Exists(ctx, targetManifestPath)
+	assert.False(t, exists, "Manifest should not be in target directory")
+
+	// Load should work from custom directory
+	result := store.Load(ctx, targetDir)
+	require.True(t, result.IsOk())
+	loaded := result.Unwrap()
+	assert.Len(t, loaded.Packages, 1)
 }
 
 func TestFSManifestStore_Load_ValidManifest(t *testing.T) {

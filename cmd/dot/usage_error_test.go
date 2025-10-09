@@ -30,7 +30,7 @@ func TestInvalidFlagShowsUsage(t *testing.T) {
 		},
 		{
 			name:        "missing args in adopt shows usage",
-			args:        []string{"adopt", "pkg"},
+			args:        []string{"adopt"},
 			expectUsage: true,
 			expectError: true,
 		},

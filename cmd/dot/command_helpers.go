@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -44,4 +46,114 @@ func executePackageCommand(cmd *cobra.Command, args []string, fn packageCommandF
 	}
 
 	return nil
+}
+
+// getAvailablePackages returns list of available packages from the package directory.
+func getAvailablePackages() []string {
+	packageDir := globalCfg.packageDir
+	if packageDir == "" {
+		packageDir = "."
+	}
+
+	absDir, err := filepath.Abs(packageDir)
+	if err != nil {
+		return nil
+	}
+
+	entries, err := os.ReadDir(absDir)
+	if err != nil {
+		return nil
+	}
+
+	packages := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() && !isHiddenOrIgnored(entry.Name()) {
+			packages = append(packages, entry.Name())
+		}
+	}
+
+	return packages
+}
+
+// getInstalledPackages returns list of installed packages from the manifest.
+func getInstalledPackages() []string {
+	cfg, err := buildConfig()
+	if err != nil {
+		return nil
+	}
+
+	client, err := dot.NewClient(cfg)
+	if err != nil {
+		return nil
+	}
+
+	ctx := context.Background()
+	pkgList, err := client.List(ctx)
+	if err != nil {
+		return nil
+	}
+
+	packages := make([]string, 0, len(pkgList))
+	for _, pkg := range pkgList {
+		packages = append(packages, pkg.Name)
+	}
+
+	return packages
+}
+
+// isHiddenOrIgnored checks if a directory name should be ignored for completion.
+func isHiddenOrIgnored(name string) bool {
+	if len(name) == 0 {
+		return true
+	}
+	// Ignore hidden directories (starting with .)
+	if name[0] == '.' {
+		return true
+	}
+	// Ignore common non-package directories
+	ignoredDirs := map[string]bool{
+		"node_modules": true,
+		"vendor":       true,
+		".git":         true,
+		".svn":         true,
+	}
+	return ignoredDirs[name]
+}
+
+// packageCompletion returns a completion function for package names.
+// If installed is true, completes with installed packages, otherwise available packages.
+func packageCompletion(installed bool) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		var packages []string
+		if installed {
+			packages = getInstalledPackages()
+		} else {
+			packages = getAvailablePackages()
+		}
+		return packages, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// derivePackageName derives a package name from a file or directory path.
+// Strips leading dots and uses the base name.
+// Examples:
+//
+//	.ssh -> ssh
+//	.vimrc -> vimrc
+//	.config/nvim -> nvim
+func derivePackageName(path string) string {
+	// Get the base name
+	base := filepath.Base(path)
+
+	// Handle special cases
+	if base == "." || base == ".." {
+		return ""
+	}
+
+	// Strip leading dot for dotfiles
+	if len(base) > 1 && base[0] == '.' {
+		return base[1:]
+	}
+
+	return base
 }

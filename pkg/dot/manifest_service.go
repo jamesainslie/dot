@@ -37,6 +37,11 @@ func (s *ManifestService) Save(ctx context.Context, targetPath TargetPath, m man
 
 // Update updates the manifest with package information from a plan.
 func (s *ManifestService) Update(ctx context.Context, targetPath TargetPath, packageDir string, packages []string, plan Plan) error {
+	return s.UpdateWithSource(ctx, targetPath, packageDir, packages, plan, manifest.SourceManaged)
+}
+
+// UpdateWithSource updates the manifest with package information and source type.
+func (s *ManifestService) UpdateWithSource(ctx context.Context, targetPath TargetPath, packageDir string, packages []string, plan Plan, source manifest.PackageSource) error {
 	// Load existing manifest (Load returns new manifest for not found case)
 	manifestResult := s.Load(ctx, targetPath)
 	if !manifestResult.IsOk() {
@@ -64,6 +69,7 @@ func (s *ManifestService) Update(ctx context.Context, targetPath TargetPath, pac
 			InstalledAt: time.Now(),
 			LinkCount:   len(links),
 			Links:       links,
+			Source:      source,
 		})
 
 		// Compute and store package hash

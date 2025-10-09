@@ -79,6 +79,7 @@ The status includes installation timestamp, number of links, and link paths.`,
 
   # Show status with colors disabled
   dot status --color=never`,
+		ValidArgsFunction: packageCompletion(true), // Complete with installed packages
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client
 			client, err := dot.NewClient(*cfg)

@@ -2,9 +2,13 @@ package main
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFormatError(t *testing.T) {
@@ -86,4 +90,190 @@ func TestCreateLogger_AllModes(t *testing.T) {
 			assert.NotNil(t, logger)
 		})
 	}
+}
+
+func TestIsHiddenOrIgnored(t *testing.T) {
+	tests := []struct {
+		name     string
+		dirname  string
+		expected bool
+	}{
+		{"hidden directory", ".hidden", true},
+		{"git directory", ".git", true},
+		{"node_modules", "node_modules", true},
+		{"vendor", "vendor", true},
+		{"normal package", "vim", false},
+		{"normal package with dash", "dot-vim", false},
+		{"empty name", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isHiddenOrIgnored(tt.dirname)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetAvailablePackages(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
+	globalCfg = globalConfig{
+		packageDir: tmpDir,
+	}
+
+	// Create some test package directories
+	assert.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "vim"), 0755))
+	assert.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "tmux"), 0755))
+	assert.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".hidden"), 0755))
+	assert.NoError(t, os.WriteFile(filepath.Join(tmpDir, "file.txt"), []byte("test"), 0644))
+
+	packages := getAvailablePackages()
+
+	// Should return package directories, but not hidden or files
+	assert.Contains(t, packages, "vim")
+	assert.Contains(t, packages, "tmux")
+	assert.NotContains(t, packages, ".hidden")
+	assert.NotContains(t, packages, "file.txt")
+}
+
+func TestPackageCompletion_Available(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
+	globalCfg = globalConfig{
+		packageDir: tmpDir,
+	}
+
+	// Create test packages
+	assert.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "vim"), 0755))
+	assert.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "tmux"), 0755))
+
+	completionFunc := packageCompletion(false)
+	cmd := &cobra.Command{}
+
+	completions, directive := completionFunc(cmd, []string{}, "")
+
+	assert.Contains(t, completions, "vim")
+	assert.Contains(t, completions, "tmux")
+	assert.Equal(t, cobra.ShellCompDirectiveNoFileComp, directive)
+}
+
+func TestGetInstalledPackages(t *testing.T) {
+	// Test that getInstalledPackages doesn't crash
+	packages := getInstalledPackages()
+	// Should return a list (possibly empty, possibly with real packages)
+	// We can't fully isolate this without mocking the entire config system
+	assert.NotNil(t, packages)
+}
+
+func TestPackageCompletion_Installed(t *testing.T) {
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
+	globalCfg = globalConfig{
+		packageDir: t.TempDir(),
+		targetDir:  t.TempDir(),
+	}
+
+	completionFunc := packageCompletion(true)
+	cmd := &cobra.Command{}
+
+	completions, directive := completionFunc(cmd, []string{}, "")
+
+	// Should return empty for no installed packages
+	assert.NotNil(t, completions)
+	assert.Equal(t, cobra.ShellCompDirectiveNoFileComp, directive)
+}
+
+func TestDerivePackageName(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+	}{
+		{"dotfile with leading dot", ".ssh", "ssh"},
+		{"dotfile vimrc", ".vimrc", "vimrc"},
+		{"dotfile config", ".config", "config"},
+		{"dotfile tmux.conf", ".tmux.conf", "tmux.conf"},
+		{"regular file", "file.txt", "file.txt"},
+		{"directory path", ".config/nvim", "nvim"},
+		{"nested dotfile", ".local/bin", "bin"},
+		{"no leading dot", "myfile", "myfile"},
+		{"just dot", ".", ""},
+		{"double dot", "..", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := derivePackageName(tt.path)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetAvailablePackages_WithFlags(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
+	// Test with explicit package dir
+	globalCfg = globalConfig{
+		packageDir: tmpDir,
+	}
+
+	// Create test packages
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "package1"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "package2"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".hidden"), 0755))
+
+	packages := getAvailablePackages()
+
+	assert.Contains(t, packages, "package1")
+	assert.Contains(t, packages, "package2")
+	assert.NotContains(t, packages, ".hidden")
+}
+
+func TestGetAvailablePackages_EmptyDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
+	globalCfg = globalConfig{
+		packageDir: tmpDir,
+	}
+
+	packages := getAvailablePackages()
+	assert.Empty(t, packages)
+}
+
+func TestGetAvailablePackages_InvalidDir(t *testing.T) {
+	previous := globalCfg
+	t.Cleanup(func() {
+		globalCfg = previous
+	})
+
+	globalCfg = globalConfig{
+		packageDir: "/this/path/definitely/does/not/exist/anywhere",
+	}
+
+	packages := getAvailablePackages()
+	assert.Nil(t, packages)
 }

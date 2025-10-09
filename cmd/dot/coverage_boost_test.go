@@ -12,24 +12,28 @@ func TestNewManageCommand(t *testing.T) {
 	cmd := newManageCommand()
 	assert.NotNil(t, cmd)
 	assert.Contains(t, cmd.Use, "manage")
+	assert.NotNil(t, cmd.ValidArgsFunction)
 }
 
 func TestNewUnmanageCommand(t *testing.T) {
 	cmd := newUnmanageCommand()
 	assert.NotNil(t, cmd)
 	assert.Contains(t, cmd.Use, "unmanage")
+	assert.NotNil(t, cmd.ValidArgsFunction)
 }
 
 func TestNewRemanageCommand(t *testing.T) {
 	cmd := newRemanageCommand()
 	assert.NotNil(t, cmd)
 	assert.Contains(t, cmd.Use, "remanage")
+	assert.NotNil(t, cmd.ValidArgsFunction)
 }
 
 func TestNewAdoptCommand(t *testing.T) {
 	cmd := newAdoptCommand()
 	assert.NotNil(t, cmd)
 	assert.Contains(t, cmd.Use, "adopt")
+	assert.NotNil(t, cmd.ValidArgsFunction)
 }
 
 func TestNewConfigCommand(t *testing.T) {

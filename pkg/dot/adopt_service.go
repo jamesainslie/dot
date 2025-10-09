@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/jamesainslie/dot/internal/executor"
+	"github.com/jamesainslie/dot/internal/manifest"
 	"github.com/jamesainslie/dot/internal/scanner"
 )
 
@@ -63,12 +64,12 @@ func (s *AdoptService) Adopt(ctx context.Context, files []string, pkg string) er
 	if !execResult.Success() {
 		return ErrMultiple{Errors: execResult.Errors}
 	}
-	// Update manifest
+	// Update manifest with source=adopted
 	targetPathResult := NewTargetPath(s.targetDir)
 	if !targetPathResult.IsOk() {
 		return targetPathResult.UnwrapErr()
 	}
-	if err := s.manifestSvc.Update(ctx, targetPathResult.Unwrap(), s.packageDir, []string{pkg}, plan); err != nil {
+	if err := s.manifestSvc.UpdateWithSource(ctx, targetPathResult.Unwrap(), s.packageDir, []string{pkg}, plan, manifest.SourceAdopted); err != nil {
 		s.logger.Warn(ctx, "failed_to_update_manifest", "error", err)
 	}
 	return nil
@@ -85,14 +86,17 @@ func (s *AdoptService) PlanAdopt(ctx context.Context, files []string, pkg string
 		return Plan{}, targetPathResult.UnwrapErr()
 	}
 
-	// Verify package directory exists
+	// Check if package directory exists, create if not
 	pkgPath := filepath.Join(s.packageDir, pkg)
-	exists := s.fs.Exists(ctx, pkgPath)
-	if !exists {
-		return Plan{}, ErrPackageNotFound{Package: pkg}
+	operations := make([]Operation, 0, len(files)*2+1)
+
+	if !s.fs.Exists(ctx, pkgPath) {
+		// Add operation to create package directory
+		pkgPathResult := MustParsePath(pkgPath)
+		dirID := OperationID(fmt.Sprintf("adopt-create-pkg-%s", pkg))
+		operations = append(operations, NewDirCreate(dirID, pkgPathResult))
 	}
 
-	operations := make([]Operation, 0, len(files)*2)
 	for _, file := range files {
 		sourceFile := filepath.Join(s.targetDir, file)
 		if !s.fs.Exists(ctx, sourceFile) {
@@ -121,8 +125,18 @@ func (s *AdoptService) PlanAdopt(ctx context.Context, files []string, pkg string
 		linkID := OperationID(fmt.Sprintf("adopt-link-%s", file))
 		operations = append(operations, NewLinkCreate(linkID, destPathResult.Unwrap(), sourceLinkPathResult.Unwrap()))
 	}
+
+	// Build PackageOperations map for manifest tracking
+	packageOps := make(map[string][]OperationID)
+	opIDs := make([]OperationID, 0, len(operations))
+	for _, op := range operations {
+		opIDs = append(opIDs, op.ID())
+	}
+	packageOps[pkg] = opIDs
+
 	return Plan{
-		Operations: operations,
+		Operations:        operations,
+		PackageOperations: packageOps,
 		Metadata: PlanMetadata{
 			PackageCount:   1,
 			OperationCount: len(operations),

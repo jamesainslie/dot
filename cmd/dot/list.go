@@ -49,6 +49,18 @@ func newListCommand() *cobra.Command {
 		// Determine colorization
 		colorize := shouldColorize(color)
 
+		// Print context header (only for text/table formats)
+		if format == "text" || format == "table" {
+			fmt.Fprintf(cmd.OutOrStdout(), "Package directory: %s\n", cfg.PackageDir)
+			fmt.Fprintf(cmd.OutOrStdout(), "Target directory:  %s\n", cfg.TargetDir)
+			if cfg.ManifestDir != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "Manifest:          %s\n", cfg.ManifestDir)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "Manifest:          %s/.dot-manifest.json\n", cfg.TargetDir)
+			}
+			fmt.Fprintln(cmd.OutOrStdout())
+		}
+
 		// Create renderer
 		r, err := renderer.NewRenderer(format, colorize)
 		if err != nil {

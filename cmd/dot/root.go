@@ -9,6 +9,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/jamesainslie/dot/internal/adapters"
+	"github.com/jamesainslie/dot/internal/config"
 	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/spf13/cobra"
 )
@@ -91,26 +92,69 @@ comprehensive conflict detection, and incremental updates.`,
 }
 
 // buildConfig creates a dot.Config from global flags and adapters.
+// Precedence: flags > config file > defaults
 func buildConfig() (dot.Config, error) {
-	// Make paths absolute
-	packageDir, err := filepath.Abs(globalCfg.packageDir)
-	if err != nil {
-		return dot.Config{}, fmt.Errorf("invalid package directory: %w", err)
-	}
-
-	targetDir, err := filepath.Abs(globalCfg.targetDir)
-	if err != nil {
-		return dot.Config{}, fmt.Errorf("invalid target directory: %w", err)
-	}
-
 	// Create adapters
 	fs := adapters.NewOSFilesystem()
 	logger := createLogger()
 
+	// Load extended config
+	configPath := getConfigFilePath()
+	loader := config.NewLoader("dot", configPath)
+	extCfg, err := loader.LoadWithEnv()
+
+	// Determine final values with precedence: flags > config > defaults
+	var packageDir, targetDir, backupDir, manifestDir string
+
+	if err == nil && extCfg != nil {
+		// Use config file values as base
+		packageDir = extCfg.Directories.Package
+		targetDir = extCfg.Directories.Target
+		manifestDir = extCfg.Directories.Manifest
+	}
+
+	// Override with flags if explicitly set (not default values)
+	if globalCfg.packageDir != "." {
+		packageDir = globalCfg.packageDir
+	}
+	if globalCfg.targetDir != "" {
+		// Check if it's not the default home directory
+		homeDir, _ := os.UserHomeDir()
+		if globalCfg.targetDir != homeDir {
+			targetDir = globalCfg.targetDir
+		}
+	}
+	if globalCfg.backupDir != "" {
+		backupDir = globalCfg.backupDir
+	}
+
+	// Apply defaults if still empty
+	if packageDir == "" {
+		packageDir = "."
+	}
+	if targetDir == "" {
+		targetDir, _ = os.UserHomeDir()
+		if targetDir == "" {
+			targetDir = "."
+		}
+	}
+
+	// Make paths absolute
+	packageDir, err = filepath.Abs(packageDir)
+	if err != nil {
+		return dot.Config{}, fmt.Errorf("invalid package directory: %w", err)
+	}
+
+	targetDir, err = filepath.Abs(targetDir)
+	if err != nil {
+		return dot.Config{}, fmt.Errorf("invalid target directory: %w", err)
+	}
+
 	cfg := dot.Config{
 		PackageDir:         packageDir,
 		TargetDir:          targetDir,
-		BackupDir:          globalCfg.backupDir,
+		BackupDir:          backupDir,
+		ManifestDir:        manifestDir,
 		DryRun:             globalCfg.dryRun,
 		Verbosity:          globalCfg.verbose,
 		PackageNameMapping: true, // Default: true (pre-1.0 breaking change)

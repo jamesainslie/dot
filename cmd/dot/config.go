@@ -176,6 +176,13 @@ For example: directories.package, logging.level`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigGet(args[0])
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			// Only complete the first argument (key)
+			if len(args) == 0 {
+				return getValidConfigKeys(), cobra.ShellCompDirectiveNoFileComp
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 	}
 
 	return cmd
@@ -198,6 +205,25 @@ func runConfigGet(key string) error {
 
 	fmt.Println(value)
 	return nil
+}
+
+// getValidConfigKeys returns all valid configuration keys for completion.
+func getValidConfigKeys() []string {
+	return []string{
+		"directories.package",
+		"directories.target",
+		"directories.manifest",
+		"logging.level",
+		"logging.format",
+		"logging.destination",
+		"symlinks.mode",
+		"symlinks.backup_suffix",
+		"symlinks.backup_dir",
+		"dotfile.prefix",
+		"output.format",
+		"output.color",
+		"packages.sort_by",
+	}
 }
 
 // getConfigValue retrieves a value from config by key path.
@@ -254,6 +280,14 @@ Values are automatically type-converted based on the field.`,
 		Args: argsWithUsage(cobra.ExactArgs(2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigSet(args[0], args[1])
+		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			// Only complete the first argument (key)
+			if len(args) == 0 {
+				return getValidConfigKeys(), cobra.ShellCompDirectiveNoFileComp
+			}
+			// Don't complete the second argument (value)
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 	}
 
@@ -315,17 +349,54 @@ func runConfigListCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("Logging:")
 	fmt.Printf("  level: %s\n", cfg.Logging.Level)
 	fmt.Printf("  format: %s\n", cfg.Logging.Format)
-	fmt.Printf("  destination: %s\n\n", cfg.Logging.Destination)
+	fmt.Printf("  destination: %s\n", cfg.Logging.Destination)
+	fmt.Printf("  file: %s\n\n", cfg.Logging.File)
 
 	fmt.Println("Symlinks:")
 	fmt.Printf("  mode: %s\n", cfg.Symlinks.Mode)
 	fmt.Printf("  folding: %t\n", cfg.Symlinks.Folding)
-	fmt.Printf("  backup: %t\n\n", cfg.Symlinks.Backup)
+	fmt.Printf("  overwrite: %t\n", cfg.Symlinks.Overwrite)
+	fmt.Printf("  backup: %t\n", cfg.Symlinks.Backup)
+	fmt.Printf("  backup_suffix: %s\n", cfg.Symlinks.BackupSuffix)
+	fmt.Printf("  backup_dir: %s\n\n", cfg.Symlinks.BackupDir)
+
+	fmt.Println("Ignore:")
+	fmt.Printf("  use_defaults: %t\n", cfg.Ignore.UseDefaults)
+	fmt.Printf("  patterns: %v\n", cfg.Ignore.Patterns)
+	fmt.Printf("  overrides: %v\n\n", cfg.Ignore.Overrides)
+
+	fmt.Println("Dotfile:")
+	fmt.Printf("  translate: %t\n", cfg.Dotfile.Translate)
+	fmt.Printf("  prefix: %s\n", cfg.Dotfile.Prefix)
+	fmt.Printf("  package_name_mapping: %t\n\n", cfg.Dotfile.PackageNameMapping)
 
 	fmt.Println("Output:")
 	fmt.Printf("  format: %s\n", cfg.Output.Format)
 	fmt.Printf("  color: %s\n", cfg.Output.Color)
+	fmt.Printf("  progress: %t\n", cfg.Output.Progress)
 	fmt.Printf("  verbosity: %d\n", cfg.Output.Verbosity)
+	fmt.Printf("  width: %d\n\n", cfg.Output.Width)
+
+	fmt.Println("Operations:")
+	fmt.Printf("  dry_run: %t\n", cfg.Operations.DryRun)
+	fmt.Printf("  atomic: %t\n", cfg.Operations.Atomic)
+	fmt.Printf("  max_parallel: %d\n\n", cfg.Operations.MaxParallel)
+
+	fmt.Println("Packages:")
+	fmt.Printf("  sort_by: %s\n", cfg.Packages.SortBy)
+	fmt.Printf("  auto_discover: %t\n", cfg.Packages.AutoDiscover)
+	fmt.Printf("  validate_names: %t\n\n", cfg.Packages.ValidateNames)
+
+	fmt.Println("Doctor:")
+	fmt.Printf("  auto_fix: %t\n", cfg.Doctor.AutoFix)
+	fmt.Printf("  check_manifest: %t\n", cfg.Doctor.CheckManifest)
+	fmt.Printf("  check_broken_links: %t\n", cfg.Doctor.CheckBrokenLinks)
+	fmt.Printf("  check_orphaned: %t\n", cfg.Doctor.CheckOrphaned)
+	fmt.Printf("  check_permissions: %t\n\n", cfg.Doctor.CheckPermissions)
+
+	fmt.Println("Experimental:")
+	fmt.Printf("  parallel: %t\n", cfg.Experimental.Parallel)
+	fmt.Printf("  profiling: %t\n", cfg.Experimental.Profiling)
 
 	return nil
 }

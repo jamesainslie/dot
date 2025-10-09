@@ -40,7 +40,7 @@ func TestManageService_Manage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
 
 		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
@@ -75,7 +75,7 @@ func TestManageService_Manage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, true)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, true)
 
 		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, true)
 
@@ -108,7 +108,7 @@ func TestManageService_PlanManage(t *testing.T) {
 		exec := executor.New(executor.Opts{FS: fs, Logger: adapters.NewNoopLogger()})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
 
 		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
@@ -142,7 +142,7 @@ func TestManageService_Remanage(t *testing.T) {
 		})
 		manifestStore := manifest.NewFSManifestStore(fs)
 		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
-		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, targetDir, false)
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
 
 		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 

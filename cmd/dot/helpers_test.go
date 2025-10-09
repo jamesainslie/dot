@@ -203,13 +203,13 @@ func TestDerivePackageName(t *testing.T) {
 		path     string
 		expected string
 	}{
-		{"dotfile with leading dot", ".ssh", "ssh"},
-		{"dotfile vimrc", ".vimrc", "vimrc"},
-		{"dotfile config", ".config", "config"},
-		{"dotfile tmux.conf", ".tmux.conf", "tmux.conf"},
+		{"dotfile with leading dot", ".ssh", ".ssh"},      // Changed: keeps dot
+		{"dotfile vimrc", ".vimrc", ".vimrc"},             // Changed: keeps dot
+		{"dotfile config", ".config", ".config"},          // Changed: keeps dot
+		{"dotfile tmux.conf", ".tmux.conf", ".tmux.conf"}, // Changed: keeps dot
 		{"regular file", "file.txt", "file.txt"},
-		{"directory path", ".config/nvim", "nvim"},
-		{"nested dotfile", ".local/bin", "bin"},
+		{"directory path", ".config/nvim", "nvim"}, // Base name has no dot
+		{"nested dotfile", ".local/bin", "bin"},    // Base name has no dot
 		{"no leading dot", "myfile", "myfile"},
 		{"just dot", ".", ""},
 		{"double dot", "..", ""},

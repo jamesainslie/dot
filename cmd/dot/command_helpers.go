@@ -135,12 +135,13 @@ func packageCompletion(installed bool) func(*cobra.Command, []string, string) ([
 }
 
 // derivePackageName derives a package name from a file or directory path.
-// Strips leading dots and uses the base name.
+// Preserves leading dots - scanner will translate to "dot-" prefix.
 // Examples:
 //
-//	.ssh -> ssh
-//	.vimrc -> vimrc
-//	.config/nvim -> nvim
+//	.ssh -> .ssh (scanner translates to dot-ssh)
+//	.vimrc -> .vimrc (scanner translates to dot-vimrc)
+//	.config/nvim -> nvim (base name, no leading dot)
+//	README.md -> README.md (no leading dot, no translation)
 func derivePackageName(path string) string {
 	// Get the base name
 	base := filepath.Base(path)
@@ -150,10 +151,7 @@ func derivePackageName(path string) string {
 		return ""
 	}
 
-	// Strip leading dot for dotfiles
-	if len(base) > 1 && base[0] == '.' {
-		return base[1:]
-	}
-
+	// Keep leading dot - scanner.UntranslateDotfile will handle translation
+	// ".ssh" stays as ".ssh", which scanner converts to "dot-ssh" for package name
 	return base
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/jamesainslie/dot/internal/scanner"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
 
@@ -69,6 +70,9 @@ func runAdopt(cmd *cobra.Command, args []string) error {
 		if pkg == "" {
 			return fmt.Errorf("cannot derive package name from: %s", args[0])
 		}
+		// Apply dotfile translation to package name
+		// ".ssh" → "dot-ssh", "README.md" → "README.md"
+		pkg = scanner.UntranslateDotfile(pkg)
 	} else {
 		// Explicit mode: first arg is package, rest are files
 		pkg = args[0]

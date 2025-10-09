@@ -33,33 +33,34 @@ func TestAdopt_DirectoryStructure(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	// Adopt .ssh directory
-	err = client.Adopt(ctx, []string{".ssh"}, "ssh")
+	// Adopt .ssh directory (package name should be dot-ssh with new behavior)
+	err = client.Adopt(ctx, []string{".ssh"}, "dot-ssh")
 	require.NoError(t, err)
 
-	// Check where the directory was stored
+	// Check where the directory was stored (NEW FLAT STRUCTURE)
 	t.Log("Checking package structure after adopt...")
 
-	// Debug: List what's in the package directory
-	if fs.Exists(ctx, packageDir+"/ssh") {
-		entries, _ := fs.ReadDir(ctx, packageDir+"/ssh")
-		t.Logf("Package /ssh contains %d entries:", len(entries))
+	// NEW: Package is named "dot-ssh" and files are at root
+	pkgDir := packageDir + "/dot-ssh"
+	if fs.Exists(ctx, pkgDir) {
+		entries, _ := fs.ReadDir(ctx, pkgDir)
+		t.Logf("Package /dot-ssh contains %d entries:", len(entries))
 		for _, e := range entries {
 			t.Logf("  - %s (isDir: %v)", e.Name(), e.IsDir())
 		}
 	}
 
-	// Check different possible structures
-	exists := fs.Exists(ctx, packageDir+"/ssh/dot-ssh")
-	t.Logf("packageDir/ssh/dot-ssh exists: %v", exists)
-
-	exists = fs.Exists(ctx, packageDir+"/ssh/.ssh")
-	t.Logf("packageDir/ssh/.ssh exists: %v", exists)
-
-	// The directory should be at packageDir/ssh/dot-ssh
-	assert.True(t, fs.Exists(ctx, packageDir+"/ssh/dot-ssh"), "Package directory should exist at /ssh/dot-ssh")
+	// NEW: Files should be at package root
+	assert.True(t, fs.Exists(ctx, pkgDir), "Package directory dot-ssh should exist")
+	assert.True(t, fs.Exists(ctx, pkgDir+"/config"), "config should be at package root")
+	assert.True(t, fs.Exists(ctx, pkgDir+"/known_hosts"), "known_hosts should be at package root")
 
 	// Verify original was replaced with symlink
 	isLink, _ := fs.IsSymlink(ctx, targetDir+"/.ssh")
 	assert.True(t, isLink, "Target should be a symlink")
+
+	// Symlink should point to package root
+	linkTarget, _ := fs.ReadLink(ctx, targetDir+"/.ssh")
+	assert.Contains(t, linkTarget, "/dot-ssh")
+	assert.NotContains(t, linkTarget, "/dot-ssh/dot-ssh", "Should not have nested structure")
 }

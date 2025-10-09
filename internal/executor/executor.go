@@ -162,11 +162,17 @@ func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op domain.L
 }
 
 func (e *Executor) checkLinkCreatePreconditionsWithPending(ctx context.Context, op domain.LinkCreate, pendingDirs map[string]bool, pendingFiles map[string]bool) error {
-	// Verify source exists or will exist after a pending file move
+	// Verify source exists or will exist after a pending operation
 	sourceStr := op.Source.String()
 	sourceExists := e.fs.Exists(ctx, sourceStr)
-	if !sourceExists && pendingFiles != nil {
-		sourceExists = pendingFiles[sourceStr]
+
+	// Check if source will be created by a pending directory or file operation
+	if !sourceExists {
+		if pendingDirs != nil && pendingDirs[sourceStr] {
+			sourceExists = true
+		} else if pendingFiles != nil && pendingFiles[sourceStr] {
+			sourceExists = true
+		}
 	}
 
 	if !sourceExists {

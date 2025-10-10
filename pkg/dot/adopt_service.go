@@ -92,9 +92,12 @@ func (s *AdoptService) PlanAdopt(ctx context.Context, files []string, pkg string
 
 	if !s.fs.Exists(ctx, pkgPath) {
 		// Add operation to create package directory
-		pkgPathResult := MustParsePath(pkgPath)
+		pkgPathResult := NewFilePath(pkgPath)
+		if pkgPathResult.IsErr() {
+			return Plan{}, fmt.Errorf("invalid package path %s: %w", pkgPath, pkgPathResult.UnwrapErr())
+		}
 		dirID := OperationID(fmt.Sprintf("adopt-create-pkg-%s", pkg))
-		operations = append(operations, NewDirCreate(dirID, pkgPathResult))
+		operations = append(operations, NewDirCreate(dirID, pkgPathResult.Unwrap()))
 	}
 
 	for _, file := range files {

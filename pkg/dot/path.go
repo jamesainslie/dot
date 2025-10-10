@@ -40,11 +40,20 @@ func NewFilePath(s string) Result[FilePath] {
 }
 
 // MustParsePath creates a FilePath from a string, panicking on error.
+// This function is intended for use in tests only where paths are known to be valid.
+// Production code should use NewFilePath which returns a Result for proper error handling.
 func MustParsePath(s string) FilePath {
 	return domain.MustParsePath(s)
 }
 
 // MustParseTargetPath creates a TargetPath from a string, panicking on error.
+// This function is intended for use in tests only where paths are known to be valid.
+// Production code should use NewTargetPath which returns a Result for proper error handling.
+//
+// Panic is appropriate here because:
+// - Function is only used in test code with hardcoded, known-valid paths
+// - Panicking on test setup errors fails fast and clearly indicates test bugs
+// - Test failures from panic are easier to debug than silent errors
 func MustParseTargetPath(s string) TargetPath {
 	r := domain.NewTargetPath(s)
 	if !r.IsOk() {

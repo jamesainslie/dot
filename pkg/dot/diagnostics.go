@@ -11,8 +11,11 @@ type DiagnosticReport struct {
 type HealthStatus int
 
 const (
+	// HealthOK indicates no issues found.
 	HealthOK HealthStatus = iota
+	// HealthWarnings indicates non-critical issues found.
 	HealthWarnings
+	// HealthErrors indicates critical issues found.
 	HealthErrors
 )
 
@@ -53,8 +56,11 @@ type Issue struct {
 type IssueSeverity int
 
 const (
+	// SeverityInfo represents informational messages.
 	SeverityInfo IssueSeverity = iota
+	// SeverityWarning represents non-critical issues.
 	SeverityWarning
+	// SeverityError represents critical issues requiring attention.
 	SeverityError
 )
 
@@ -86,11 +92,17 @@ func (s IssueSeverity) MarshalYAML() (interface{}, error) {
 type IssueType int
 
 const (
+	// IssueBrokenLink indicates a symlink pointing to a non-existent target.
 	IssueBrokenLink IssueType = iota
+	// IssueOrphanedLink indicates a symlink not managed by any package.
 	IssueOrphanedLink
+	// IssueWrongTarget indicates a symlink pointing to an unexpected target.
 	IssueWrongTarget
+	// IssuePermission indicates insufficient permissions for an operation.
 	IssuePermission
+	// IssueCircular indicates a circular symlink reference.
 	IssueCircular
+	// IssueManifestInconsistency indicates mismatch between manifest and filesystem.
 	IssueManifestInconsistency
 )
 

@@ -2,6 +2,33 @@
 ## [Unreleased]
 
 
+<a name="v0.4.1"></a>
+## [v0.4.1] - 2025-10-10
+### Docs
+- **changelog:** update for v0.4.1 release
+- **clone:** add bootstrap subcommand documentation
+
+### Feat
+- **bootstrap:** implement bootstrap config generator
+- **clone:** implement clone bootstrap subcommand
+- **dot:** add bootstrap generation to Client facade
+
+### Fix
+- **bootstrap:** use installed parameter in YAML comments
+- **bootstrap:** implement manifest parsing for from-manifest flag
+- **bootstrap:** correct documentation URL in generated config header
+
+### Refactor
+- **bootstrap:** remove unused makeSet helper function
+
+### Test
+- **bootstrap:** add manifest filtering verification assertions
+- **dot:** add tests for BootstrapService
+
+### Pull Requests
+- Merge pull request [#30](https://github.com/jamesainslie/dot/issues/30) from jamesainslie/feature-bootstrap-generation
+
+
 <a name="v0.4.0"></a>
 ## [v0.4.0] - 2025-10-10
 ### Build
@@ -53,10 +80,14 @@
 
 <a name="v0.3.0"></a>
 ## [v0.3.0] - 2025-10-09
+### Build
+- **makefile:** add coverage threshold validation to check target
+
 ### Docs
 - update documentation for v0.3 flat structure
 - **adopt:** add glob expansion examples to documentation
 - **changelog:** update for v0.3.0 release
+- **changelog:** fix BREAKING CHANGE formatting for v0.2.0
 - **pkg:** update implementation status and test comments
 
 ### Feat
@@ -78,6 +109,8 @@
 
 ### Pull Requests
 - Merge pull request [#28](https://github.com/jamesainslie/dot/issues/28) from jamesainslie/refactor-dotprefix
+- Merge pull request [#27](https://github.com/jamesainslie/dot/issues/27) from jamesainslie/fix-changelog-v0.2.0-formatting
+- Merge pull request [#26](https://github.com/jamesainslie/dot/issues/26) from jamesainslie/pre-release-niggles
 
 ### BREAKING CHANGE
 
@@ -117,12 +150,8 @@ Refs: docs/planning/dot-prefix-refactoring-plan.md
 
 
 <a name="v0.2.0"></a>
-## [v0.2.0] - 2025-10-09
-### Build
-- **makefile:** add coverage threshold validation to check target
-
+## [v0.2.0] - 2025-10-08
 ### Docs
-- **changelog:** fix BREAKING CHANGE formatting for v0.2.0
 - **changelog:** update for v0.2.0 release
 - **developer:** add a mascot..because gopher
 - **packages:** update user documentation for package name mapping
@@ -133,10 +162,6 @@ Refs: docs/planning/dot-prefix-refactoring-plan.md
 
 ### Test
 - **cli:** complete runtime error test assertions
-
-### Pull Requests
-- Merge pull request [#27](https://github.com/jamesainslie/dot/issues/27) from jamesainslie/fix-changelog-v0.2.0-formatting
-- Merge pull request [#26](https://github.com/jamesainslie/dot/issues/26) from jamesainslie/pre-release-niggles
 
 ### BREAKING CHANGE
 
@@ -523,7 +548,8 @@ should not exist since it was an internal package.
 - Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
 
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.4.1...HEAD
+[v0.4.1]: https://github.com/jamesainslie/dot/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/jamesainslie/dot/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/jamesainslie/dot/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/jamesainslie/dot/compare/v0.2.0...v0.3.0

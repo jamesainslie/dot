@@ -82,6 +82,9 @@ Examples:
 	cmd.Flags().BoolVar(&cloneForce, "force", false, "overwrite package directory if exists")
 	cmd.Flags().StringVar(&cloneBranch, "branch", "", "branch to clone (defaults to repository default)")
 
+	// Add bootstrap subcommand
+	cmd.AddCommand(newCloneBootstrapCommand())
+
 	return cmd
 }
 

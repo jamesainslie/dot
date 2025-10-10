@@ -1,6 +1,9 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v0.4.0"></a>
+## [v0.4.0] - 2025-10-10
 ### Build
 - **deps:** add go-git and golang.org/x/term dependencies
 
@@ -8,6 +11,8 @@
 - **docs:** logo > transparent background
 
 ### Docs
+- **changelog:** update for v0.4.0 release
+- **changelog:** wrap BREAKING CHANGE content in code blocks
 - **changelog:** regenerate from cleaned commit history
 - **readme:** add clone command to Quick Start
 - **user:** add clone command and bootstrap config documentation
@@ -31,6 +36,9 @@
 ### Test
 - **adapters:** replace network-dependent tests with hermetic fixtures
 - **integration:** add clone feature tests and fixtures
+
+### Pull Requests
+- Merge pull request [#29](https://github.com/jamesainslie/dot/issues/29) from jamesainslie/feature-clone-command
 
 
 <a name="v0.3.1"></a>
@@ -515,7 +523,8 @@ should not exist since it was an internal package.
 - Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
 
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/jamesainslie/dot/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/jamesainslie/dot/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/jamesainslie/dot/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/jamesainslie/dot/compare/v0.1.1...v0.2.0

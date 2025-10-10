@@ -76,9 +76,87 @@ func TestBootstrapService_GenerateBootstrap(t *testing.T) {
 				if err := fs.MkdirAll(ctx, "/tmp/packages/git", 0755); err != nil {
 					return err
 				}
-				// Manifest reading not yet implemented
-				// For now, FromManifest with no installed packages should fail
-				return nil
+				// Create manifest with only vim and zsh installed
+				manifestData := `{
+  "version": "1",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "packages": {
+    "vim": {
+      "name": "vim",
+      "installed_at": "2024-01-01T00:00:00Z",
+      "link_count": 1,
+      "links": ["/home/user/.vimrc"]
+    },
+    "zsh": {
+      "name": "zsh",
+      "installed_at": "2024-01-01T00:00:00Z",
+      "link_count": 1,
+      "links": ["/home/user/.zshrc"]
+    }
+  },
+  "hashes": {}
+}`
+				return fs.WriteFile(ctx, "/tmp/target/.dot-manifest.json", []byte(manifestData), 0644)
+			},
+			opts: GenerateBootstrapOptions{
+				FromManifest: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "from manifest filters correctly",
+			setupFS: func(fs FS) error {
+				ctx := context.Background()
+				// Create multiple packages
+				if err := fs.MkdirAll(ctx, "/tmp/packages/vim", 0755); err != nil {
+					return err
+				}
+				if err := fs.MkdirAll(ctx, "/tmp/packages/zsh", 0755); err != nil {
+					return err
+				}
+				if err := fs.MkdirAll(ctx, "/tmp/packages/git", 0755); err != nil {
+					return err
+				}
+				if err := fs.MkdirAll(ctx, "/tmp/packages/tmux", 0755); err != nil {
+					return err
+				}
+				// Create manifest with only vim installed (should filter to just vim)
+				manifestData := `{
+  "version": "1",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "packages": {
+    "vim": {
+      "name": "vim",
+      "installed_at": "2024-01-01T00:00:00Z",
+      "link_count": 1,
+      "links": ["/home/user/.vimrc"]
+    }
+  },
+  "hashes": {}
+}`
+				return fs.WriteFile(ctx, "/tmp/target/.dot-manifest.json", []byte(manifestData), 0644)
+			},
+			opts: GenerateBootstrapOptions{
+				FromManifest: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "from manifest with no installed packages fails",
+			setupFS: func(fs FS) error {
+				ctx := context.Background()
+				// Create packages
+				if err := fs.MkdirAll(ctx, "/tmp/packages/vim", 0755); err != nil {
+					return err
+				}
+				// Create empty manifest
+				manifestData := `{
+  "version": "1",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "packages": {},
+  "hashes": {}
+}`
+				return fs.WriteFile(ctx, "/tmp/target/.dot-manifest.json", []byte(manifestData), 0644)
 			},
 			opts: GenerateBootstrapOptions{
 				FromManifest: true,

@@ -2,10 +2,12 @@ package dot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 
 	"github.com/jamesainslie/dot/internal/bootstrap"
+	"github.com/jamesainslie/dot/internal/manifest"
 )
 
 // BootstrapService handles bootstrap configuration generation.
@@ -160,9 +162,22 @@ func (s *BootstrapService) getInstalledPackages(ctx context.Context) ([]string, 
 		return []string{}, nil // No manifest is okay
 	}
 
-	// TODO: Use manifest service when available
-	// For now, we'll return empty slice since this is a nice-to-have feature
-	return []string{}, nil
+	data, err := s.fs.ReadFile(ctx, manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("read manifest file: %w", err)
+	}
+
+	var m manifest.Manifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, fmt.Errorf("parse manifest JSON: %w", err)
+	}
+
+	installedPackages := make([]string, 0, len(m.Packages))
+	for _, pkg := range m.Packages {
+		installedPackages = append(installedPackages, pkg.Name)
+	}
+
+	return installedPackages, nil
 }
 
 // discoverPackages discovers package directories in the package directory.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/jamesainslie/dot/internal/adapters"
@@ -143,7 +144,16 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 	// Update manifest with repository information
 	branch := opts.Branch
 	if branch == "" {
-		branch = "main" // Default branch assumption
+		// Read actual branch from repository HEAD
+		detectedBranch, err := getCurrentBranch(s.packageDir)
+		if err != nil {
+			// If we can't detect the branch (detached HEAD, IO error, etc.),
+			// fall back to "main" as a sensible default
+			s.logger.Warn(ctx, "failed_to_detect_branch", "error", err)
+			branch = "main"
+		} else {
+			branch = detectedBranch
+		}
 	}
 
 	commitSHA, _ := getCommitSHA(s.packageDir) // Best effort, ignore errors
@@ -165,20 +175,35 @@ func (s *CloneService) selectPackagesWithBootstrap(ctx context.Context, config b
 
 	// If profile specified, use it
 	if opts.Profile != "" {
-		return selectPackagesFromProfile(config, opts.Profile)
+		profilePackages, err := selectPackagesFromProfile(config, opts.Profile)
+		if err != nil {
+			return nil, err
+		}
+		// Intersect profile packages with platform-filtered packages
+		return intersectPackages(profilePackages, allPackages), nil
 	}
 
-	// If interactive flag set, prompt user
-	if opts.Interactive || terminal.IsInteractive() {
+	// If interactive flag explicitly set, prompt user
+	if opts.Interactive {
 		return s.selector.Select(ctx, allPackages)
 	}
 
 	// Use default profile if configured
 	if config.Defaults.Profile != "" {
-		return selectPackagesFromProfile(config, config.Defaults.Profile)
+		profilePackages, err := selectPackagesFromProfile(config, config.Defaults.Profile)
+		if err != nil {
+			return nil, err
+		}
+		// Intersect profile packages with platform-filtered packages
+		return intersectPackages(profilePackages, allPackages), nil
 	}
 
-	// Install all packages
+	// If terminal is interactive (and no default profile), prompt user
+	if terminal.IsInteractive() {
+		return s.selector.Select(ctx, allPackages)
+	}
+
+	// Install all packages (non-interactive mode with no profile)
 	return allPackages, nil
 }
 
@@ -323,6 +348,24 @@ func extractPackageNames(packages []bootstrap.PackageSpec) []string {
 	return names
 }
 
+// intersectPackages returns packages present in both lists, preserving order from first list.
+func intersectPackages(packages, allowed []string) []string {
+	// Build a set of allowed packages for O(1) lookup
+	allowedSet := make(map[string]bool, len(allowed))
+	for _, pkg := range allowed {
+		allowedSet[pkg] = true
+	}
+
+	// Filter packages to only those in allowed set
+	result := make([]string, 0, len(packages))
+	for _, pkg := range packages {
+		if allowedSet[pkg] {
+			result = append(result, pkg)
+		}
+	}
+	return result
+}
+
 // buildRepositoryInfo constructs repository information.
 func buildRepositoryInfo(url, branch, commitSHA string) manifest.RepositoryInfo {
 	return manifest.RepositoryInfo{
@@ -331,6 +374,33 @@ func buildRepositoryInfo(url, branch, commitSHA string) manifest.RepositoryInfo 
 		ClonedAt:  time.Now(),
 		CommitSHA: commitSHA,
 	}
+}
+
+// getCurrentBranch reads the current branch name from a git repository.
+// Returns an error if HEAD is detached or cannot be read.
+func getCurrentBranch(repoPath string) (string, error) {
+	headPath := filepath.Join(repoPath, ".git", "HEAD")
+	headData, err := os.ReadFile(headPath)
+	if err != nil {
+		return "", fmt.Errorf("read HEAD file: %w", err)
+	}
+
+	headRef := strings.TrimSpace(string(headData))
+
+	// Parse "ref: refs/heads/branch-name" format
+	const refPrefix = "ref: refs/heads/"
+	if !strings.HasPrefix(headRef, refPrefix) {
+		// Detached HEAD or unexpected format
+		return "", fmt.Errorf("detached HEAD or unexpected format")
+	}
+
+	// Extract branch name after "ref: refs/heads/"
+	branch := headRef[len(refPrefix):]
+	if branch == "" {
+		return "", fmt.Errorf("empty branch name in HEAD")
+	}
+
+	return branch, nil
 }
 
 // getCommitSHA attempts to get the current commit SHA from a git repository.

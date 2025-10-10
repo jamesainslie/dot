@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/jamesainslie/dot/internal/adapters"
 )
 
 func TestCommonPrefix(t *testing.T) {
@@ -131,6 +134,9 @@ func TestDeriveCommonPackageName(t *testing.T) {
 }
 
 func TestFileExists(t *testing.T) {
+	ctx := context.Background()
+	fs := adapters.NewOSFilesystem()
+
 	t.Run("existing file", func(t *testing.T) {
 		// Create temp file
 		tmpfile, err := os.CreateTemp("", "test")
@@ -138,7 +144,7 @@ func TestFileExists(t *testing.T) {
 		defer os.Remove(tmpfile.Name())
 		tmpfile.Close()
 
-		assert.True(t, fileExists(tmpfile.Name()))
+		assert.True(t, fileExists(ctx, fs, tmpfile.Name()))
 	})
 
 	t.Run("existing directory", func(t *testing.T) {
@@ -147,15 +153,15 @@ func TestFileExists(t *testing.T) {
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
-		assert.True(t, fileExists(tmpdir))
+		assert.True(t, fileExists(ctx, fs, tmpdir))
 	})
 
 	t.Run("non-existing file", func(t *testing.T) {
 		nonExistent := filepath.Join(os.TempDir(), "non-existent-file-12345")
-		assert.False(t, fileExists(nonExistent))
+		assert.False(t, fileExists(ctx, fs, nonExistent))
 	})
 
 	t.Run("empty path", func(t *testing.T) {
-		assert.False(t, fileExists(""))
+		assert.False(t, fileExists(ctx, fs, ""))
 	})
 }

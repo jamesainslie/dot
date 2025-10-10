@@ -21,7 +21,7 @@ Version 0.3 introduces consistent "dot-" prefix handling across all commands.
 ### Directory Structure
 
 **Before:**
-```
+```text
 ~/dotfiles/
   └── ssh/              ← Package directory
       └── dot-ssh/      ← Nested adopted directory
@@ -33,7 +33,7 @@ Version 0.3 introduces consistent "dot-" prefix handling across all commands.
 ```
 
 **After:**
-```
+```text
 ~/dotfiles/
   └── dot-ssh/          ← Package root (with prefix)
       ├── config        ← Contents at root (flat)

@@ -165,6 +165,42 @@ func TestDirDelete_Rollback(t *testing.T) {
 	assert.True(t, exists)
 }
 
+func TestDirRemoveAll_Execute(t *testing.T) {
+	fs := adapters.NewMemFS()
+	ctx := context.Background()
+
+	// Create directory with nested content
+	require.NoError(t, fs.MkdirAll(ctx, "/parent/dir/subdir", 0755))
+	require.NoError(t, fs.WriteFile(ctx, "/parent/dir/file1.txt", []byte("content1"), 0644))
+	require.NoError(t, fs.WriteFile(ctx, "/parent/dir/subdir/file2.txt", []byte("content2"), 0644))
+
+	path := domain.MustParsePath("/parent/dir")
+	op := domain.NewDirRemoveAll("del1", path)
+
+	err := op.Execute(ctx, fs)
+	require.NoError(t, err)
+
+	// Verify directory and all contents were deleted
+	assert.False(t, fs.Exists(ctx, "/parent/dir"))
+	assert.False(t, fs.Exists(ctx, "/parent/dir/file1.txt"))
+	assert.False(t, fs.Exists(ctx, "/parent/dir/subdir"))
+	assert.False(t, fs.Exists(ctx, "/parent/dir/subdir/file2.txt"))
+}
+
+func TestDirRemoveAll_Rollback(t *testing.T) {
+	fs := adapters.NewMemFS()
+	ctx := context.Background()
+
+	require.NoError(t, fs.MkdirAll(ctx, "/parent", 0755))
+
+	path := domain.MustParsePath("/parent/deleteddir")
+	op := domain.NewDirRemoveAll("del1", path)
+
+	err := op.Rollback(ctx, fs)
+	// DirRemoveAll rollback returns nil (cannot restore without backup)
+	assert.NoError(t, err)
+}
+
 func TestFileBackup_Execute(t *testing.T) {
 	fs := adapters.NewMemFS()
 	ctx := context.Background()

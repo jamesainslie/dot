@@ -22,7 +22,8 @@ func TestBuildConfig_UsesConfigFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(tmpConfig, []byte(configContent), 0644))
 
 	previous := globalCfg
-	os.Setenv("DOT_CONFIG", tmpConfig)
+	err := os.Setenv("DOT_CONFIG", tmpConfig)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		globalCfg = previous
 		os.Unsetenv("DOT_CONFIG")
@@ -57,7 +58,10 @@ func TestBuildConfig_FlagsOverrideConfig(t *testing.T) {
 	require.NoError(t, os.WriteFile(tmpConfig, []byte(configContent), 0644))
 
 	previous := globalCfg
-	os.Setenv("DOT_CONFIG", tmpConfig)
+	err := os.Setenv("DOT_CONFIG", tmpConfig)
+	if err != nil {
+		t.Fatalf("os.Setenv DOT_CONFIG=%s: %v", tmpConfig, err)
+	}
 	t.Cleanup(func() {
 		globalCfg = previous
 		os.Unsetenv("DOT_CONFIG")
@@ -81,7 +85,10 @@ func TestBuildConfig_AppliesDefaults(t *testing.T) {
 	tmpConfig := filepath.Join(t.TempDir(), "nonexistent.yaml")
 
 	previous := globalCfg
-	os.Setenv("DOT_CONFIG", tmpConfig)
+	err := os.Setenv("DOT_CONFIG", tmpConfig)
+	if err != nil {
+		t.Fatalf("os.Setenv DOT_CONFIG=%s: %v", tmpConfig, err)
+	}
 	t.Cleanup(func() {
 		globalCfg = previous
 		os.Unsetenv("DOT_CONFIG")

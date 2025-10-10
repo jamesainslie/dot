@@ -285,7 +285,7 @@ Verification:
 ```bash
 # Check git package was created
 ls ~/dotfiles/dot-git/
-# Output: dot-gitconfig (or dot-gitconfig, dot-gitignore, dot-git-credentials)
+# Output: dot-gitconfig, dot-gitignore, dot-git-credentials (these are the translated filenames within the package)
 
 # Verify symlink
 ls -la ~/.gitconfig

@@ -27,8 +27,8 @@ func (g *DependencyGraph) TopologicalSort() ([]domain.Operation, error) {
 			return nil
 		}
 
-		// Visit all dependencies first
-		deps := op.Dependencies()
+		// Visit all dependencies first (use graph's dependencies, not operation's)
+		deps := g.Dependencies(op)
 		for _, dep := range deps {
 			if err := visit(dep); err != nil {
 				return err
@@ -73,7 +73,8 @@ func (g *DependencyGraph) FindCycle() []domain.Operation {
 		visited[op] = true
 		recStack[op] = true
 
-		deps := op.Dependencies()
+		// Use graph's dependencies, not operation's
+		deps := g.Dependencies(op)
 		for _, dep := range deps {
 			if !visited[dep] {
 				parent[dep] = op

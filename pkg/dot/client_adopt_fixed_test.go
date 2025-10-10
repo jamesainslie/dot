@@ -50,9 +50,22 @@ func TestClient_Adopt_PackageNotFound(t *testing.T) {
 	client, err := dot.NewClient(cfg)
 	require.NoError(t, err)
 
-	// Try to adopt to non-existent package
-	err = client.Adopt(ctx, []string{".file"}, "nonexistent")
-	require.Error(t, err)
+	// Adopt to non-existent package - should create the package directory
+	err = client.Adopt(ctx, []string{".file"}, "newpackage")
+	require.NoError(t, err)
+
+	// Verify package directory was created
+	exists := fs.Exists(ctx, "/test/packages/newpackage")
+	assert.True(t, exists, "Package directory should be created")
+
+	// Verify file was moved
+	exists = fs.Exists(ctx, "/test/packages/newpackage/dot-file")
+	assert.True(t, exists, "File should be moved to package")
+
+	// Verify symlink was created
+	isLink, err := fs.IsSymlink(ctx, "/test/target/.file")
+	require.NoError(t, err)
+	assert.True(t, isLink, "Should create symlink in target")
 }
 
 func TestClient_PlanAdopt_Success(t *testing.T) {

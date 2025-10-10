@@ -110,21 +110,27 @@ func (e *Executor) prepare(ctx context.Context, plan domain.Plan) error {
 
 	e.log.Debug(ctx, "preparing_plan", "operations", len(plan.Operations))
 
-	// Track directories that will be created by earlier operations
+	// Track directories and files that will be created by earlier operations
 	pendingDirs := make(map[string]bool)
+	pendingFiles := make(map[string]bool)
 
 	for _, op := range plan.Operations {
 		if err := op.Validate(); err != nil {
 			return fmt.Errorf("validation failed for %v: %w", op.ID(), err)
 		}
 
-		if err := e.checkPreconditionsWithPending(ctx, op, pendingDirs); err != nil {
+		if err := e.checkPreconditionsWithPending(ctx, op, pendingDirs, pendingFiles); err != nil {
 			return fmt.Errorf("precondition check failed for %v: %w", op.ID(), err)
 		}
 
 		// Track directory creations for subsequent operations
 		if dirOp, ok := op.(domain.DirCreate); ok {
 			pendingDirs[dirOp.Path.String()] = true
+		}
+
+		// Track file moves for subsequent operations
+		if moveOp, ok := op.(domain.FileMove); ok {
+			pendingFiles[moveOp.Dest.String()] = true
 		}
 	}
 
@@ -134,14 +140,14 @@ func (e *Executor) prepare(ctx context.Context, plan domain.Plan) error {
 
 // checkPreconditions verifies operation preconditions before execution.
 func (e *Executor) checkPreconditions(ctx context.Context, op domain.Operation) error {
-	return e.checkPreconditionsWithPending(ctx, op, nil)
+	return e.checkPreconditionsWithPending(ctx, op, nil, nil)
 }
 
-// checkPreconditionsWithPending verifies preconditions accounting for pending directory creations.
-func (e *Executor) checkPreconditionsWithPending(ctx context.Context, op domain.Operation, pendingDirs map[string]bool) error {
+// checkPreconditionsWithPending verifies preconditions accounting for pending directory and file creations.
+func (e *Executor) checkPreconditionsWithPending(ctx context.Context, op domain.Operation, pendingDirs map[string]bool, pendingFiles map[string]bool) error {
 	switch operation := op.(type) {
 	case domain.LinkCreate:
-		return e.checkLinkCreatePreconditionsWithPending(ctx, operation, pendingDirs)
+		return e.checkLinkCreatePreconditionsWithPending(ctx, operation, pendingDirs, pendingFiles)
 	case domain.DirCreate:
 		return e.checkDirCreatePreconditionsWithPending(ctx, operation, pendingDirs)
 	case domain.FileMove:
@@ -152,13 +158,25 @@ func (e *Executor) checkPreconditionsWithPending(ctx context.Context, op domain.
 }
 
 func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op domain.LinkCreate) error {
-	return e.checkLinkCreatePreconditionsWithPending(ctx, op, nil)
+	return e.checkLinkCreatePreconditionsWithPending(ctx, op, nil, nil)
 }
 
-func (e *Executor) checkLinkCreatePreconditionsWithPending(ctx context.Context, op domain.LinkCreate, pendingDirs map[string]bool) error {
-	// Verify source exists
-	if !e.fs.Exists(ctx, op.Source.String()) {
-		return domain.ErrSourceNotFound{Path: op.Source.String()}
+func (e *Executor) checkLinkCreatePreconditionsWithPending(ctx context.Context, op domain.LinkCreate, pendingDirs map[string]bool, pendingFiles map[string]bool) error {
+	// Verify source exists or will exist after a pending operation
+	sourceStr := op.Source.String()
+	sourceExists := e.fs.Exists(ctx, sourceStr)
+
+	// Check if source will be created by a pending directory or file operation
+	if !sourceExists {
+		if pendingDirs != nil && pendingDirs[sourceStr] {
+			sourceExists = true
+		} else if pendingFiles != nil && pendingFiles[sourceStr] {
+			sourceExists = true
+		}
+	}
+
+	if !sourceExists {
+		return domain.ErrSourceNotFound{Path: sourceStr}
 	}
 
 	// Verify target parent directory exists (or will exist)

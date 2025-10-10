@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -16,7 +15,7 @@ func newDoctorCommand() *cobra.Command {
 
 	// Override RunE to build config from global flags
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		cfg, err := buildConfig()
+		cfg, err := buildConfigWithCmd(cmd)
 		if err != nil {
 			return err
 		}
@@ -66,11 +65,12 @@ func newDoctorCommand() *cobra.Command {
 			return fmt.Errorf("render failed: %w", err)
 		}
 
-		// Set exit code based on health status
+		// Return error to set exit code based on health status
+		// The main function will handle converting this to an exit code
 		if report.OverallHealth == dot.HealthErrors {
-			os.Exit(2)
+			return fmt.Errorf("health check detected errors")
 		} else if report.OverallHealth == dot.HealthWarnings {
-			os.Exit(1)
+			return fmt.Errorf("health check detected warnings")
 		}
 
 		return nil

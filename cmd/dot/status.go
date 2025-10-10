@@ -15,7 +15,7 @@ func newStatusCommand() *cobra.Command {
 
 	// Override RunE to build config from global flags
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		cfg, err := buildConfig()
+		cfg, err := buildConfigWithCmd(cmd)
 		if err != nil {
 			return err
 		}
@@ -79,6 +79,7 @@ The status includes installation timestamp, number of links, and link paths.`,
 
   # Show status with colors disabled
   dot status --color=never`,
+		ValidArgsFunction: packageCompletion(true), // Complete with installed packages
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create client
 			client, err := dot.NewClient(*cfg)

@@ -391,3 +391,101 @@ func (s *DoctorService) checkForOrphanedLink(
 		})
 	}
 }
+
+// extractManagedDirectories returns unique directories containing managed links.
+func extractManagedDirectories(m *manifest.Manifest) []string {
+	dirSet := make(map[string]bool)
+	for _, pkgInfo := range m.Packages {
+		for _, link := range pkgInfo.Links {
+			dir := filepath.Dir(link)
+			for dir != "." && dir != "/" && dir != "" {
+				dirSet[dir] = true
+				dir = filepath.Dir(dir)
+			}
+			dirSet["."] = true
+		}
+	}
+	dirs := make([]string, 0, len(dirSet))
+	for dir := range dirSet {
+		dirs = append(dirs, dir)
+	}
+	return dirs
+}
+
+// filterDescendants removes directories that are descendants of other directories.
+func filterDescendants(dirs []string) []string {
+	if len(dirs) <= 1 {
+		return dirs
+	}
+	cleaned := make([]string, len(dirs))
+	for i, dir := range dirs {
+		cleaned[i] = filepath.Clean(dir)
+	}
+	roots := make([]string, 0, len(cleaned))
+	for _, dir := range cleaned {
+		isDescendant := false
+		for _, other := range cleaned {
+			if dir == other {
+				continue
+			}
+			rel, err := filepath.Rel(other, dir)
+			if err == nil && rel != "." && !filepath.IsAbs(rel) && rel[0] != '.' {
+				isDescendant = true
+				break
+			}
+		}
+		if !isDescendant {
+			roots = append(roots, dir)
+		}
+	}
+	return roots
+}
+
+// buildManagedLinkSet creates a set for O(1) link lookup.
+func buildManagedLinkSet(m *manifest.Manifest) map[string]bool {
+	linkSet := make(map[string]bool)
+	for _, pkgInfo := range m.Packages {
+		for _, link := range pkgInfo.Links {
+			normalized := filepath.ToSlash(link)
+			linkSet[normalized] = true
+		}
+	}
+	return linkSet
+}
+
+// calculateDepth returns the directory depth relative to target directory.
+func calculateDepth(path, targetDir string) int {
+	path = filepath.Clean(path)
+	targetDir = filepath.Clean(targetDir)
+	if path == targetDir {
+		return 0
+	}
+	rel, err := filepath.Rel(targetDir, path)
+	if err != nil || rel == "." {
+		return 0
+	}
+	depth := 0
+	for _, c := range rel {
+		if c == filepath.Separator {
+			depth++
+		}
+	}
+	if rel != "" && rel != "." {
+		depth++
+	}
+	return depth
+}
+
+// shouldSkipDirectory checks if a directory should be skipped based on patterns.
+func shouldSkipDirectory(path string, skipPatterns []string) bool {
+	base := filepath.Base(path)
+	for _, pattern := range skipPatterns {
+		if base == pattern {
+			return true
+		}
+		if filepath.Base(filepath.Dir(path)) == pattern {
+			return true
+		}
+	}
+	return false
+}

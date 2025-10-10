@@ -268,8 +268,31 @@ func (f *MemFS) Rename(ctx context.Context, oldname, newname string) error {
 		return fs.ErrNotExist
 	}
 
+	// Rename the file/directory itself
 	f.files[newname] = file
 	delete(f.files, oldname)
+
+	// If it's a directory, also rename all children
+	if file.isDir {
+		oldPrefix := filepath.Clean(oldname) + string(filepath.Separator)
+		newPrefix := filepath.Clean(newname) + string(filepath.Separator)
+
+		// Find all children and rename them
+		toRename := make(map[string]string)
+		for path := range f.files {
+			if len(path) > len(oldPrefix) && path[:len(oldPrefix)] == oldPrefix {
+				// This is a child of the old directory
+				newPath := newPrefix + path[len(oldPrefix):]
+				toRename[path] = newPath
+			}
+		}
+
+		// Perform the renames
+		for oldPath, newPath := range toRename {
+			f.files[newPath] = f.files[oldPath]
+			delete(f.files, oldPath)
+		}
+	}
 
 	return nil
 }

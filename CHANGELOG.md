@@ -2,9 +2,75 @@
 ## [Unreleased]
 
 
-<a name="v0.2.0"></a>
-## [v0.2.0] - 2025-10-08
+<a name="v0.3.0"></a>
+## [v0.3.0] - 2025-10-09
 ### Docs
+- update documentation for v0.3 flat structure
+- **adopt:** add glob expansion examples to documentation
+- **changelog:** update for v0.3.0 release
+- **pkg:** update implementation status and test comments
+
+### Feat
+- **adopt:** add auto-naming and glob expansion modes
+- **cli:** add comprehensive tab-completion and unmanage restoration
+
+### Fix
+- **ci:** remove path to golangci-lint
+- **ci:** remove path to golangci-lint
+- **planner:** resolve directory creation dependency ordering
+- **tests:** skip permission test in CI environments
+- **tests:** improve permission conflict test robustness
+
+### Refactor
+- **adopt:** implement flat package structure with consistent dot-prefix
+- **adopt:** preserve leading dots in package naming
+- **dotprefix:** work in progress on dot prefix refactoring
+- **pkg:** replace MustParsePath with error handling in production code
+
+### Pull Requests
+- Merge pull request [#28](https://github.com/jamesainslie/dot/issues/28) from jamesainslie/refactor-dotprefix
+
+### BREAKING CHANGE
+
+Adopt now creates flat package structure
+
+Change adopt behavior to store directory contents at package root with
+consistent 'dot-' prefix application.
+
+Before:
+  ~/dotfiles/ssh/dot-ssh/config     → ~/.ssh
+
+After:
+  ~/dotfiles/dot-ssh/config         → ~/.ssh
+
+Changes:
+- Package names preserve leading dots: .ssh → dot-ssh
+- Directory contents stored at package root (flat structure)
+- Apply dotfile translation to each file/directory
+- Symlinks point to package root (not nested subdirectory)
+
+Implementation:
+- Add createDirectoryAdoptOperations for directory handling
+- Add collectDirectoryFiles for recursive collection
+- Add translatePathComponents for per-component translation
+- Update unmanage restoration to handle both structures
+
+Testing:
+- All existing tests updated for new structure
+- New tests for flat structure and nested dotfiles
+- Regression tests preserve backward compatibility checks
+- 80%+ coverage maintained
+
+Refs: docs/planning/phase-26-dot-prefix-refactoring-plan.md
+
+
+<a name="v0.2.0"></a>
+## [v0.2.0] - 2025-10-09
+### Build
+- **makefile:** add coverage threshold validation to check target
+
+### Docs
+- **changelog:** fix BREAKING CHANGE formatting for v0.2.0
 - **changelog:** update for v0.2.0 release
 - **developer:** add a mascot..because gopher
 - **packages:** update user documentation for package name mapping
@@ -17,37 +83,28 @@
 - **cli:** complete runtime error test assertions
 
 ### Pull Requests
+- Merge pull request [#27](https://github.com/jamesainslie/dot/issues/27) from jamesainslie/fix-changelog-v0.2.0-formatting
 - Merge pull request [#26](https://github.com/jamesainslie/dot/issues/26) from jamesainslie/pre-release-niggles
 
 ### BREAKING CHANGE
 
 Package structure requirements changed.
 
-Package names now determine target directories by default.
+Before (v0.1.x):
+  dot-gnupg/
+  ├── common.conf         → ~/common.conf
+  └── public-keys.d/      → ~/public-keys.d/
 
-BEFORE v0.1.x - Package dot-gnupg:
-  File: common.conf
-  Links to: ~/common.conf
-  
-  File: public-keys.d/pubring.db  
-  Links to: ~/public-keys.d/pubring.db
+After (v0.2.0):
+  dot-gnupg/
+  ├── common.conf         → ~/.gnupg/common.conf
+  └── public-keys.d/      → ~/.gnupg/public-keys.d/
 
-AFTER v0.2.0 - Package dot-gnupg:
-  File: common.conf
-  Links to: ~/.gnupg/common.conf
-  
-  File: public-keys.d/pubring.db
-  Links to: ~/.gnupg/public-keys.d/pubring.db
+Migration: Restructure packages to remove redundant nesting, or
+opt-out by setting dotfile.package_name_mapping: false in config.
 
-IMPACT: Eliminates redundant directory nesting. Package dot-gnupg targets ~/.gnupg/ automatically.
-
-MIGRATION:
-  Option 1: Remove redundant nesting from packages (recommended)
-  Option 2: Add to ~/.config/dot/config.yaml:
-    dotfile:
-      package_name_mapping: false
-
-RATIONALE: Pre-1.0 project (v0.1.1) establishing intuitive design before 1.0.0 API stability.
+Rationale: Project is pre-1.0 (v0.1.1), establishing intuitive
+design before API stability commitment in 1.0.0 release.
 
 
 <a name="v0.1.1"></a>
@@ -408,6 +465,7 @@ should not exist since it was an internal package.
 - Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
 
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/jamesainslie/dot/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/jamesainslie/dot/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/jamesainslie/dot/compare/v0.1.0...v0.1.1

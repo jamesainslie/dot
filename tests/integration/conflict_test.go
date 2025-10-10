@@ -145,8 +145,8 @@ func TestConflict_PermissionConflict(t *testing.T) {
 		t.Skip("skipping permission test when running as root")
 	}
 
-	if runtime.GOOS == "darwin" {
-		t.Skip("skipping permission test on macOS - directory permissions behave differently")
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		t.Skip("skipping permission test on macOS/Windows - directory permissions behave differently")
 	}
 
 	env := testutil.NewTestEnvironment(t)
@@ -159,8 +159,13 @@ func TestConflict_PermissionConflict(t *testing.T) {
 
 	// Create read-only directory in target
 	confDir := filepath.Join(env.TargetDir, ".config")
-	require.NoError(t, os.MkdirAll(confDir, 0444))
-	defer os.Chmod(confDir, 0755) // Cleanup
+	require.NoError(t, os.MkdirAll(confDir, 0755))
+	require.NoError(t, os.Chmod(confDir, 0444))
+
+	// Ensure cleanup happens even if test fails
+	t.Cleanup(func() {
+		_ = os.Chmod(confDir, 0755)
+	})
 
 	// Create package that needs to write in that directory
 	env.FixtureBuilder().Package("nvim").
@@ -169,7 +174,12 @@ func TestConflict_PermissionConflict(t *testing.T) {
 
 	// Try to manage (should encounter permission issue)
 	err := client.Manage(env.Context(), "nvim")
-	assert.Error(t, err)
+
+	// Restore permissions before assertion to avoid cleanup issues
+	require.NoError(t, os.Chmod(confDir, 0755))
+
+	// Now verify we got an error
+	assert.Error(t, err, "expected permission error when writing to read-only directory")
 }
 
 // TestConflict_RemanageWithModifiedTarget tests remanage when target was modified.

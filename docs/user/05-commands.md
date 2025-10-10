@@ -170,6 +170,116 @@ dot --on-conflict skip manage zsh
 
 ## Package Management Commands
 
+### clone
+
+Clone a dotfiles repository and install packages.
+
+**Synopsis**:
+```bash
+dot clone [options] REPOSITORY_URL
+```
+
+**Arguments**:
+- `REPOSITORY_URL`: Git repository URL (HTTPS or SSH format)
+
+**Options**:
+- `--profile NAME`: Installation profile from bootstrap config
+- `--interactive`: Interactively select packages to install
+- `--force`: Overwrite package directory if exists
+- `--branch NAME`: Branch to clone (defaults to repository default)
+
+All global options also apply.
+
+**Description**:
+
+The clone command provides single-command setup for new machines. It clones a dotfiles repository and installs packages based on optional bootstrap configuration.
+
+**Workflow**:
+1. Validates package directory is empty (unless `--force`)
+2. Clones repository to configured package directory
+3. Loads optional `.dotbootstrap.yaml` configuration
+4. Selects packages (via profile, interactively, or all)
+5. Filters packages by current platform
+6. Installs selected packages via `manage` command
+7. Updates manifest with repository tracking information
+
+**Authentication**:
+
+Authentication is automatically resolved in priority order:
+1. `GITHUB_TOKEN` environment variable (GitHub repositories)
+2. `GIT_TOKEN` environment variable (general git repositories)
+3. SSH keys in `~/.ssh/` directory (`id_rsa`, `id_ed25519`)
+4. No authentication (public repositories only)
+
+**Bootstrap Configuration**:
+
+If `.dotbootstrap.yaml` exists in repository root, it defines:
+- Available packages with platform requirements
+- Named installation profiles
+- Default profile and conflict resolution policies
+
+Without bootstrap configuration, all discovered packages are offered for installation.
+
+See [Bootstrap Configuration Specification](bootstrap-config-spec.md) for complete documentation.
+
+**Examples**:
+
+```bash
+# Clone and install all packages
+dot clone https://github.com/user/dotfiles
+
+# Clone specific branch
+dot clone https://github.com/user/dotfiles --branch develop
+
+# Use named profile from bootstrap config
+dot clone https://github.com/user/dotfiles --profile minimal
+
+# Force interactive selection
+dot clone https://github.com/user/dotfiles --interactive
+
+# Overwrite existing package directory
+dot clone https://github.com/user/dotfiles --force
+
+# Clone via SSH
+dot clone git@github.com:user/dotfiles.git
+
+# Clone with custom directories
+dot --dir ~/my-dotfiles clone https://github.com/user/dotfiles
+
+# Preview what would be installed
+dot --dry-run clone https://github.com/user/dotfiles
+```
+
+**Error Handling**:
+
+Common errors and solutions:
+
+- **Package directory not empty**: Use `--force` to overwrite
+- **Authentication failed**: Set `GITHUB_TOKEN` or configure SSH keys
+- **Clone failed**: Verify URL, network connection, and repository access
+- **Bootstrap invalid**: Check `.dotbootstrap.yaml` syntax
+- **Profile not found**: Verify profile exists in bootstrap config
+
+**Platform Filtering**:
+
+Packages in bootstrap configuration can specify target platforms:
+
+```yaml
+packages:
+  - name: dot-vim           # All platforms
+  - name: dot-linux-config  # Linux only
+    platform: [linux]
+  - name: dot-macos-config  # macOS only
+    platform: [darwin]
+```
+
+Platform filtering is automatic based on current system.
+
+**Related Commands**:
+- `manage`: Manually install additional packages after cloning
+- `status`: Check installation status and repository information
+- `unmanage`: Remove installed packages
+
 ### manage
 
 Install packages by creating symlinks.

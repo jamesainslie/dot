@@ -413,21 +413,34 @@ func getCommitSHA(repoPath string) (string, error) {
 		return "", err
 	}
 
-	headRef := string(headData)
+	headRef := strings.TrimSpace(string(headData))
+
 	// If HEAD contains a ref like "ref: refs/heads/main", extract the ref
-	if len(headRef) > 5 && headRef[:5] == "ref: " {
-		refPath := filepath.Join(repoPath, ".git", headRef[5:len(headRef)-1]) // Trim "ref: " and newline
-		shaData, err := os.ReadFile(refPath)
+	const refPrefix = "ref: "
+	if strings.HasPrefix(headRef, refPrefix) {
+		refPath := strings.TrimSpace(headRef[len(refPrefix):])
+		if refPath == "" {
+			return "", fmt.Errorf("empty ref path in HEAD")
+		}
+
+		// Build full path to ref file
+		fullRefPath := filepath.Join(repoPath, ".git", refPath)
+		shaData, err := os.ReadFile(fullRefPath)
 		if err != nil {
 			return "", err
 		}
-		return string(shaData[:40]), nil // SHA is first 40 chars
+
+		sha := strings.TrimSpace(string(shaData))
+		if len(sha) < 40 {
+			return "", fmt.Errorf("invalid SHA length: got %d, expected 40", len(sha))
+		}
+		return sha[:40], nil
 	}
 
 	// HEAD directly contains SHA (detached HEAD)
-	if len(headRef) >= 40 {
-		return headRef[:40], nil
+	if len(headRef) < 40 {
+		return "", fmt.Errorf("invalid SHA length in detached HEAD: got %d, expected 40", len(headRef))
 	}
 
-	return "", fmt.Errorf("unable to parse HEAD")
+	return headRef[:40], nil
 }

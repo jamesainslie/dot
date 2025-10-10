@@ -57,11 +57,13 @@ func (NoAuth) isAuthMethod() {}
 
 // TokenAuth represents token-based authentication (HTTPS).
 //
-// Supports:
+// The token is transmitted using HTTP Basic Authentication with "git" as the
+// username and the token as the password. This format is compatible with:
 //   - GitHub personal access tokens
 //   - GitHub fine-grained tokens
 //   - GitLab personal access tokens
 //   - Gitea tokens
+//   - Azure DevOps personal access tokens
 type TokenAuth struct {
 	// Token is the authentication token.
 	Token string

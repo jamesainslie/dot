@@ -99,11 +99,11 @@ func convertAuthMethod(auth AuthMethod) (transport.AuthMethod, error) {
 		return nil, nil
 
 	case TokenAuth:
-		// GitHub and most git servers accept token as username with empty password
-		// or "x-access-token" as username with token as password
+		// Most git providers (GitHub, GitLab, Gitea, Azure DevOps) expect the token
+		// in the password field with a placeholder username
 		return &http.BasicAuth{
-			Username: a.Token,
-			Password: "", // Token goes in username field
+			Username: "git",
+			Password: a.Token, // Token goes in password field
 		}, nil
 
 	case SSHAuth:

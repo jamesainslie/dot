@@ -118,7 +118,7 @@ func (g *Generator) MarshalYAMLWithComments(cfg Config, installed []string) ([]b
 # This configuration defines packages and installation profiles.
 # Review and customize before committing to your repository.
 #
-# Documentation: https://github.com/jamesainslie/dot/docs/user/bootstrap-config-spec.md
+# Documentation: https://github.com/jamesainslie/dot/blob/main/docs/user/bootstrap-config-spec.md
 
 `, time.Now().Format(time.RFC3339))
 

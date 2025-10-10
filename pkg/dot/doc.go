@@ -195,17 +195,17 @@
 //
 // # Implementation Status
 //
-// Phase 12 (Initial Release):
+// All core operations are fully implemented:
 //   - Client interface with registration pattern
-//   - Manage/PlanManage operations (complete)
-//   - Status/List query operations (complete)
-//   - Unmanage/Remanage/Adopt operations (stub implementations)
+//   - Manage/PlanManage operations with dependency resolution
+//   - Unmanage operations with restore, purge, and cleanup options
+//   - Adopt operations with file and directory support
+//   - Status/List query operations
 //
-// Future work (see Phase 12b):
-//   - Complete Unmanage/Remanage/Adopt implementations
+// Future enhancements:
 //   - Streaming API for large operations
 //   - ConfigBuilder for fluent configuration
-//   - Potential refactoring to direct Client struct
+//   - Performance optimizations for large package sets
 //
 // For detailed examples, see examples_test.go.
 // For architecture details, see docs/Architecture.md.

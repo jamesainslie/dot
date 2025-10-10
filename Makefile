@@ -1,4 +1,4 @@
-.PHONY: build test test-tparse lint clean install check qa help version version-major version-minor version-patch release release-tag changelog-update
+.PHONY: build test test-tparse lint clean install uninstall check qa help version version-major version-minor version-patch release release-tag changelog-update
 
 # Build variables
 BINARY_NAME := dot
@@ -64,6 +64,19 @@ clean:
 ## install: Install the binary
 install: build
 	go install -buildvcs=false $(LDFLAGS) ./cmd/$(BINARY_NAME)
+
+## uninstall: Remove the installed binary
+uninstall:
+	@GOBIN=$$(go env GOBIN); \
+	if [ -z "$$GOBIN" ]; then \
+		GOBIN=$$(go env GOPATH)/bin; \
+	fi; \
+	if [ -f "$$GOBIN/$(BINARY_NAME)" ]; then \
+		rm -f "$$GOBIN/$(BINARY_NAME)"; \
+		echo "✓ Removed $$GOBIN/$(BINARY_NAME)"; \
+	else \
+		echo "Binary not found at $$GOBIN/$(BINARY_NAME)"; \
+	fi
 
 ## check: Run tests and linting (machine-readable output for CI/AI agents)
 check: test check-coverage lint vet

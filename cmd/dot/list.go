@@ -16,7 +16,7 @@ func newListCommand() *cobra.Command {
 
 	// Override RunE to build config from global flags
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		cfg, err := buildConfig()
+		cfg, err := buildConfigWithCmd(cmd)
 		if err != nil {
 			return err
 		}

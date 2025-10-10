@@ -92,8 +92,13 @@ comprehensive conflict detection, and incremental updates.`,
 }
 
 // buildConfig creates a dot.Config from global flags and adapters.
-// Precedence: flags > config file > defaults
+// Precedence: flags (if set) > config file > defaults
 func buildConfig() (dot.Config, error) {
+	return buildConfigWithCmd(nil)
+}
+
+// buildConfigWithCmd creates config with flag precedence awareness.
+func buildConfigWithCmd(cmd *cobra.Command) (dot.Config, error) {
 	// Create adapters
 	fs := adapters.NewOSFilesystem()
 	logger := createLogger()
@@ -103,32 +108,31 @@ func buildConfig() (dot.Config, error) {
 	loader := config.NewLoader("dot", configPath)
 	extCfg, err := loader.LoadWithEnv()
 
-	// Determine final values with precedence: flags > config > defaults
+	// Start with config file values
 	var packageDir, targetDir, backupDir, manifestDir string
 
 	if err == nil && extCfg != nil {
-		// Use config file values as base
 		packageDir = extCfg.Directories.Package
 		targetDir = extCfg.Directories.Target
 		manifestDir = extCfg.Directories.Manifest
 	}
 
-	// Override with flags if explicitly set (not default values)
-	if globalCfg.packageDir != "." {
+	// Override with globalCfg if set (covers both flag and test scenarios)
+	// For flags to override config, they must be non-default values
+	if globalCfg.packageDir != "" && globalCfg.packageDir != "." {
 		packageDir = globalCfg.packageDir
 	}
-	if globalCfg.targetDir != "" {
-		// Check if it's not the default home directory
-		homeDir, _ := os.UserHomeDir()
-		if globalCfg.targetDir != homeDir {
-			targetDir = globalCfg.targetDir
-		}
+
+	homeDir, _ := os.UserHomeDir()
+	if globalCfg.targetDir != "" && globalCfg.targetDir != homeDir {
+		targetDir = globalCfg.targetDir
 	}
+
 	if globalCfg.backupDir != "" {
 		backupDir = globalCfg.backupDir
 	}
 
-	// Apply defaults if still empty
+	// Apply final defaults if still empty
 	if packageDir == "" {
 		packageDir = "."
 	}

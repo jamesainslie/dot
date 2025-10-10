@@ -213,7 +213,33 @@ func TestBootstrapService_GenerateBootstrap(t *testing.T) {
 			assert.NotEmpty(t, result.YAML)
 			assert.Equal(t, "1.0", result.Config.Version)
 			assert.NotEmpty(t, result.Config.Packages)
+
+			// Test-specific assertions for manifest filtering
+			verifyManifestFiltering(t, tt.name, result)
 		})
+	}
+}
+
+// verifyManifestFiltering performs test-specific assertions for manifest filtering tests.
+func verifyManifestFiltering(t *testing.T, testName string, result BootstrapResult) {
+	switch testName {
+	case "from manifest only":
+		// Manifest had vim and zsh installed out of 3 packages (vim, zsh, git)
+		assert.Equal(t, 2, result.PackageCount, "expected 2 packages from manifest")
+		assert.Equal(t, 2, len(result.Config.Packages), "config should have 2 packages")
+		packageNames := make([]string, len(result.Config.Packages))
+		for i, pkg := range result.Config.Packages {
+			packageNames[i] = pkg.Name
+		}
+		assert.Contains(t, packageNames, "vim", "vim should be included from manifest")
+		assert.Contains(t, packageNames, "zsh", "zsh should be included from manifest")
+		assert.NotContains(t, packageNames, "git", "git should NOT be included (not in manifest)")
+
+	case "from manifest filters correctly":
+		// Manifest had only vim installed out of 4 packages (vim, zsh, git, tmux)
+		assert.Equal(t, 1, result.PackageCount, "expected 1 package from manifest")
+		assert.Equal(t, 1, len(result.Config.Packages), "config should have 1 package")
+		assert.Equal(t, "vim", result.Config.Packages[0].Name, "only vim should be included")
 	}
 }
 

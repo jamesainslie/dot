@@ -4,10 +4,11 @@ import "time"
 
 // Manifest tracks installed package state
 type Manifest struct {
-	Version   string                 `json:"version"`
-	UpdatedAt time.Time              `json:"updated_at"`
-	Packages  map[string]PackageInfo `json:"packages"`
-	Hashes    map[string]string      `json:"hashes"`
+	Version    string                 `json:"version"`
+	UpdatedAt  time.Time              `json:"updated_at"`
+	Packages   map[string]PackageInfo `json:"packages"`
+	Hashes     map[string]string      `json:"hashes"`
+	Repository *RepositoryInfo        `json:"repository,omitempty"`
 }
 
 // PackageSource indicates how a package was installed
@@ -27,6 +28,21 @@ type PackageInfo struct {
 	LinkCount   int           `json:"link_count"`
 	Links       []string      `json:"links"`
 	Source      PackageSource `json:"source,omitempty"` // How package was installed (adopted vs managed)
+}
+
+// RepositoryInfo contains metadata about the cloned repository.
+type RepositoryInfo struct {
+	// URL is the git repository URL.
+	URL string `json:"url"`
+
+	// Branch is the cloned branch name.
+	Branch string `json:"branch"`
+
+	// ClonedAt is the timestamp when the repository was cloned.
+	ClonedAt time.Time `json:"cloned_at"`
+
+	// CommitSHA is the commit hash at clone time (optional).
+	CommitSHA string `json:"commit_sha,omitempty"`
 }
 
 // New creates a new empty manifest
@@ -81,4 +97,25 @@ func (m *Manifest) PackageList() []PackageInfo {
 		packages = append(packages, pkg)
 	}
 	return packages
+}
+
+// SetRepository sets the repository information for the manifest.
+func (m *Manifest) SetRepository(info RepositoryInfo) {
+	m.Repository = &info
+	m.UpdatedAt = time.Now()
+}
+
+// GetRepository retrieves the repository information.
+// Returns the repository info and true if set, or empty info and false if not set.
+func (m *Manifest) GetRepository() (RepositoryInfo, bool) {
+	if m.Repository == nil {
+		return RepositoryInfo{}, false
+	}
+	return *m.Repository, true
+}
+
+// ClearRepository removes the repository information from the manifest.
+func (m *Manifest) ClearRepository() {
+	m.Repository = nil
+	m.UpdatedAt = time.Now()
 }

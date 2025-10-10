@@ -6,6 +6,7 @@
 # dot
 [![CI](https://github.com/jamesainslie/dot/actions/workflows/ci.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/ci.yml)
 [![Release](https://github.com/jamesainslie/dot/actions/workflows/release.yml/badge.svg)](https://github.com/jamesainslie/dot/actions/workflows/release.yml)
+[![Version](https://img.shields.io/github/v/release/jamesainslie/dot)](https://github.com/jamesainslie/dot/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jamesainslie/dot)](https://goreportcard.com/report/github.com/jamesainslie/dot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -188,12 +189,26 @@ dot remanage dot-vim dot-tmux dot-zsh
 Move existing files into a package and replace with symlinks:
 
 ```bash
-# Adopt single file into package
-dot adopt dot-vim ~/.vimrc
+# Auto-naming: single file (package name derived from filename)
+dot adopt ~/.vimrc
+# Creates package: dot-vimrc
 
-# Adopt multiple files
-dot adopt dot-zsh ~/.zshrc ~/.zprofile ~/.zshenv
+# Auto-naming: single directory (package name derived from directory)
+dot adopt ~/.ssh
+# Creates package: dot-ssh
+
+# Glob expansion: multiple files with common prefix
+dot adopt .git*
+# Shell expands to: .gitconfig .gitignore .git-credentials
+# Creates single package: dot-git
+# All files adopted into one package
+
+# Explicit package: specify package name
+dot adopt vim ~/.vimrc ~/.vim
+dot adopt zsh ~/.zshrc ~/.zprofile ~/.zshenv
 ```
+
+**Glob Support**: When using shell glob patterns like `.git*`, all matching files are adopted into a single package. The package name is derived from the common prefix of the matched files.
 
 ### Query Commands
 

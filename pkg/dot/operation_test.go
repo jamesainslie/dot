@@ -16,7 +16,7 @@ func TestLinkCreateOperation(t *testing.T) {
 	assert.Equal(t, dot.OpKindLinkCreate, op.Kind())
 	assert.Contains(t, op.String(), "vimrc")
 
-	// Validate should check paths exist (not implemented yet, so should pass)
+	// Validate checks operation structure, not filesystem state
 	err := op.Validate()
 	assert.NoError(t, err)
 

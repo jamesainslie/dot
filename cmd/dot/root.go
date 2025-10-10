@@ -9,6 +9,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/jamesainslie/dot/internal/adapters"
+	"github.com/jamesainslie/dot/internal/config"
 	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/spf13/cobra"
 )
@@ -91,26 +92,74 @@ comprehensive conflict detection, and incremental updates.`,
 }
 
 // buildConfig creates a dot.Config from global flags and adapters.
+// Precedence: flags (if set) > config file > defaults
 func buildConfig() (dot.Config, error) {
-	// Make paths absolute
-	packageDir, err := filepath.Abs(globalCfg.packageDir)
-	if err != nil {
-		return dot.Config{}, fmt.Errorf("invalid package directory: %w", err)
-	}
+	return buildConfigWithCmd(nil)
+}
 
-	targetDir, err := filepath.Abs(globalCfg.targetDir)
-	if err != nil {
-		return dot.Config{}, fmt.Errorf("invalid target directory: %w", err)
-	}
-
+// buildConfigWithCmd creates config with flag precedence awareness.
+func buildConfigWithCmd(cmd *cobra.Command) (dot.Config, error) {
 	// Create adapters
 	fs := adapters.NewOSFilesystem()
 	logger := createLogger()
 
+	// Load extended config
+	configPath := getConfigFilePath()
+	loader := config.NewLoader("dot", configPath)
+	extCfg, err := loader.LoadWithEnv()
+
+	// Start with config file values
+	var packageDir, targetDir, backupDir, manifestDir string
+
+	if err == nil && extCfg != nil {
+		packageDir = extCfg.Directories.Package
+		targetDir = extCfg.Directories.Target
+		backupDir = extCfg.Symlinks.BackupDir
+		manifestDir = extCfg.Directories.Manifest
+	}
+
+	// Override with globalCfg if set (covers both flag and test scenarios)
+	// For flags to override config, they must be non-default values
+	if globalCfg.packageDir != "" && globalCfg.packageDir != "." {
+		packageDir = globalCfg.packageDir
+	}
+
+	homeDir, _ := os.UserHomeDir()
+	if globalCfg.targetDir != "" && globalCfg.targetDir != homeDir {
+		targetDir = globalCfg.targetDir
+	}
+
+	if globalCfg.backupDir != "" {
+		backupDir = globalCfg.backupDir
+	}
+
+	// Apply final defaults if still empty
+	if packageDir == "" {
+		packageDir = "."
+	}
+	if targetDir == "" {
+		targetDir, _ = os.UserHomeDir()
+		if targetDir == "" {
+			targetDir = "."
+		}
+	}
+
+	// Make paths absolute
+	packageDir, err = filepath.Abs(packageDir)
+	if err != nil {
+		return dot.Config{}, fmt.Errorf("invalid package directory: %w", err)
+	}
+
+	targetDir, err = filepath.Abs(targetDir)
+	if err != nil {
+		return dot.Config{}, fmt.Errorf("invalid target directory: %w", err)
+	}
+
 	cfg := dot.Config{
 		PackageDir:         packageDir,
 		TargetDir:          targetDir,
-		BackupDir:          globalCfg.backupDir,
+		BackupDir:          backupDir,
+		ManifestDir:        manifestDir,
 		DryRun:             globalCfg.dryRun,
 		Verbosity:          globalCfg.verbose,
 		PackageNameMapping: true, // Default: true (pre-1.0 breaking change)
@@ -141,15 +190,22 @@ func createLogger() dot.Logger {
 }
 
 // verbosityToLevel converts verbosity count to log level.
+// Level mapping:
+//   - 0 (no flag): ERROR only - suppress all logs, show only user messages
+//   - 1 (-v): INFO - show high-level progress
+//   - 2 (-vv): DEBUG - show detailed operation info
+//   - 3+ (-vvv): More verbose DEBUG levels
 func verbosityToLevel(v int) slog.Level {
 	switch {
 	case v == 0:
-		return slog.LevelInfo
+		return slog.LevelError // Suppress INFO/DEBUG/WARN, only show errors
 	case v == 1:
-		return slog.LevelDebug
+		return slog.LevelInfo // Show high-level progress
+	case v == 2:
+		return slog.LevelDebug // Show detailed operations
 	default:
 		// Even more verbose
-		return slog.LevelDebug - slog.Level(v-1)
+		return slog.LevelDebug - slog.Level(v-2)
 	}
 }
 

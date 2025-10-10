@@ -28,7 +28,9 @@ func main() {
 			_ = executedCmd.Usage()
 		}
 
-		os.Exit(1)
+		// Handle doctor-specific exit codes
+		exitCode := getDoctorExitCode(err)
+		os.Exit(exitCode)
 	}
 }
 
@@ -76,4 +78,24 @@ func isArgValidationError(err error) bool {
 	}
 
 	return false
+}
+
+// getDoctorExitCode returns the appropriate exit code for doctor command errors.
+func getDoctorExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+
+	errMsg := err.Error()
+
+	// Doctor command uses specific error messages for different health states
+	if strings.Contains(errMsg, "health check detected errors") {
+		return 2
+	}
+	if strings.Contains(errMsg, "health check detected warnings") {
+		return 1
+	}
+
+	// Default error exit code
+	return 1
 }

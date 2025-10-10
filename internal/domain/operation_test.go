@@ -16,7 +16,7 @@ func TestLinkCreateOperation(t *testing.T) {
 	assert.Equal(t, domain.OpKindLinkCreate, op.Kind())
 	assert.Contains(t, op.String(), "vimrc")
 
-	// Validate should check paths exist (not implemented yet, so should pass)
+	// Validate checks operation structure, not filesystem state
 	err := op.Validate()
 	assert.NoError(t, err)
 
@@ -172,6 +172,45 @@ func TestDirDeleteEquals(t *testing.T) {
 	assert.False(t, op1.Equals(op4), "different operation type should not be equal")
 }
 
+func TestDirRemoveAllOperation(t *testing.T) {
+	path := domain.NewFilePath("/home/user/.config").Unwrap()
+
+	op := domain.NewDirRemoveAll("dir1", path)
+
+	assert.Equal(t, domain.OpKindDirRemoveAll, op.Kind())
+	assert.Contains(t, op.String(), ".config")
+	assert.Contains(t, op.String(), "recursively")
+
+	err := op.Validate()
+	assert.NoError(t, err)
+
+	deps := op.Dependencies()
+	assert.Empty(t, deps)
+}
+
+func TestDirRemoveAllEquals(t *testing.T) {
+	path1 := domain.NewFilePath("/home/user/.vim").Unwrap()
+	path2 := domain.NewFilePath("/home/user/.config").Unwrap()
+
+	op1 := domain.NewDirRemoveAll("dir1", path1)
+	op2 := domain.NewDirRemoveAll("dir2", path1)
+	op3 := domain.NewDirRemoveAll("dir3", path2)
+	op4 := domain.NewDirDelete("dir4", path1)
+
+	assert.True(t, op1.Equals(op2), "same path should be equal")
+	assert.False(t, op1.Equals(op3), "different path should not be equal")
+	assert.False(t, op1.Equals(op4), "different operation type should not be equal")
+}
+
+func TestDirRemoveAllOperationID(t *testing.T) {
+	path := domain.NewFilePath("/home/user/.config").Unwrap()
+	op := domain.NewDirRemoveAll("dir1", path)
+
+	id := op.ID()
+	assert.NotEmpty(t, id)
+	assert.Equal(t, op.ID(), op.ID())
+}
+
 func TestFileMoveEquals(t *testing.T) {
 	source1 := domain.NewTargetPath("/home/user/.vimrc").Unwrap()
 	dest1 := domain.NewFilePath("/home/user/.dotfiles/vimrc").Unwrap()
@@ -214,8 +253,10 @@ func TestOperationKindString(t *testing.T) {
 		{domain.OpKindLinkDelete, "LinkDelete"},
 		{domain.OpKindDirCreate, "DirCreate"},
 		{domain.OpKindDirDelete, "DirDelete"},
+		{domain.OpKindDirRemoveAll, "DirRemoveAll"},
 		{domain.OpKindFileMove, "FileMove"},
 		{domain.OpKindFileBackup, "FileBackup"},
+		{domain.OpKindDirCopy, "DirCopy"},
 	}
 
 	for _, tt := range tests {

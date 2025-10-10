@@ -218,7 +218,7 @@ dot --dir ~/dotfiles --target ~ manage vim
 
 ### unmanage
 
-Remove packages by deleting symlinks.
+Remove packages by deleting symlinks, with optional restoration or cleanup.
 
 **Synopsis**:
 ```bash
@@ -228,34 +228,78 @@ dot unmanage [options] PACKAGE [PACKAGE...]
 **Arguments**:
 - `PACKAGE`: One or more package names to remove
 
-**Options**: All global options
+**Options**:
+- All global options
+- `--purge`: Delete package directory after removing links
+- `--no-restore`: Skip restoring adopted packages to target
+- `--cleanup`: Remove orphaned packages from manifest only
 
 **Examples**:
 ```bash
-# Single package
+# Remove managed package (removes links only)
 dot unmanage vim
 
-# Multiple packages
-dot unmanage vim zsh tmux
+# Remove adopted package (restores files to target, keeps in package)
+dot unmanage dot-ssh
+
+# Remove with purge (deletes package directory)
+dot unmanage --purge vim
+
+# Remove without restoring (for adopted packages)
+dot unmanage --no-restore dot-ssh
+
+# Clean up orphaned packages
+dot unmanage --cleanup dot-old-package
 
 # Preview removal
 dot --dry-run unmanage vim
-
-# Verbose output
-dot -v unmanage zsh
 ```
 
 **Behavior**:
-1. Loads manifest for package state
-2. Validates link ownership
-3. Removes symlinks
-4. Cleans up empty directories
-5. Updates manifest
+
+For **managed packages** (created with `dot manage`):
+1. Removes symlinks
+2. Cleans up empty directories
+3. Removes from manifest
+4. Package directory preserved (unless `--purge`)
+
+For **adopted packages** (created with `dot adopt`):
+1. Removes symlinks
+2. **Copies files back to target** (unless `--no-restore`)
+3. Removes from manifest  
+4. Package directory preserved (unless `--purge`)
+
+**Restoration for Adopted Packages**:
+
+By default, `unmanage` **restores** adopted files to their original locations:
+
+```bash
+# Before unmanage:
+~/.ssh -> ~/dotfiles/dot-ssh  # Symlink
+~/dotfiles/dot-ssh/config     # Files in package
+
+# After: dot unmanage dot-ssh
+~/.ssh/config                 # Files restored (copied back)
+~/dotfiles/dot-ssh/config     # Package preserved as backup
+```
+
+Files are **copied** (not moved), so they remain in the package as a backup.
+
+**Cleanup Mode**:
+
+Use `--cleanup` to remove orphaned packages (missing links or directories):
+
+```bash
+dot unmanage --cleanup old-package
+```
+
+Only updates manifest, no filesystem operations.
 
 **Safety Guarantees**:
 - Only removes links pointing to package directory
 - Preserves non-managed files
 - Validates link targets before deletion
+- Adopted packages restored by default (preserves your data)
 
 **Exit Codes**:
 - `0`: Success
@@ -264,7 +308,7 @@ dot -v unmanage zsh
 
 ### remanage
 
-Update packages efficiently using incremental detection.
+Update packages efficiently using incremental detection and restore missing symlinks.
 
 **Synopsis**:
 ```bash
@@ -284,25 +328,56 @@ dot remanage vim
 # Multiple packages
 dot remanage vim zsh tmux
 
-# Force full remanage (skip incremental detection)
-dot remanage --no-incremental vim
-
 # Preview changes
 dot --dry-run remanage vim
+
+# Verbose output to see detection details
+dot -vv remanage zsh
 ```
 
 **Behavior**:
 1. Loads manifest with previous state
-2. Computes content hashes
-3. Compares with stored hashes
-4. Processes only changed packages
-5. Updates manifest
+2. Computes content hashes for package directories
+3. Verifies all symlinks still exist
+4. Compares with stored hashes and link states
+5. Processes changed or broken packages
+6. Updates manifest while preserving package source type
 
 **Incremental Detection**:
-- Unchanged packages: Skipped entirely
-- Changed packages: Unmanaged then managed
-- New packages: Managed
-- Missing packages: Unmanaged
+- **Unchanged packages with valid links**: Skipped entirely (no-op)
+- **Changed packages**: Unmanaged then managed (full update)
+- **Packages with missing links**: Recreates missing symlinks
+- **New packages**: Managed
+- **Adopted packages**: Preserves adoption structure (single directory symlink)
+
+**Missing Link Detection**:
+
+If symlinks were accidentally deleted, `remanage` automatically recreates them:
+
+```bash
+# Symlink accidentally deleted
+rm ~/.vimrc
+
+# Check status
+dot doctor
+# ✗ error: .vimrc link does not exist
+
+# Recreate missing link
+dot remanage vim
+# Successfully remanaged 1 package(s)
+
+# Link restored
+ls -la ~/.vimrc
+# ~/.vimrc -> ~/dotfiles/vim/dot-vimrc
+```
+
+**Package Source Preservation**:
+
+`remanage` preserves the original package type:
+- **Adopted packages**: Maintains single directory symlink structure
+- **Managed packages**: Maintains individual file symlinks
+
+This ensures adopted directories aren't converted to managed packages.
 
 **Exit Codes**:
 - `0`: Success, changes applied or no changes needed
@@ -310,48 +385,104 @@ dot --dry-run remanage vim
 
 ### adopt
 
-Move existing files into package and create symlinks.
+Move existing files or directories into a package and create symlinks.
 
 **Synopsis**:
 ```bash
-dot adopt [options] PACKAGE FILE [FILE...]
+# Auto-naming mode (single file/directory)
+dot adopt [options] FILE|DIRECTORY
+
+# Glob expansion mode (multiple files with common prefix)
+dot adopt [options] PATTERN...
+
+# Explicit package mode
+dot adopt [options] PACKAGE FILE|DIRECTORY [FILE|DIRECTORY...]
 ```
 
 **Arguments**:
-- `PACKAGE`: Target package name
-- `FILE`: One or more files to adopt
+- `FILE|DIRECTORY`: Path to file or directory to adopt
+- `PACKAGE`: Explicit package name (optional)
+- `PATTERN`: Shell glob pattern (e.g., `.git*`)
 
 **Options**: All global options
 
-**Examples**:
+**Modes**:
+
+#### Auto-Naming Mode
+Single file or directory - package name derived automatically:
 ```bash
-# Adopt single file
-dot adopt vim ~/.vimrc
-
-# Adopt multiple files
-dot adopt zsh ~/.zshrc ~/.zshenv ~/.zprofile
-
-# Adopt to new package
-dot adopt git ~/.gitconfig ~/.gitignore_global
-
-# Preview adoption
-dot --dry-run adopt vim ~/.vimrc
-
-# With backup
-dot --on-conflict backup adopt vim ~/.vimrc
+dot adopt .vimrc      # Creates package: dot-vimrc
+dot adopt .ssh        # Creates package: dot-ssh
+dot adopt .config     # Creates package: dot-config
 ```
 
-**Behavior**:
-1. Validates source files exist
-2. Determines target paths in package (respecting dotfile translation)
-3. Creates package directory if needed
-4. Moves files to package
-5. Creates symlinks in original locations
-6. Updates manifest
+#### Glob Expansion Mode
+Multiple files with common prefix - package name derived from prefix:
+```bash
+dot adopt .git*       # Expands to .gitconfig, .gitignore, etc.
+                      # Creates package: dot-git
+                      # All files adopted into single package
+
+dot adopt .vim*       # Expands to .vimrc, .viminfo, etc.
+                      # Creates package: dot-vim
+```
+
+#### Explicit Package Mode
+Specify package name explicitly:
+```bash
+dot adopt vim .vimrc .vim/          # Package: vim
+dot adopt configs .config/ .local/  # Package: configs
+```
+
+**Directory Adoption**:
+
+When adopting a directory, `dot` creates a **flat structure** in the package with the directory contents at the package root:
+
+```bash
+# Before: ~/.ssh/ with files
+~/.ssh/
+├── config
+├── id_rsa
+└── known_hosts
+
+# After: dot adopt .ssh
+~/dotfiles/dot-ssh/       # Package root contains directory contents
+├── config
+├── id_rsa
+└── known_hosts
+
+~/.ssh -> ~/dotfiles/dot-ssh  # Single symlink to package root
+```
+
+**File Adoption**:
+
+Single files are placed in a package directory with dotfile translation:
+
+```bash
+# Before: ~/.vimrc
+
+# After: dot adopt .vimrc
+~/dotfiles/dot-vimrc/
+└── dot-vimrc
+
+~/.vimrc -> ~/dotfiles/dot-vimrc/dot-vimrc
+```
 
 **Dotfile Translation**:
-- `.vimrc` → `dot-vimrc` in package
-- `.config/nvim/init.vim` → `dot-config/nvim/init.vim`
+
+Dotfiles (starting with `.`) have the dot replaced with `dot-` prefix:
+- `.vimrc` → `dot-vimrc`
+- `.ssh` → `dot-ssh`
+- `.config` → `dot-config`
+- Nested: `.config/nvim/init.vim` → `dot-config/nvim/init.vim`
+
+**Behavior**:
+1. Determines adoption mode (auto-naming, glob, or explicit)
+2. Derives or uses provided package name
+3. Creates package directory structure
+4. Moves files/directories to package (applying dotfile translation)
+5. Creates symlinks in original locations
+6. Records package as "adopted" in manifest
 
 **Exit Codes**:
 - `0`: Success

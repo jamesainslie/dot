@@ -10,12 +10,23 @@ type Manifest struct {
 	Hashes    map[string]string      `json:"hashes"`
 }
 
+// PackageSource indicates how a package was installed
+type PackageSource string
+
+const (
+	// SourceManaged indicates package was installed via manage command
+	SourceManaged PackageSource = "managed"
+	// SourceAdopted indicates package was created via adopt command
+	SourceAdopted PackageSource = "adopted"
+)
+
 // PackageInfo contains installation metadata for a package
 type PackageInfo struct {
-	Name        string    `json:"name"`
-	InstalledAt time.Time `json:"installed_at"`
-	LinkCount   int       `json:"link_count"`
-	Links       []string  `json:"links"`
+	Name        string        `json:"name"`
+	InstalledAt time.Time     `json:"installed_at"`
+	LinkCount   int           `json:"link_count"`
+	Links       []string      `json:"links"`
+	Source      PackageSource `json:"source,omitempty"` // How package was installed (adopted vs managed)
 }
 
 // New creates a new empty manifest

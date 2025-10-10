@@ -34,7 +34,7 @@ func TestManageCommand_Integration_Execute(t *testing.T) {
 		quiet:      false,
 	}
 
-	// Create command
+	// Create command (globalCfg is already set)
 	cmd := newManageCommand()
 	cmd.SetContext(context.Background())
 	cmd.SetArgs([]string{"vim"})

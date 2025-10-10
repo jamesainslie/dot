@@ -172,7 +172,7 @@ func TestAdoptCommand_NotEnoughArgs(t *testing.T) {
 func TestAdoptCommand_Metadata(t *testing.T) {
 	cmd := newAdoptCommand()
 
-	require.Equal(t, "adopt PACKAGE FILE [FILE...]", cmd.Use)
+	require.Equal(t, "adopt [PACKAGE] FILE [FILE...]", cmd.Use)
 	require.Equal(t, "Move existing files into package then link", cmd.Short)
 	require.NotEmpty(t, cmd.Long)
 }

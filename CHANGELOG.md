@@ -1,6 +1,36 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Build
+- **deps:** add go-git and golang.org/x/term dependencies
+
+### Change
+- **docs:** logo > transparent background
+
+### Docs
+- **readme:** add clone command to Quick Start
+- **user:** add clone command and bootstrap config documentation
+
+### Feat
+- **bootstrap:** add configuration schema and loader
+- **cli:** implement dot clone command
+- **cli:** add interactive package selector and terminal detection
+- **client:** integrate CloneService into Client facade
+- **clone:** improve branch detection and profile filtering
+- **clone:** implement CloneService orchestrator
+- **errors:** add clone-specific error types
+- **git:** add git cloning with authentication support
+- **manifest:** add repository tracking support
+
+### Fix
+- **adapters:** use correct HTTP Basic Auth format for tokens
+- **clone:** improve string handling safety in git SHA parsing
+- **clone:** use errors.As for wrapped error handling
+
+### Test
+- **adapters:** replace network-dependent tests with hermetic fixtures
+- **integration:** add clone feature tests and fixtures
+
 
 <a name="v0.3.1"></a>
 ## [v0.3.1] - 2025-10-09
@@ -48,10 +78,10 @@ Change adopt behavior to store directory contents at package root with
 consistent 'dot-' prefix application.
 
 Before:
-  ~/dotfiles/ssh/dot-ssh/config     → ~/.ssh
+~/dotfiles/ssh/dot-ssh/config → ~/.ssh
 
 After:
-  ~/dotfiles/dot-ssh/config         → ~/.ssh
+~/dotfiles/dot-ssh/config → ~/.ssh
 
 Changes:
 - Package names preserve leading dots: .ssh → dot-ssh
@@ -71,7 +101,7 @@ Testing:
 - Regression tests preserve backward compatibility checks
 - 80%+ coverage maintained
 
-Refs: docs/planning/phase-26-dot-prefix-refactoring-plan.md
+Refs: docs/planning/dot-prefix-refactoring-plan.md
 
 
 <a name="v0.2.0"></a>
@@ -101,14 +131,14 @@ Refs: docs/planning/phase-26-dot-prefix-refactoring-plan.md
 Package structure requirements changed.
 
 Before (v0.1.x):
-  dot-gnupg/
-  ├── common.conf         → ~/common.conf
-  └── public-keys.d/      → ~/public-keys.d/
+dot-gnupg/
+├── common.conf → ~/common.conf
+└── public-keys.d/ → ~/public-keys.d/
 
 After (v0.2.0):
-  dot-gnupg/
-  ├── common.conf         → ~/.gnupg/common.conf
-  └── public-keys.d/      → ~/.gnupg/public-keys.d/
+dot-gnupg/
+├── common.conf → ~/.gnupg/common.conf
+└── public-keys.d/ → ~/.gnupg/public-keys.d/
 
 Migration: Restructure packages to remove redundant nesting, or
 opt-out by setting dotfile.package_name_mapping: false in config.
@@ -120,7 +150,7 @@ design before API stability commitment in 1.0.0 release.
 <a name="v0.1.1"></a>
 ## [v0.1.1] - 2025-10-08
 ### Chore
-- remove remaining PHASE doc from source control
+- remove documentation from source control
 - remove reference docs from source control
 - remove migration docs from source control
 - add planning docs to gitignore
@@ -133,22 +163,22 @@ design before API stability commitment in 1.0.0 release.
 - **hooks:** add pre-commit hook for test coverage enforcement
 
 ### Docs
-- add Phase 24 complete summary
-- **architecture:** update for service-based architecture
+- document refactoring
+- add executive summary of completion
+- update progress doc to reflect completion
+- document Core completion
+- add complete summary
 - **architecture:** add comprehensive architecture documentation
-- **changelog:** update for v0.1.1 release
-- **changelog:** update for v0.1.1 release
+- **architecture:** update for service-based architecture
 - **changelog:** update README.md
+- **changelog:** update for v0.1.1 release
+- **changelog:** update for v0.1.1 release
 - **changelog:** update for v0.1.1 release
 - **developer:** add mermaid diagrams and comprehensive testing documentation
 - **index:** update documentation index to reflect current structure
 - **navigation:** add root README links to all child documentation
-- **phase-12b:** document Phase 12b Core completion
-- **phase-12b:** update progress doc to reflect completion
-- **phase-12b:** document complete Phase 12b refactoring
-- **phase-12b:** add executive summary of Phase 12b completion
-- **planning:** add Phase 24 progress checkpoint
-- **planning:** add Phase 24 code smell remediation plan
+- **planning:** add progress checkpoint
+- **planning:** add code quality improvements plan
 - **readme:** fix broken documentation links
 - **test:** update benchmark template to use testing.TB pattern
 
@@ -201,12 +231,12 @@ design before API stability commitment in 1.0.0 release.
 - **domain:** use validators in path constructors
 - **domain:** move MustParsePath to testing.go
 - **domain:** improve TraversalFreeValidator implementation
-- **domain:** move all remaining domain types to internal/domain
+- **domain:** move all domain types to internal/domain
 - **domain:** update all internal package imports to use internal/domain
 - **domain:** use TargetPath for operation targets
 - **domain:** format code and fix linter issues
 - **hooks:** eliminate duplicate test run in pre-commit
-- **path:** remove Path generic wrapper to eliminate code smell
+- **path:** remove Path generic wrapper to eliminate code quality issue
 - **pkg:** simplify scanForOrphanedLinks method
 - **pkg:** convert Client to facade pattern
 - **pkg:** extract helper methods in DoctorService
@@ -227,17 +257,17 @@ design before API stability commitment in 1.0.0 release.
 - **domain:** add Result unwrap helper tests
 - **domain:** add error helper tests
 - **domain:** add permission constant tests
-- **integration:** implement remaining integration test categories
+- **integration:** implement integration test categories
 - **integration:** implement comprehensive integration test infrastructure
 
 ### Pull Requests
 - Merge pull request [#25](https://github.com/jamesainslie/dot/issues/25) from jamesainslie/feature-documentation-shiznickle
 - Merge pull request [#24](https://github.com/jamesainslie/dot/issues/24) from jamesainslie/docs-update-document-index
 - Merge pull request [#23](https://github.com/jamesainslie/dot/issues/23) from jamesainslie/docs-add-root-links
-- Merge pull request [#22](https://github.com/jamesainslie/dot/issues/22) from jamesainslie/phase-17-integration-testing
+- Merge pull request [#22](https://github.com/jamesainslie/dot/issues/22) from jamesainslie/integration-testing
 - Merge pull request [#21](https://github.com/jamesainslie/dot/issues/21) from jamesainslie/feature-tech-debt
 - Merge pull request [#20](https://github.com/jamesainslie/dot/issues/20) from jamesainslie/feature-implement-git-changelog
-- Merge pull request [#19](https://github.com/jamesainslie/dot/issues/19) from jamesainslie/feature-phase-12b-domain-refactor
+- Merge pull request [#19](https://github.com/jamesainslie/dot/issues/19) from jamesainslie/feature-domain-refactor
 
 ### BREAKING CHANGE
 
@@ -272,40 +302,40 @@ should not exist since it was an internal package.
 - **release:** use GORELEASER_TOKEN for tap updates
 
 ### Docs
+- mark core implementation complete
+- replace tabs with spaces in Makefile code block
+- complete with ignore patterns and scanner
+- complete planner foundation with 100% coverage
+- implement comprehensive documentation suite
+- add and completion documents
+- add completion summary and update changelog
+- mark complete
+- add completion documentation
+- add completion summary
+- add implementation plan for API enhancements
+- add completion summary and update changelog
+- add completion summary and update changelog
+- add completion summary and update changelog
+- add final implementation summary
+- document code review improvements
 - **adr:** add ADR-003 and ADR-004 for future enhancements
-- **api:** document Doctor() breaking change and migration path
-- **api:** remove GNU Stow reference from package documentation
-- **changelog:** update with Phase 22 features and fixes
-- **changelog:** update changelog for Phase 0 completion
-- **cli:** remove GNU Stow references from user-facing text
+- **api:** remove GNU symlink reference from package documentation
+- **api:** document Doctor breaking change and migration path
+- **changelog:** update changelog for completion
+- **changelog:** update with features and fixes
+- **cli:** remove GNU symlink references from user-facing text
 - **config:** add configuration guide and update README
-- **config:** add Phase-15b configuration management design
-- **dot:** clarify ScanConfig field behavior in comments
+- **config:** add configuration management design
 - **dot:** enhance Result monad documentation with usage guidance
-- **executor:** add Phase 10 completion document
-- **executor:** update Phase 10 completion document with improved coverage
+- **dot:** clarify ScanConfig field behavior in comments
+- **executor:** update completion document with improved coverage
+- **executor:** add completion document
 - **install:** add Homebrew installation guide and release process
-- **phase-19:** implement comprehensive documentation suite
-- **phase-22:** add final implementation summary
-- **phase0:** add Phase 0 completion summary
-- **phase1:** add Phase 1 completion summary and update changelog
-- **phase12:** mark Phase 12 core implementation complete
-- **phase14:** document code review improvements
-- **phase15:** add Phase 15 completion documentation
-- **phase15c:** mark Phase 15c complete
-- **phase15c:** add implementation plan for API enhancements
-- **phase18:** replace tabs with spaces in Makefile code block
-- **phase2:** add Phase 2 completion summary and update changelog
-- **phase3:** add Phase 3 completion summary and update changelog
-- **phase4:** add Phase 4 completion summary and update changelog
-- **phase5:** complete Phases 4-5 with ignore patterns and scanner
-- **phase6:** complete planner foundation with 100% coverage
-- **phases:** add Phase 8 and Phase 9 completion documents
-- **plan:** update Phase 13 plan with new CLI verb terminology
-- **planner:** add Phase 8 implementation plan
-- **planner:** document Phase 7 completion
+- **plan:** update plan with new CLI verb terminology
+- **planner:** add implementation plan
+- **planner:** document completion
 - **plans:** add language hints to code blocks and fix formatting
-- **readme:** update documentation for Phase 14 completion
+- **readme:** update documentation for completion
 - **review:** add code review remediation progress tracking
 - **review:** add final coverage status and analysis
 - **review:** add final remediation summary
@@ -316,7 +346,7 @@ should not exist since it was an internal package.
 - **adapters:** implement slog logger and no-op adapters
 - **adapters:** implement OS filesystem adapter
 - **api:** implement Unmanage, Remanage, and Adopt operations
-- **api:** add foundational types for Phase 12 Client API
+- **api:** add foundational types for Client API
 - **api:** define Client interface for public API
 - **api:** implement Client with Manage operation
 - **api:** add comprehensive tests and documentation
@@ -336,10 +366,10 @@ should not exist since it was an internal package.
 - **cli:** implement output renderer infrastructure
 - **cli:** add minimal CLI entry point for build validation
 - **cli:** add config command for XDG configuration management
-- **cli:** implement error formatting foundation for Phase 15
+- **cli:** implement error formatting foundation for
 - **cli:** implement status command for installation state inspection
 - **cli:** implement doctor command for health checks
-- **cli:** implement Phase 13 CLI infrastructure with core commands
+- **cli:** implement CLI infrastructure with core commands
 - **cli:** implement UX polish with output formatting
 - **cli:** implement command handlers for manage, unmanage, remanage, adopt
 - **cli:** show complete operation breakdown in table summary
@@ -356,7 +386,7 @@ should not exist since it was an internal package.
 - **dot:** add ScanConfig types for orphaned link detection
 - **executor:** add metrics instrumentation wrapper
 - **executor:** implement parallel batch execution
-- **executor:** implement Phase 10 executor with two-phase commit
+- **executor:** implement executor with two-phase commit
 - **ignore:** implement pattern matching engine and ignore sets
 - **manifest:** implement FSManifestStore persistence
 - **manifest:** add core manifest domain types
@@ -367,7 +397,7 @@ should not exist since it was an internal package.
 - **pipeline:** track package ownership in operation plans
 - **pipeline:** surface conflicts and warnings in plan metadata
 - **pipeline:** enhance context cancellation handling in pipeline stages
-- **pipeline:** implement stow pipeline with scanning, planning, resolution, and sorting stages
+- **pipeline:** implement symlink pipeline with scanning, planning, resolution, and sorting stages
 - **planner:** implement suggestion generation and conflict enrichment
 - **planner:** implement conflict detection for links and directories
 - **planner:** define conflict type enumeration
@@ -389,7 +419,7 @@ should not exist since it was an internal package.
 - **types:** add Status and PackageInfo types
 
 ### Fix
-- **api:** address CodeRabbit feedback on Phase 12
+- **api:** address CodeRabbit feedback on
 - **api:** use configured skip patterns in recursive orphan scanning
 - **api:** improve error handling and test robustness
 - **api:** use package-operation mapping for accurate manifest tracking
@@ -424,17 +454,17 @@ should not exist since it was an internal package.
 - **pipeline:** use safe unwrap pattern in path construction tests
 - **pipeline:** improve test quality and organization
 - **quality:** improve error handling documentation and panic messages
-- **terminology:** update suggestion text from unstow to unmanage
-- **terminology:** replace stow with package directory terminology
-- **terminology:** complete stow removal from test fixtures
-- **terminology:** rename stow-prefixed variables to package/manage
+- **terminology:** update suggestion text from unmanage to unmanage
+- **terminology:** replace symlink with package directory terminology
+- **terminology:** complete symlink removal from test fixtures
+- **terminology:** rename symlink-prefixed variables to package/manage
 
 ### Style
 - **all:** apply goimports formatting
 - **all:** apply goimports formatting
 - **domain:** fix linting issues and apply formatting
 - **manifest:** apply goimports formatting
-- **planner:** fix linting issues in Phase 8 implementation
+- **planner:** fix linting issues in implementation
 - **scanner:** apply goimports formatting
 - **test:** format test files with goimports
 
@@ -442,7 +472,7 @@ should not exist since it was an internal package.
 - **adapters:** add comprehensive MemFS tests to achieve 80%+ coverage
 - **api:** add manifest helper tests and document remediation
 - **api:** add comprehensive test coverage for all API methods
-- **cli:** fix help text assertion after Stow removal
+- **cli:** fix help text assertion after symlink removal
 - **cli:** increase cmd/dot test coverage to 88.6%
 - **cli:** add comprehensive tests to restore coverage above 80%
 - **cmd:** add basic command constructor tests
@@ -459,16 +489,16 @@ should not exist since it was an internal package.
 - Merge pull request [#18](https://github.com/jamesainslie/dot/issues/18) from jamesainslie/feature-homebrew-tap
 - Merge pull request [#17](https://github.com/jamesainslie/dot/issues/17) from jamesainslie/fix-dry-run-output
 - Merge pull request [#16](https://github.com/jamesainslie/dot/issues/16) from jamesainslie/feature-implement-stubs
-- Merge pull request [#15](https://github.com/jamesainslie/dot/issues/15) from jamesainslie/feature-remove-stow-terminology
-- Merge pull request [#14](https://github.com/jamesainslie/dot/issues/14) from jamesainslie/feature-remove-stow-references
-- Merge pull request [#13](https://github.com/jamesainslie/dot/issues/13) from jamesainslie/feature-phase-15c-api-enhancements
+- Merge pull request [#15](https://github.com/jamesainslie/dot/issues/15) from jamesainslie/feature-remove-symlink-terminology
+- Merge pull request [#14](https://github.com/jamesainslie/dot/issues/14) from jamesainslie/feature-remove-symlink-references
+- Merge pull request [#13](https://github.com/jamesainslie/dot/issues/13) from jamesainslie/feature-api-enhancements
 - Merge pull request [#12](https://github.com/jamesainslie/dot/issues/12) from jamesainslie/feature-code-review-remediation
-- Merge pull request [#11](https://github.com/jamesainslie/dot/issues/11) from jamesainslie/feature-phase-15-error-handling-ux
+- Merge pull request [#11](https://github.com/jamesainslie/dot/issues/11) from jamesainslie/feature-error-handling-ux
 - Merge pull request [#10](https://github.com/jamesainslie/dot/issues/10) from jamesainslie/feature-implement-cli-query
 - Merge pull request [#9](https://github.com/jamesainslie/dot/issues/9) from jamesainslie/feature-implement-cli
 - Merge pull request [#7](https://github.com/jamesainslie/dot/issues/7) from jamesainslie/feature-implement-api
 - Merge pull request [#6](https://github.com/jamesainslie/dot/issues/6) from jamesainslie/feature-manifests-state-management
-- Merge pull request [#5](https://github.com/jamesainslie/dot/issues/5) from jamesainslie/feature-phase-10-executor
+- Merge pull request [#5](https://github.com/jamesainslie/dot/issues/5) from jamesainslie/feature-executor
 - Merge pull request [#4](https://github.com/jamesainslie/dot/issues/4) from jamesainslie/jamesainslie-implement-pipeline-orchestration
 - Merge pull request [#3](https://github.com/jamesainslie/dot/issues/3) from jamesainslie/jamesainslie-implement-topological-sorter
 - Merge pull request [#2](https://github.com/jamesainslie/dot/issues/2) from jamesainslie/jamesainslie-implement-resolver

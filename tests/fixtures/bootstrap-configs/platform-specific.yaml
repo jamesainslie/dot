@@ -1,0 +1,21 @@
+version: "1.0"
+
+packages:
+  - name: dot-vim
+    required: true
+
+  - name: dot-linux-config
+    required: false
+    platform:
+      - linux
+
+  - name: dot-macos-config
+    required: false
+    platform:
+      - darwin
+
+  - name: dot-windows-config
+    required: false
+    platform:
+      - windows
+

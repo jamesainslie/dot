@@ -40,7 +40,7 @@ type UnmanageService struct {
 	dryRun      bool
 }
 
-// newUnmanageService creates a new unmanage service.
+// newUnmanageService creates a new UnmanageService instance.
 func newUnmanageService(
 	fs FS,
 	logger Logger,
@@ -250,9 +250,12 @@ func (s *UnmanageService) planUnmanageWithOptions(ctx context.Context, m manifes
 			// Delete package directory
 			s.logger.Debug(ctx, "adding_purge_operations", "package", pkg)
 			pkgPath := filepath.Join(s.packageDir, pkg)
-			pkgPathResult := MustParsePath(pkgPath)
+			pkgPathResult := NewFilePath(pkgPath)
+			if pkgPathResult.IsErr() {
+				return Plan{}, fmt.Errorf("invalid package path %s: %w", pkgPath, pkgPathResult.UnwrapErr())
+			}
 			id := OperationID(fmt.Sprintf("unmanage-purge-%s", pkg))
-			operations = append(operations, NewDirDelete(id, pkgPathResult))
+			operations = append(operations, NewDirDelete(id, pkgPathResult.Unwrap()))
 		}
 	}
 

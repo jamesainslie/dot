@@ -210,9 +210,13 @@ Status for specific package:
 dot status dot-vim
 ```
 
-## Step 8: Adopt Existing File
+## Step 8: Adopt Existing Files
 
-Suppose you have an existing `.gitconfig` file to bring under management:
+Suppose you have existing configuration files to bring under management. The `adopt` command supports several modes:
+
+### Auto-Naming: Single File
+
+Adopt a single file (package name derived automatically):
 
 ```bash
 # Create sample existing file (if needed)
@@ -224,13 +228,56 @@ cat > ~/.gitconfig << 'EOF'
     editor = vim
 EOF
 
-# Adopt it into a new git package
-dot adopt dot-git ~/.gitconfig
+# Adopt with auto-naming (creates package "dot-gitconfig")
+dot adopt ~/.gitconfig
 ```
 
 Expected output:
 ```
-Successfully adopted 1 file(s)
+Successfully adopted 1 file(s) into package dot-gitconfig
+```
+
+### Glob Expansion: Multiple Related Files
+
+Adopt multiple files with a common prefix using shell globs:
+
+```bash
+# Create sample git-related files
+cat > ~/.gitconfig << 'EOF'
+[user]
+    name = Your Name
+EOF
+
+cat > ~/.gitignore << 'EOF'
+*.swp
+.DS_Store
+EOF
+
+cat > ~/.git-credentials << 'EOF'
+# Git credentials
+EOF
+
+# Adopt all .git* files into a single package
+dot adopt .git*
+```
+
+The shell expands `.git*` to `.gitconfig .gitignore .git-credentials`, and dot:
+1. Detects multiple files with common prefix "git"
+2. Creates a single package named `dot-git`
+3. Adopts all files into that package
+
+Expected output:
+```
+Successfully adopted 3 file(s) into package dot-git
+```
+
+### Explicit Package Name
+
+Specify the package name explicitly:
+
+```bash
+# Adopt with explicit package name
+dot adopt my-git ~/.gitconfig ~/.gitignore
 ```
 
 Verification:
@@ -238,14 +285,14 @@ Verification:
 ```bash
 # Check git package was created
 ls ~/dotfiles/dot-git/
-# Output: gitconfig
+# Output: dot-gitconfig (or dot-gitconfig, dot-gitignore, dot-git-credentials)
 
 # Verify symlink
-ls -la ~/.git/gitconfig
-# Output: lrwxr-xr-x ... gitconfig -> /home/user/dotfiles/dot-git/gitconfig
+ls -la ~/.gitconfig
+# Output: lrwxr-xr-x ... .gitconfig -> /home/user/dotfiles/dot-git/dot-gitconfig
 
 # Content preserved
-cat ~/.git/gitconfig
+cat ~/.gitconfig
 ```
 
 ## Step 9: Modify and Update Package

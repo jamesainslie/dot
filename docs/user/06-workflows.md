@@ -95,12 +95,14 @@ dot remanage vim
 
 ### Adopt Existing Files
 
+**Single File Adoption**:
+
 ```bash
 # Conflict exists
 dot manage vim
 # Error: conflict at ~/.vimrc
 
-# Adopt instead
+# Adopt instead (explicit package name)
 dot adopt vim ~/.vimrc
 
 # Edit in package
@@ -108,6 +110,39 @@ vim ~/dotfiles/vim/dot-vimrc
 git add vim/
 git commit -m "feat(vim): adopt existing configuration"
 ```
+
+**Auto-Naming (Single File)**:
+
+```bash
+# Let dot derive package name from filename
+dot adopt ~/.vimrc
+# Creates package: dot-vimrc
+
+# Or for a directory
+dot adopt ~/.ssh
+# Creates package: dot-ssh
+```
+
+**Glob Expansion (Multiple Related Files)**:
+
+```bash
+# Adopt all git-related config files into single package
+dot adopt .git*
+# Shell expands to: .gitconfig .gitignore .git-credentials
+# Creates package: dot-git
+# All files adopted into one package
+
+# Or with zsh configs
+dot adopt .zsh*
+# Adopts: .zshrc .zshenv .zprofile
+# Creates package: dot-zsh
+
+# Commit
+git add dot-git/ dot-zsh/
+git commit -m "feat(git,zsh): adopt existing configurations"
+```
+
+The glob workflow is useful for adopting multiple related configuration files that share a common prefix, keeping them organized in a single package.
 
 ## Testing New Packages
 

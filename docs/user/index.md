@@ -37,6 +37,8 @@ Comprehensive guide to using dot for dotfile and configuration management.
 5. [Command Reference](05-commands.md)
    - Command structure
    - Global options
+   - Clone command (repository setup)
+   - Clone bootstrap (generate config)
    - Manage command
    - Unmanage command
    - Remanage command
@@ -97,6 +99,7 @@ Comprehensive guide to using dot for dotfile and configuration management.
 
 ### Reference
 
+- [Bootstrap Configuration Specification](bootstrap-config-spec.md)
 - [Migration from GNU Stow](migration-from-stow.md)
 - [Homebrew Installation](installation-homebrew.md)
 
@@ -141,7 +144,7 @@ Important information is highlighted:
 
 ## Version Information
 
-This documentation corresponds to dot v0.1.0.
+This documentation corresponds to dot v0.4.1.
 
 For older versions, see the documentation in the appropriate release tag.
 

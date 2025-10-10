@@ -232,6 +232,71 @@ dot adopt zsh ~/.zshrc ~/.zprofile ~/.zshenv
 
 **Glob Support**: When using shell glob patterns like `.git*`, all matching files are adopted into a single package. The package name is derived from the common prefix of the matched files.
 
+### Repository Commands
+
+#### Clone
+
+Clone a dotfiles repository and set up on a new machine:
+
+```bash
+# Basic clone
+dot clone https://github.com/user/dotfiles
+
+# Clone with specific profile
+dot clone https://github.com/user/dotfiles --profile minimal
+
+# Clone specific branch
+dot clone https://github.com/user/dotfiles --branch develop
+
+# Clone to specific directory
+dot clone https://github.com/user/dotfiles --dir ~/my-dotfiles
+```
+
+The clone command:
+- Clones the Git repository
+- Reads `.dotbootstrap.yaml` if present for configuration
+- Prompts for package selection (or uses specified profile)
+- Creates all symlinks for selected packages
+- Tracks repository information in manifest for future updates
+
+#### Clone Bootstrap
+
+Generate a `.dotbootstrap.yaml` configuration file from your current installation:
+
+```bash
+# Generate in package directory
+dot clone bootstrap
+
+# Specify output location
+dot clone bootstrap --output ~/dotfiles/.dotbootstrap.yaml
+
+# Preview without writing
+dot clone bootstrap --dry-run
+
+# Only include currently installed packages
+dot clone bootstrap --from-manifest
+
+# Set default conflict policy
+dot clone bootstrap --conflict-policy backup
+
+# Overwrite existing file
+dot clone bootstrap --force
+```
+
+The generated configuration includes:
+- All discovered packages (or only installed ones with `--from-manifest`)
+- Default conflict resolution policy
+- Commented template for defining profiles
+- Helpful documentation links
+
+After generation, customize the file to:
+- Mark packages as required
+- Define installation profiles (minimal, full, development)
+- Add platform-specific package restrictions
+- Set per-package conflict policies
+
+See [Bootstrap Configuration Specification](docs/user/bootstrap-config-spec.md) for details.
+
 ### Query Commands
 
 #### Status

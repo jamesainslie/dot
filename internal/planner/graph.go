@@ -46,7 +46,10 @@ func BuildGraph(ops []domain.Operation) *DependencyGraph {
 		// Build edges from explicit dependencies
 		deps := op.Dependencies()
 		if len(deps) > 0 {
-			graph.edges[op] = deps
+			// Copy dependencies to avoid aliasing the domain slice
+			copiedDeps := make([]domain.Operation, len(deps))
+			copy(copiedDeps, deps)
+			graph.edges[op] = copiedDeps
 		}
 	}
 

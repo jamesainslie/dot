@@ -73,7 +73,7 @@ func runUnmanage(cmd *cobra.Command, args []string, purge, noRestore, cleanup bo
 	// Build options
 	opts := dot.UnmanageOptions{
 		Purge:   purge,
-		Restore: !noRestore, // Default is true unless --no-restore
+		Restore: !noRestore && !purge, // Default is true unless --no-restore or --purge
 		Cleanup: cleanup,
 	}
 
@@ -84,7 +84,11 @@ func runUnmanage(cmd *cobra.Command, args []string, purge, noRestore, cleanup bo
 
 	if !cfg.DryRun {
 		if cleanup {
-			fmt.Printf("Cleaned up %d orphaned package(s) from manifest\n", len(packages))
+			if len(packages) > 0 {
+				fmt.Printf("Cleaned up %d orphaned package(s) from manifest\n", len(packages))
+			} else {
+				fmt.Println("No orphaned packages found in manifest")
+			}
 		} else if purge {
 			fmt.Printf("Successfully unmanaged and purged %d package(s)\n", len(packages))
 		} else if opts.Restore {

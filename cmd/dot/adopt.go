@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/internal/scanner"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
@@ -79,7 +79,7 @@ func runAdopt(cmd *cobra.Command, args []string) error {
 	} else {
 		// Multiple args: could be explicit package name OR glob expansion
 		// Check if first arg looks like an existing file/directory
-		firstArgIsFile := fileExists(args[0])
+		firstArgIsFile := fileExists(ctx, cfg.FS, args[0])
 
 		if firstArgIsFile {
 			// Glob expansion mode: all args are files, derive package from common prefix
@@ -110,9 +110,8 @@ func runAdopt(cmd *cobra.Command, args []string) error {
 }
 
 // fileExists checks if a path exists in the filesystem.
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
+func fileExists(ctx context.Context, fs domain.FS, path string) bool {
+	return fs.Exists(ctx, path)
 }
 
 // deriveCommonPackageName derives a package name from multiple file paths

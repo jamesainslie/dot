@@ -307,11 +307,7 @@ func translatePathComponents(path string) string {
 		return path
 	}
 
-	components := filepath.SplitList(path)
-	if len(components) == 0 {
-		// Not a list, it's a regular path - split by separator
-		components = splitPath(path)
-	}
+	components := splitPath(path)
 
 	for i, comp := range components {
 		components[i] = scanner.UntranslateDotfile(comp)

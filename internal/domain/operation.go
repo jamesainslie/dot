@@ -2,9 +2,11 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 )
 
 // OperationKind identifies the type of operation.
@@ -22,6 +24,9 @@ const (
 
 	// OpKindDirDelete removes an empty directory.
 	OpKindDirDelete
+
+	// OpKindDirRemoveAll recursively removes a directory and all its contents.
+	OpKindDirRemoveAll
 
 	// OpKindFileMove moves a file.
 	OpKindFileMove
@@ -44,6 +49,8 @@ func (k OperationKind) String() string {
 		return "DirCreate"
 	case OpKindDirDelete:
 		return "DirDelete"
+	case OpKindDirRemoveAll:
+		return "DirRemoveAll"
 	case OpKindFileMove:
 		return "FileMove"
 	case OpKindFileBackup:
@@ -242,7 +249,7 @@ func (op DirCreate) Dependencies() []Operation {
 }
 
 func (op DirCreate) Execute(ctx context.Context, fs FS) error {
-	return fs.MkdirAll(ctx, op.Path.String(), 0755)
+	return fs.MkdirAll(ctx, op.Path.String(), DefaultDirPerms)
 }
 
 func (op DirCreate) Rollback(ctx context.Context, fs FS) error {
@@ -302,7 +309,7 @@ func (op DirDelete) Execute(ctx context.Context, fs FS) error {
 }
 
 func (op DirDelete) Rollback(ctx context.Context, fs FS) error {
-	return fs.Mkdir(ctx, op.Path.String(), 0755)
+	return fs.Mkdir(ctx, op.Path.String(), DefaultDirPerms)
 }
 
 func (op DirDelete) String() string {
@@ -314,6 +321,64 @@ func (op DirDelete) Equals(other Operation) bool {
 		return false
 	}
 	o, ok := other.(DirDelete)
+	if !ok {
+		return false
+	}
+	return op.Path.Equals(o.Path)
+}
+
+// DirRemoveAll recursively removes a directory and all its contents.
+type DirRemoveAll struct {
+	OpID OperationID
+	Path FilePath
+}
+
+// NewDirRemoveAll creates a new recursive directory deletion operation.
+func NewDirRemoveAll(id OperationID, path FilePath) DirRemoveAll {
+	return DirRemoveAll{
+		OpID: id,
+		Path: path,
+	}
+}
+
+func (op DirRemoveAll) ID() OperationID {
+	return op.OpID
+}
+
+func (op DirRemoveAll) Kind() OperationKind {
+	return OpKindDirRemoveAll
+}
+
+func (op DirRemoveAll) Validate() error {
+	if op.OpID == "" {
+		return ErrInvalidPath{Path: "", Reason: "operation ID cannot be empty"}
+	}
+	return nil
+}
+
+func (op DirRemoveAll) Dependencies() []Operation {
+	return nil
+}
+
+func (op DirRemoveAll) Execute(ctx context.Context, fs FS) error {
+	return fs.RemoveAll(ctx, op.Path.String())
+}
+
+func (op DirRemoveAll) Rollback(ctx context.Context, fs FS) error {
+	// Cannot restore recursively deleted directory without backup
+	// Would require storing entire directory tree in operation
+	return nil
+}
+
+func (op DirRemoveAll) String() string {
+	return fmt.Sprintf("recursively delete directory %s", op.Path.String())
+}
+
+func (op DirRemoveAll) Equals(other Operation) bool {
+	if other.Kind() != OpKindDirRemoveAll {
+		return false
+	}
+	o, ok := other.(DirRemoveAll)
 	if !ok {
 		return false
 	}
@@ -409,7 +474,21 @@ func (op FileMove) copyAndDelete(ctx context.Context, fs FS) error {
 
 // isCrossDeviceError checks if an error is a cross-device link error.
 func isCrossDeviceError(err error) bool {
-	// Check error message for cross-device indicators
+	// Check for Unix EXDEV (cross-device link)
+	if errors.Is(err, syscall.EXDEV) {
+		return true
+	}
+
+	// Check for Windows ERROR_NOT_SAME_DEVICE (errno 17)
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		// Windows ERROR_NOT_SAME_DEVICE
+		if errno == 17 {
+			return true
+		}
+	}
+
+	// Fallback: check error message for cross-device indicators
 	msg := err.Error()
 	return strings.Contains(msg, "cross-device") || strings.Contains(msg, "invalid cross-device link")
 }
@@ -490,7 +569,7 @@ func (op FileBackup) Execute(ctx context.Context, fs FS) error {
 	if err != nil {
 		return err
 	}
-	return fs.WriteFile(ctx, op.Backup.String(), data, 0644)
+	return fs.WriteFile(ctx, op.Backup.String(), data, DefaultFilePerms)
 }
 
 func (op FileBackup) Rollback(ctx context.Context, fs FS) error {

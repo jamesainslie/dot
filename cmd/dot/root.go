@@ -114,6 +114,7 @@ func buildConfigWithCmd(cmd *cobra.Command) (dot.Config, error) {
 	if err == nil && extCfg != nil {
 		packageDir = extCfg.Directories.Package
 		targetDir = extCfg.Directories.Target
+		backupDir = extCfg.Symlinks.BackupDir
 		manifestDir = extCfg.Directories.Manifest
 	}
 

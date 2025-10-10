@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/jamesainslie/dot/internal/executor"
 	"github.com/jamesainslie/dot/internal/ignore"
@@ -113,36 +112,6 @@ func (c *Client) PlanManage(ctx context.Context, packages ...string) (Plan, erro
 	return c.manageSvc.PlanManage(ctx, packages...)
 }
 
-// These helper functions are now in ManifestService
-// Kept here for backward compatibility (not exported)
-
-// extractLinksFromOperations extracts link paths from LinkCreate operations.
-func extractLinksFromOperations(ops []Operation, targetDir string) []string {
-	links := make([]string, 0, len(ops))
-	for _, op := range ops {
-		if linkOp, ok := op.(LinkCreate); ok {
-			targetPath := linkOp.Target.String()
-			relPath, err := filepath.Rel(targetDir, targetPath)
-			if err != nil {
-				relPath = targetPath
-			}
-			links = append(links, relPath)
-		}
-	}
-	return links
-}
-
-// countLinksInPlan returns the number of LinkCreate operations in a plan.
-func countLinksInPlan(plan Plan) int {
-	count := 0
-	for _, op := range plan.Operations {
-		if op.Kind() == OpKindLinkCreate {
-			count++
-		}
-	}
-	return count
-}
-
 // === Methods from unmanage.go ===
 
 // Unmanage removes the specified packages by deleting symlinks.
@@ -207,107 +176,6 @@ func (c *Client) Doctor(ctx context.Context) (DiagnosticReport, error) {
 // DoctorWithScan performs health checks with explicit scan configuration.
 func (c *Client) DoctorWithScan(ctx context.Context, scanCfg ScanConfig) (DiagnosticReport, error) {
 	return c.doctorSvc.DoctorWithScan(ctx, scanCfg)
-}
-
-// Helper functions for DoctorService (kept for backward compatibility)
-// These are now primarily in DoctorService but kept here for any existing references
-
-// extractManagedDirectories returns unique directories containing managed links.
-func extractManagedDirectories(m *manifest.Manifest) []string {
-	dirSet := make(map[string]bool)
-	for _, pkgInfo := range m.Packages {
-		for _, link := range pkgInfo.Links {
-			dir := filepath.Dir(link)
-			for dir != "." && dir != "/" && dir != "" {
-				dirSet[dir] = true
-				dir = filepath.Dir(dir)
-			}
-			dirSet["."] = true
-		}
-	}
-	dirs := make([]string, 0, len(dirSet))
-	for dir := range dirSet {
-		dirs = append(dirs, dir)
-	}
-	return dirs
-}
-
-// filterDescendants removes directories that are descendants of other directories.
-func filterDescendants(dirs []string) []string {
-	if len(dirs) <= 1 {
-		return dirs
-	}
-	cleaned := make([]string, len(dirs))
-	for i, dir := range dirs {
-		cleaned[i] = filepath.Clean(dir)
-	}
-	roots := make([]string, 0, len(cleaned))
-	for _, dir := range cleaned {
-		isDescendant := false
-		for _, other := range cleaned {
-			if dir == other {
-				continue
-			}
-			rel, err := filepath.Rel(other, dir)
-			if err == nil && rel != "." && !filepath.IsAbs(rel) && rel[0] != '.' {
-				isDescendant = true
-				break
-			}
-		}
-		if !isDescendant {
-			roots = append(roots, dir)
-		}
-	}
-	return roots
-}
-
-// buildManagedLinkSet creates a set for O(1) link lookup.
-func buildManagedLinkSet(m *manifest.Manifest) map[string]bool {
-	linkSet := make(map[string]bool)
-	for _, pkgInfo := range m.Packages {
-		for _, link := range pkgInfo.Links {
-			normalized := filepath.ToSlash(link)
-			linkSet[normalized] = true
-		}
-	}
-	return linkSet
-}
-
-// calculateDepth returns the directory depth relative to target directory.
-func calculateDepth(path, targetDir string) int {
-	path = filepath.Clean(path)
-	targetDir = filepath.Clean(targetDir)
-	if path == targetDir {
-		return 0
-	}
-	rel, err := filepath.Rel(targetDir, path)
-	if err != nil || rel == "." {
-		return 0
-	}
-	depth := 0
-	for _, c := range rel {
-		if c == filepath.Separator {
-			depth++
-		}
-	}
-	if rel != "" && rel != "." {
-		depth++
-	}
-	return depth
-}
-
-// shouldSkipDirectory checks if a directory should be skipped based on patterns.
-func shouldSkipDirectory(path string, skipPatterns []string) bool {
-	base := filepath.Base(path)
-	for _, pattern := range skipPatterns {
-		if base == pattern {
-			return true
-		}
-		if filepath.Base(filepath.Dir(path)) == pattern {
-			return true
-		}
-	}
-	return false
 }
 
 // === Methods from helpers.go ===

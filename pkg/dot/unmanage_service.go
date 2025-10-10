@@ -247,7 +247,7 @@ func (s *UnmanageService) planUnmanageWithOptions(ctx context.Context, m manifes
 				operations = append(operations, restoreOps...)
 			}
 		} else if opts.Purge {
-			// Delete package directory
+			// Delete package directory recursively
 			s.logger.Debug(ctx, "adding_purge_operations", "package", pkg)
 			pkgPath := filepath.Join(s.packageDir, pkg)
 			pkgPathResult := NewFilePath(pkgPath)
@@ -255,7 +255,7 @@ func (s *UnmanageService) planUnmanageWithOptions(ctx context.Context, m manifes
 				return Plan{}, fmt.Errorf("invalid package path %s: %w", pkgPath, pkgPathResult.UnwrapErr())
 			}
 			id := OperationID(fmt.Sprintf("unmanage-purge-%s", pkg))
-			operations = append(operations, NewDirDelete(id, pkgPathResult.Unwrap()))
+			operations = append(operations, NewDirRemoveAll(id, pkgPathResult.Unwrap()))
 		}
 	}
 

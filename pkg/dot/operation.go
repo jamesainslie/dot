@@ -9,13 +9,14 @@ type OperationKind = domain.OperationKind
 
 // Operation kind constants
 const (
-	OpKindLinkCreate = domain.OpKindLinkCreate
-	OpKindLinkDelete = domain.OpKindLinkDelete
-	OpKindDirCreate  = domain.OpKindDirCreate
-	OpKindDirDelete  = domain.OpKindDirDelete
-	OpKindFileMove   = domain.OpKindFileMove
-	OpKindFileBackup = domain.OpKindFileBackup
-	OpKindDirCopy    = domain.OpKindDirCopy
+	OpKindLinkCreate   = domain.OpKindLinkCreate
+	OpKindLinkDelete   = domain.OpKindLinkDelete
+	OpKindDirCreate    = domain.OpKindDirCreate
+	OpKindDirDelete    = domain.OpKindDirDelete
+	OpKindDirRemoveAll = domain.OpKindDirRemoveAll
+	OpKindFileMove     = domain.OpKindFileMove
+	OpKindFileBackup   = domain.OpKindFileBackup
+	OpKindDirCopy      = domain.OpKindDirCopy
 )
 
 // OperationID uniquely identifies an operation.
@@ -35,6 +36,9 @@ type DirCreate = domain.DirCreate
 
 // DirDelete removes a directory.
 type DirDelete = domain.DirDelete
+
+// DirRemoveAll recursively removes a directory and all its contents.
+type DirRemoveAll = domain.DirRemoveAll
 
 // FileMove moves a file from one location to another.
 type FileMove = domain.FileMove
@@ -68,6 +72,11 @@ func NewDirCreate(id OperationID, path FilePath) DirCreate {
 // NewDirDelete creates a new DirDelete operation.
 func NewDirDelete(id OperationID, path FilePath) DirDelete {
 	return domain.NewDirDelete(id, path)
+}
+
+// NewDirRemoveAll creates a new DirRemoveAll operation.
+func NewDirRemoveAll(id OperationID, path FilePath) DirRemoveAll {
+	return domain.NewDirRemoveAll(id, path)
 }
 
 // NewFileBackup creates a new FileBackup operation.

@@ -1,0 +1,9 @@
+version: "1.0"
+
+packages:
+  - name: dot-vim
+    required: true
+
+  - name: dot-zsh
+    required: false
+

@@ -128,6 +128,15 @@ func (e ErrProfileNotFound) Error() string {
 	return fmt.Sprintf("profile not found: %s", e.Profile)
 }
 
+// ErrBootstrapExists indicates the bootstrap file already exists.
+type ErrBootstrapExists struct {
+	Path string
+}
+
+func (e ErrBootstrapExists) Error() string {
+	return fmt.Sprintf("bootstrap file already exists: %s", e.Path)
+}
+
 // UserFacingError converts an error into a user-friendly message.
 func UserFacingError(err error) string {
 	return domain.UserFacingError(err)

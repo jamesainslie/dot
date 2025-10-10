@@ -279,6 +279,130 @@ Platform filtering is automatic based on current system.
 - `manage`: Manually install additional packages after cloning
 - `status`: Check installation status and repository information
 - `unmanage`: Remove installed packages
+- `clone bootstrap`: Generate bootstrap configuration from installation
+
+### clone bootstrap
+
+Generate bootstrap configuration from existing dotfiles installation.
+
+**Synopsis**:
+```bash
+dot clone bootstrap [options]
+```
+
+**Options**:
+- `-o, --output PATH`: Output file path (default: `.dotbootstrap.yaml` in package directory)
+- `--dry-run`: Print configuration to stdout instead of writing file
+- `--from-manifest`: Only include packages currently in manifest
+- `--conflict-policy POLICY`: Default conflict policy (backup, fail, overwrite, skip)
+- `--force`: Overwrite existing bootstrap file
+
+All global options also apply.
+
+**Description**:
+
+The clone bootstrap subcommand generates a `.dotbootstrap.yaml` configuration file from your current dotfiles installation. This allows you to create a bootstrap configuration for an existing repository, enabling others to clone your dotfiles with predefined package selections and profiles.
+
+The command discovers all packages in the package directory and creates a bootstrap configuration with sensible defaults. The generated file includes helpful comments and example structures that you should review and customize before committing.
+
+**Generated Configuration**:
+
+The output includes:
+- All discovered packages marked as `required: false`
+- Default conflict resolution policy
+- Example profile structures with comments
+- Helpful guidance for customization
+- Timestamps and documentation links
+
+**Examples**:
+
+```bash
+# Generate bootstrap config in package directory
+dot clone bootstrap
+
+# Specify custom output location
+dot clone bootstrap --output ~/dotfiles/.dotbootstrap.yaml
+
+# Preview without writing file
+dot clone bootstrap --dry-run
+
+# Only include packages from manifest
+dot clone bootstrap --from-manifest
+
+# Set default conflict policy
+dot clone bootstrap --conflict-policy backup
+
+# Overwrite existing file
+dot clone bootstrap --force
+```
+
+**Workflow**:
+
+1. Run command in dotfiles repository
+2. Review generated `.dotbootstrap.yaml`
+3. Customize package requirements and platform restrictions
+4. Define installation profiles for different use cases
+5. Commit configuration to repository
+6. Others can clone with `--profile` flag
+
+**Error Handling**:
+
+Common errors and solutions:
+
+- **No packages found**: Ensure package directory contains subdirectories
+- **Bootstrap file exists**: Use `--force` to overwrite
+- **Invalid conflict policy**: Use backup, fail, overwrite, or skip
+- **Package directory not found**: Check global `--dir` flag
+
+**Customization After Generation**:
+
+After generating the configuration, customize it by:
+
+1. **Mark required packages**: Set `required: true` for essential packages
+2. **Add platform restrictions**: Specify `platform: [linux, darwin]` as needed
+3. **Create profiles**: Define named sets like `minimal`, `work`, `full`
+4. **Set conflict policies**: Override default per-package if needed
+5. **Add descriptions**: Document profiles for other users
+
+Example customization:
+
+```yaml
+version: "1.0"
+
+defaults:
+  on_conflict: backup
+  profile: minimal
+
+packages:
+  - name: vim
+    required: true  # Essential package
+  - name: zsh
+    required: true
+  - name: macos-config
+    required: false
+    platform: [darwin]  # macOS only
+
+profiles:
+  minimal:
+    description: Basic shell and editor
+    packages:
+      - vim
+      - zsh
+  full:
+    description: Complete development environment
+    packages:
+      - vim
+      - zsh
+      - git
+      - tmux
+```
+
+**Related Commands**:
+- `clone`: Clone repository using bootstrap configuration
+- `status`: View currently installed packages
+- `list`: List all installed packages
+
+See [Bootstrap Configuration Specification](bootstrap-config-spec.md) for complete configuration reference.
 
 ### manage
 

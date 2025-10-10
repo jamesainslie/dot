@@ -23,13 +23,14 @@ import (
 //
 // All operations are safe for concurrent use from multiple goroutines.
 type Client struct {
-	config      Config
-	manageSvc   *ManageService
-	unmanageSvc *UnmanageService
-	statusSvc   *StatusService
-	doctorSvc   *DoctorService
-	adoptSvc    *AdoptService
-	cloneSvc    *CloneService
+	config       Config
+	manageSvc    *ManageService
+	unmanageSvc  *UnmanageService
+	statusSvc    *StatusService
+	doctorSvc    *DoctorService
+	adoptSvc     *AdoptService
+	cloneSvc     *CloneService
+	bootstrapSvc *BootstrapService
 }
 
 // NewClient creates a new Client with the given configuration.
@@ -93,14 +94,18 @@ func NewClient(cfg Config) (*Client, error) {
 	packageSelector := selector.NewInteractiveSelector(os.Stdin, os.Stdout)
 	cloneSvc := newCloneService(cfg.FS, cfg.Logger, manageSvc, gitCloner, packageSelector, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
 
+	// Create bootstrap service
+	bootstrapSvc := newBootstrapService(cfg.FS, cfg.Logger, cfg.PackageDir, cfg.TargetDir)
+
 	return &Client{
-		config:      cfg,
-		manageSvc:   manageSvc,
-		unmanageSvc: unmanageSvc,
-		statusSvc:   statusSvc,
-		doctorSvc:   doctorSvc,
-		adoptSvc:    adoptSvc,
-		cloneSvc:    cloneSvc,
+		config:       cfg,
+		manageSvc:    manageSvc,
+		unmanageSvc:  unmanageSvc,
+		statusSvc:    statusSvc,
+		doctorSvc:    doctorSvc,
+		adoptSvc:     adoptSvc,
+		cloneSvc:     cloneSvc,
+		bootstrapSvc: bootstrapSvc,
 	}, nil
 }
 
@@ -206,6 +211,32 @@ func (c *Client) DoctorWithScan(ctx context.Context, scanCfg ScanConfig) (Diagno
 //   - Package installation fails
 func (c *Client) Clone(ctx context.Context, repoURL string, opts CloneOptions) error {
 	return c.cloneSvc.Clone(ctx, repoURL, opts)
+}
+
+// GenerateBootstrap creates a bootstrap configuration from current installation.
+//
+// Workflow:
+//  1. Discovers packages in package directory
+//  2. Reads manifest to identify installed packages (optional)
+//  3. Generates bootstrap configuration with defaults
+//  4. Marshals configuration to YAML
+//
+// Returns bootstrap result containing configuration and YAML, or an error if:
+//   - No packages found
+//   - Configuration generation fails
+//   - YAML marshaling fails
+func (c *Client) GenerateBootstrap(ctx context.Context, opts GenerateBootstrapOptions) (BootstrapResult, error) {
+	return c.bootstrapSvc.GenerateBootstrap(ctx, opts)
+}
+
+// WriteBootstrap writes bootstrap configuration to a file.
+//
+// Returns an error if:
+//   - File already exists
+//   - Parent directory cannot be created
+//   - File cannot be written
+func (c *Client) WriteBootstrap(ctx context.Context, data []byte, outputPath string) error {
+	return c.bootstrapSvc.WriteBootstrap(ctx, data, outputPath)
 }
 
 // === Methods from helpers.go ===

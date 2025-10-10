@@ -1,0 +1,23 @@
+profiles:
+  minimal:
+    description: Minimal shell configuration
+    packages:
+      - dot-zsh
+      - dot-git
+
+  full:
+    description: Complete development environment
+    packages:
+      - dot-zsh
+      - dot-git
+      - dot-vim
+      - dot-ssh
+      - dot-tmux
+
+  default:
+    description: Standard configuration
+    packages:
+      - dot-zsh
+      - dot-git
+      - dot-vim
+

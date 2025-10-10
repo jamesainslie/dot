@@ -1,0 +1,34 @@
+" Vim Configuration
+
+" General settings
+set nocompatible
+syntax on
+filetype plugin indent on
+
+" Display settings
+set number
+set ruler
+set showcmd
+set showmatch
+
+" Search settings
+set incsearch
+set hlsearch
+set ignorecase
+set smartcase
+
+" Indentation
+set autoindent
+set smartindent
+set tabstop=4
+set shiftwidth=4
+set expandtab
+
+" Other settings
+set backspace=indent,eol,start
+set encoding=utf-8
+set wildmenu
+
+" Color scheme
+colorscheme desert
+

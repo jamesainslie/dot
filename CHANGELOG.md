@@ -2,6 +2,16 @@
 ## [Unreleased]
 
 
+<a name="v0.3.1"></a>
+## [v0.3.1] - 2025-10-09
+### Build
+- **makefile:** add uninstall target to remove installed binary
+
+### Docs
+- **changelog:** update for v0.3.1 release
+- **readme:** update current version to v0.3.1
+
+
 <a name="v0.3.0"></a>
 ## [v0.3.0] - 2025-10-09
 ### Docs
@@ -465,7 +475,8 @@ should not exist since it was an internal package.
 - Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
 
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.3.1...HEAD
+[v0.3.1]: https://github.com/jamesainslie/dot/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/jamesainslie/dot/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/jamesainslie/dot/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/jamesainslie/dot/compare/v0.1.0...v0.1.1

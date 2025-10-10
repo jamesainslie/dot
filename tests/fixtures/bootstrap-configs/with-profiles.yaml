@@ -1,0 +1,42 @@
+version: "1.0"
+
+packages:
+  - name: dot-vim
+    required: true
+
+  - name: dot-zsh
+    required: false
+
+  - name: dot-tmux
+    required: false
+
+  - name: dot-git
+    required: false
+
+profiles:
+  minimal:
+    description: "Minimal configuration for new machines"
+    packages:
+      - dot-vim
+      - dot-zsh
+
+  full:
+    description: "Complete configuration with all packages"
+    packages:
+      - dot-vim
+      - dot-zsh
+      - dot-tmux
+      - dot-git
+
+  development:
+    description: "Development environment setup"
+    packages:
+      - dot-vim
+      - dot-zsh
+      - dot-tmux
+      - dot-git
+
+defaults:
+  on_conflict: backup
+  profile: minimal
+

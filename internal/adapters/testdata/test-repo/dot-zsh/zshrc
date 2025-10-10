@@ -1,0 +1,24 @@
+# ZSH Configuration
+
+# History settings
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+
+# Enable colors
+autoload -U colors && colors
+
+# Basic prompt
+PS1="%{$fg[cyan]%}%n@%m%{$reset_color%}:%{$fg[yellow]%}%~%{$reset_color%}$ "
+
+# Aliases
+alias ls='ls -G'
+alias ll='ls -lah'
+alias grep='grep --color=auto'
+
+# Environment
+export EDITOR=vim
+export LANG=en_US.UTF-8
+

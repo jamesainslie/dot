@@ -1,10 +1,12 @@
 package manifest
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestManifest_New(t *testing.T) {
@@ -136,4 +138,160 @@ func TestManifest_UpdatesTimestamp_OnSetHash(t *testing.T) {
 	m.SetHash("vim", "abc123")
 
 	assert.True(t, m.UpdatedAt.After(originalTime))
+}
+
+func TestManifest_SetRepository(t *testing.T) {
+	m := New()
+
+	repo := RepositoryInfo{
+		URL:       "https://github.com/user/dotfiles",
+		Branch:    "main",
+		ClonedAt:  time.Now(),
+		CommitSHA: "abc123def456",
+	}
+
+	m.SetRepository(repo)
+
+	retrieved, exists := m.GetRepository()
+	assert.True(t, exists)
+	assert.Equal(t, "https://github.com/user/dotfiles", retrieved.URL)
+	assert.Equal(t, "main", retrieved.Branch)
+	assert.Equal(t, "abc123def456", retrieved.CommitSHA)
+}
+
+func TestManifest_GetRepository_NotSet(t *testing.T) {
+	m := New()
+
+	repo, exists := m.GetRepository()
+	assert.False(t, exists)
+	assert.Equal(t, RepositoryInfo{}, repo)
+}
+
+func TestManifest_ClearRepository(t *testing.T) {
+	m := New()
+	m.SetRepository(RepositoryInfo{
+		URL:    "https://github.com/user/dotfiles",
+		Branch: "main",
+	})
+
+	m.ClearRepository()
+
+	repo, exists := m.GetRepository()
+	assert.False(t, exists)
+	assert.Equal(t, RepositoryInfo{}, repo)
+}
+
+func TestManifest_UpdatesTimestamp_OnSetRepository(t *testing.T) {
+	m := New()
+	originalTime := m.UpdatedAt
+
+	time.Sleep(10 * time.Millisecond)
+	m.SetRepository(RepositoryInfo{
+		URL:    "https://github.com/user/dotfiles",
+		Branch: "main",
+	})
+
+	assert.True(t, m.UpdatedAt.After(originalTime))
+}
+
+func TestManifest_UpdatesTimestamp_OnClearRepository(t *testing.T) {
+	m := New()
+	m.SetRepository(RepositoryInfo{
+		URL:    "https://github.com/user/dotfiles",
+		Branch: "main",
+	})
+	time.Sleep(10 * time.Millisecond)
+	originalTime := m.UpdatedAt
+
+	time.Sleep(10 * time.Millisecond)
+	m.ClearRepository()
+
+	assert.True(t, m.UpdatedAt.After(originalTime))
+}
+
+func TestManifest_JSON_WithRepository(t *testing.T) {
+	m := New()
+	m.AddPackage(PackageInfo{Name: "vim", LinkCount: 2})
+	m.SetRepository(RepositoryInfo{
+		URL:       "https://github.com/user/dotfiles",
+		Branch:    "main",
+		ClonedAt:  time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC),
+		CommitSHA: "abc123",
+	})
+
+	// Marshal to JSON
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
+
+	// Unmarshal back
+	var loaded Manifest
+	err = json.Unmarshal(data, &loaded)
+	require.NoError(t, err)
+
+	// Verify repository info is preserved
+	repo, exists := loaded.GetRepository()
+	assert.True(t, exists)
+	assert.Equal(t, "https://github.com/user/dotfiles", repo.URL)
+	assert.Equal(t, "main", repo.Branch)
+	assert.Equal(t, "abc123", repo.CommitSHA)
+}
+
+func TestManifest_JSON_WithoutRepository(t *testing.T) {
+	m := New()
+	m.AddPackage(PackageInfo{Name: "vim", LinkCount: 2})
+
+	// Marshal to JSON
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
+
+	// Verify repository field is omitted when nil
+	var raw map[string]interface{}
+	err = json.Unmarshal(data, &raw)
+	require.NoError(t, err)
+	_, hasRepo := raw["repository"]
+	assert.False(t, hasRepo, "repository field should be omitted when nil")
+
+	// Unmarshal back
+	var loaded Manifest
+	err = json.Unmarshal(data, &loaded)
+	require.NoError(t, err)
+
+	// Verify no repository info
+	repo, exists := loaded.GetRepository()
+	assert.False(t, exists)
+	assert.Equal(t, RepositoryInfo{}, repo)
+}
+
+func TestManifest_JSON_BackwardCompatibility(t *testing.T) {
+	// Old manifest format without repository field
+	oldJSON := `{
+		"version": "1.0",
+		"updated_at": "2025-01-01T12:00:00Z",
+		"packages": {
+			"vim": {
+				"name": "vim",
+				"installed_at": "2025-01-01T12:00:00Z",
+				"link_count": 2,
+				"links": [".vimrc", ".vim"]
+			}
+		},
+		"hashes": {
+			"vim": "hash123"
+		}
+	}`
+
+	var m Manifest
+	err := json.Unmarshal([]byte(oldJSON), &m)
+	require.NoError(t, err)
+
+	// Verify old fields still work
+	assert.Equal(t, "1.0", m.Version)
+	pkg, exists := m.GetPackage("vim")
+	assert.True(t, exists)
+	assert.Equal(t, "vim", pkg.Name)
+
+	// Verify repository is nil (not set in old format)
+	repo, exists := m.GetRepository()
+	assert.False(t, exists)
+	assert.Equal(t, RepositoryInfo{}, repo)
 }

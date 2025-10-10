@@ -18,6 +18,7 @@ dot manages configuration files through symbolic links, providing a centralized 
 
 ### Key Capabilities
 
+- **Repository Cloning**: Single-command setup on new machines with optional bootstrap configuration
 - **Package Management**: Install, remove, and update packages containing configuration files
 - **Conflict Resolution**: Detect and resolve conflicts with configurable resolution policies
 - **Incremental Operations**: Content-based change detection for efficient updates
@@ -60,6 +61,27 @@ dot --version
 ```
 
 ## Quick Start
+
+### New Machine Setup
+
+Clone an existing dotfiles repository:
+
+```bash
+dot clone https://github.com/user/dotfiles
+```
+
+This single command:
+- Clones the repository
+- Selects packages to install (via profile or interactively)
+- Creates all symlinks
+- Tracks repository information for updates
+
+With optional bootstrap configuration (`.dotbootstrap.yaml`), you can:
+- Define installation profiles (minimal, full, development)
+- Specify platform-specific packages
+- Set conflict resolution policies
+
+See [Bootstrap Configuration Specification](docs/user/bootstrap-config-spec.md) for details.
 
 ### Initial Setup
 

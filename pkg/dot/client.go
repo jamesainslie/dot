@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jamesainslie/dot/internal/adapters"
+	"github.com/jamesainslie/dot/internal/cli/selector"
 	"github.com/jamesainslie/dot/internal/executor"
 	"github.com/jamesainslie/dot/internal/ignore"
 	"github.com/jamesainslie/dot/internal/manifest"
@@ -27,6 +29,7 @@ type Client struct {
 	statusSvc   *StatusService
 	doctorSvc   *DoctorService
 	adoptSvc    *AdoptService
+	cloneSvc    *CloneService
 }
 
 // NewClient creates a new Client with the given configuration.
@@ -85,6 +88,11 @@ func NewClient(cfg Config) (*Client, error) {
 	doctorSvc := newDoctorService(cfg.FS, cfg.Logger, manifestSvc, cfg.TargetDir)
 	adoptSvc := newAdoptService(cfg.FS, cfg.Logger, exec, manifestSvc, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
 
+	// Create git cloner and package selector for clone service
+	gitCloner := adapters.NewGoGitCloner()
+	packageSelector := selector.NewInteractiveSelector(os.Stdin, os.Stdout)
+	cloneSvc := newCloneService(cfg.FS, cfg.Logger, manageSvc, gitCloner, packageSelector, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
+
 	return &Client{
 		config:      cfg,
 		manageSvc:   manageSvc,
@@ -92,6 +100,7 @@ func NewClient(cfg Config) (*Client, error) {
 		statusSvc:   statusSvc,
 		doctorSvc:   doctorSvc,
 		adoptSvc:    adoptSvc,
+		cloneSvc:    cloneSvc,
 	}, nil
 }
 
@@ -176,6 +185,27 @@ func (c *Client) Doctor(ctx context.Context) (DiagnosticReport, error) {
 // DoctorWithScan performs health checks with explicit scan configuration.
 func (c *Client) DoctorWithScan(ctx context.Context, scanCfg ScanConfig) (DiagnosticReport, error) {
 	return c.doctorSvc.DoctorWithScan(ctx, scanCfg)
+}
+
+// Clone clones a dotfiles repository and installs packages.
+//
+// Workflow:
+//  1. Validates package directory is empty (unless Force=true)
+//  2. Clones repository to package directory
+//  3. Loads optional bootstrap configuration
+//  4. Selects packages (via profile, interactive, or all)
+//  5. Filters packages by current platform
+//  6. Installs selected packages
+//  7. Updates manifest with repository tracking
+//
+// Returns an error if:
+//   - Package directory is not empty (and Force=false)
+//   - Authentication fails
+//   - Clone operation fails
+//   - Bootstrap config is invalid
+//   - Package installation fails
+func (c *Client) Clone(ctx context.Context, repoURL string, opts CloneOptions) error {
+	return c.cloneSvc.Clone(ctx, repoURL, opts)
 }
 
 // === Methods from helpers.go ===

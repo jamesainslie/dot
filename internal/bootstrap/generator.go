@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -111,16 +112,28 @@ func (g *Generator) MarshalYAML(cfg Config) ([]byte, error) {
 
 // MarshalYAMLWithComments converts configuration to YAML with helpful comments.
 func (g *Generator) MarshalYAMLWithComments(cfg Config, installed []string) ([]byte, error) {
-	// Build header comment
-	header := fmt.Sprintf(`# Bootstrap configuration for dotfiles repository
-# Generated: %s
-#
-# This configuration defines packages and installation profiles.
-# Review and customize before committing to your repository.
-#
-# Documentation: https://github.com/jamesainslie/dot/blob/main/docs/user/bootstrap-config-spec.md
+	// Build header comment with installed packages information
+	var headerBuilder strings.Builder
+	headerBuilder.WriteString("# Bootstrap configuration for dotfiles repository\n")
+	headerBuilder.WriteString(fmt.Sprintf("# Generated: %s\n", time.Now().Format(time.RFC3339)))
+	headerBuilder.WriteString("#\n")
+	headerBuilder.WriteString("# This configuration defines packages and installation profiles.\n")
+	headerBuilder.WriteString("# Review and customize before committing to your repository.\n")
+	headerBuilder.WriteString("#\n")
 
-`, time.Now().Format(time.RFC3339))
+	// Add installed packages information if available
+	if len(installed) > 0 {
+		headerBuilder.WriteString(fmt.Sprintf("# Currently installed packages (%d):\n", len(installed)))
+		for _, pkg := range installed {
+			headerBuilder.WriteString(fmt.Sprintf("#   - %s\n", pkg))
+		}
+		headerBuilder.WriteString("#\n")
+	}
+
+	headerBuilder.WriteString("# Documentation: https://github.com/jamesainslie/dot/blob/main/docs/user/bootstrap-config-spec.md\n")
+	headerBuilder.WriteString("\n")
+
+	header := headerBuilder.String()
 
 	// Marshal basic config
 	data, err := g.MarshalYAML(cfg)

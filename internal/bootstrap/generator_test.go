@@ -204,17 +204,40 @@ func TestGenerator_MarshalYAML(t *testing.T) {
 func TestGenerator_MarshalYAML_WithComments(t *testing.T) {
 	gen := NewGenerator()
 
-	cfg, err := gen.Generate([]string{"vim"}, []string{"vim"}, GenerateOptions{})
+	cfg, err := gen.Generate([]string{"vim", "zsh"}, []string{"vim"}, GenerateOptions{})
 	require.NoError(t, err)
 
-	// Use MarshalYAMLWithComments instead of MarshalYAML
+	// Test with installed packages
 	data, err := gen.MarshalYAMLWithComments(cfg, []string{"vim"})
 	require.NoError(t, err)
 
-	// Should include helpful comments
 	content := string(data)
+	// Should include helpful comments
 	assert.Contains(t, content, "Bootstrap configuration")
 	assert.Contains(t, content, "Generated")
+	// Should include installed packages section
+	assert.Contains(t, content, "Currently installed packages (1)")
+	assert.Contains(t, content, "#   - vim")
+
+	// Test with multiple installed packages
+	data, err = gen.MarshalYAMLWithComments(cfg, []string{"vim", "zsh"})
+	require.NoError(t, err)
+
+	content = string(data)
+	assert.Contains(t, content, "Currently installed packages (2)")
+	assert.Contains(t, content, "#   - vim")
+	assert.Contains(t, content, "#   - zsh")
+
+	// Test with no installed packages
+	data, err = gen.MarshalYAMLWithComments(cfg, []string{})
+	require.NoError(t, err)
+
+	content = string(data)
+	// Should not include installed packages section when empty
+	assert.NotContains(t, content, "Currently installed packages")
+	// Should still include other comments
+	assert.Contains(t, content, "Bootstrap configuration")
+	assert.Contains(t, content, "Documentation:")
 }
 
 func TestGenerateOptions_Defaults(t *testing.T) {

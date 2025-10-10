@@ -40,7 +40,10 @@
 {{ range .NoteGroups -}}
 ### {{ .Title }}
 {{ range .Notes }}
+```
 {{ .Body }}
+```
+
 {{ end }}
 {{ end -}}
 {{ end -}}

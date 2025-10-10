@@ -8,6 +8,7 @@
 - **docs:** logo > transparent background
 
 ### Docs
+- **changelog:** regenerate from cleaned commit history
 - **readme:** add clone command to Quick Start
 - **user:** add clone command and bootstrap config documentation
 
@@ -72,6 +73,7 @@
 
 ### BREAKING CHANGE
 
+```
 Adopt now creates flat package structure
 
 Change adopt behavior to store directory contents at package root with
@@ -102,6 +104,8 @@ Testing:
 - 80%+ coverage maintained
 
 Refs: docs/planning/dot-prefix-refactoring-plan.md
+```
+
 
 
 <a name="v0.2.0"></a>
@@ -128,6 +132,7 @@ Refs: docs/planning/dot-prefix-refactoring-plan.md
 
 ### BREAKING CHANGE
 
+```
 Package structure requirements changed.
 
 Before (v0.1.x):
@@ -145,6 +150,8 @@ opt-out by setting dotfile.package_name_mapping: false in config.
 
 Rationale: Project is pre-1.0 (v0.1.1), establishing intuitive
 design before API stability commitment in 1.0.0 release.
+```
+
 
 
 <a name="v0.1.1"></a>
@@ -271,9 +278,12 @@ design before API stability commitment in 1.0.0 release.
 
 ### BREAKING CHANGE
 
+```
 (internal only): internal/api package removed.
 This only affects code that directly imported internal/api, which
 should not exist since it was an internal package.
+```
+
 
 
 <a name="v0.1.0"></a>

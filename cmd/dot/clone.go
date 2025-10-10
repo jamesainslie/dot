@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jamesainslie/dot/pkg/dot"
@@ -124,26 +125,35 @@ func runClone(cmd *cobra.Command, args []string, profile string, interactive boo
 
 // formatCloneError formats clone-specific errors with helpful messages.
 func formatCloneError(err error) error {
-	switch e := err.(type) {
-	case dot.ErrPackageDirNotEmpty:
-		return fmt.Errorf("%w\n\nUse --force to overwrite the existing directory", e)
-
-	case dot.ErrBootstrapNotFound:
-		return fmt.Errorf("%w\n\nThe repository may not have been properly cloned", e)
-
-	case dot.ErrInvalidBootstrap:
-		return fmt.Errorf("%w\n\nCheck the .dotbootstrap.yaml syntax and validation rules", e)
-
-	case dot.ErrAuthFailed:
-		return fmt.Errorf("%w\n\nTry:\n  - Setting GITHUB_TOKEN environment variable\n  - Setting GIT_TOKEN environment variable\n  - Configuring SSH keys in ~/.ssh/", e)
-
-	case dot.ErrCloneFailed:
-		return fmt.Errorf("%w\n\nEnsure:\n  - URL is correct\n  - Repository is accessible\n  - Network connection is available\n  - Authentication is configured (for private repos)", e)
-
-	case dot.ErrProfileNotFound:
-		return fmt.Errorf("%w\n\nCheck available profiles in .dotbootstrap.yaml", e)
-
-	default:
-		return err
+	var packageDirNotEmpty dot.ErrPackageDirNotEmpty
+	if errors.As(err, &packageDirNotEmpty) {
+		return fmt.Errorf("%w\n\nUse --force to overwrite the existing directory", packageDirNotEmpty)
 	}
+
+	var bootstrapNotFound dot.ErrBootstrapNotFound
+	if errors.As(err, &bootstrapNotFound) {
+		return fmt.Errorf("%w\n\nThe repository may not have been properly cloned", bootstrapNotFound)
+	}
+
+	var invalidBootstrap dot.ErrInvalidBootstrap
+	if errors.As(err, &invalidBootstrap) {
+		return fmt.Errorf("%w\n\nCheck the .dotbootstrap.yaml syntax and validation rules", invalidBootstrap)
+	}
+
+	var authFailed dot.ErrAuthFailed
+	if errors.As(err, &authFailed) {
+		return fmt.Errorf("%w\n\nTry:\n  - Setting GITHUB_TOKEN environment variable\n  - Setting GIT_TOKEN environment variable\n  - Configuring SSH keys in ~/.ssh/", authFailed)
+	}
+
+	var cloneFailed dot.ErrCloneFailed
+	if errors.As(err, &cloneFailed) {
+		return fmt.Errorf("%w\n\nEnsure:\n  - URL is correct\n  - Repository is accessible\n  - Network connection is available\n  - Authentication is configured (for private repos)", cloneFailed)
+	}
+
+	var profileNotFound dot.ErrProfileNotFound
+	if errors.As(err, &profileNotFound) {
+		return fmt.Errorf("%w\n\nCheck available profiles in .dotbootstrap.yaml", profileNotFound)
+	}
+
+	return err
 }

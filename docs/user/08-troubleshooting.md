@@ -164,11 +164,14 @@ mkdir ~/dotfiles/vim
 
 ### Broken Symlinks
 
-**Problem**: Symlinks point to non-existent targets
+**Problem**: Symlinks point to non-existent targets or were accidentally deleted
 
 **Diagnosis**:
 ```bash
-# Find broken links
+# Check for broken links with doctor
+dot doctor
+
+# Find broken links manually
 find ~ -xtype l
 
 # Check specific link
@@ -178,17 +181,33 @@ readlink ~/.vimrc
 
 **Solutions**:
 
-1. **Fix target path**:
+1. **Recreate missing links** (Recommended):
 ```bash
-# Unmanage and remanage
-dot unmanage vim
-dot manage vim
+# Check what's broken
+dot doctor
+
+# Remanage automatically detects and recreates missing links
+dot remanage vim
+
+# For multiple packages
+dot remanage vim zsh tmux
 ```
 
-2. **Clean up**:
+The `remanage` command now automatically detects missing symlinks and recreates them, even if the package content hasn't changed.
+
+2. **Fix target path if package moved**:
 ```bash
-# Remove broken links
-dot doctor --fix-broken
+# Update package location in config
+dot config set directories.package /new/path
+
+# Recreate links
+dot remanage vim
+```
+
+3. **Remove and recreate** (if remanage doesn't fix it):
+```bash
+dot unmanage vim
+dot manage vim
 ```
 
 ## Manifest Issues

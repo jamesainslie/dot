@@ -83,6 +83,24 @@ targetDir: ~
 
 Typically set to home directory. Must be absolute path or tilde-expandable.
 
+#### manifestDir
+
+Directory where package manifest is stored.
+
+**Type**: string  
+**Default**: `$XDG_DATA_HOME/dot/manifest` or `~/.local/share/dot/manifest`  
+**Example**:
+```yaml
+directories:
+  package: ~/dotfiles
+  target: ~
+  manifest: ~/.local/share/dot/manifest
+```
+
+The manifest tracks installed packages, their links, and content hashes for incremental updates. 
+
+**Note**: The manifest is a single JSON file stored as `.dot-manifest.json` within this directory.
+
 ### Link Options
 
 #### linkMode

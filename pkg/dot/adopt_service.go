@@ -190,12 +190,16 @@ func (s *AdoptService) createDirectoryAdoptOperations(ctx context.Context, sourc
 		}
 	}
 
-	// Second pass: Move all files
+	// Second pass: Move all files and track subdirectories
+	var subdirs []string
 	for _, relPath := range filesToMove {
 		sourcePath := filepath.Join(sourceDir, relPath)
 
 		isDir, _ := s.fs.IsDir(ctx, sourcePath)
-		if !isDir {
+		if isDir {
+			// Track subdirectories for deletion later
+			subdirs = append(subdirs, relPath)
+		} else {
 			translatedPath := translatePathComponents(relPath)
 			destPath := filepath.Join(pkgPath, translatedPath)
 
@@ -215,6 +219,17 @@ func (s *AdoptService) createDirectoryAdoptOperations(ctx context.Context, sourc
 				Source: sourceResult.Unwrap(),
 				Dest:   destResult.Unwrap(),
 			})
+		}
+	}
+
+	// Third pass: Delete subdirectories in reverse order (deepest first)
+	// This ensures child directories are deleted before parents
+	for i := len(subdirs) - 1; i >= 0; i-- {
+		subdirPath := filepath.Join(sourceDir, subdirs[i])
+		subdirResult := NewFilePath(subdirPath)
+		if subdirResult.IsOk() {
+			delID := OperationID(fmt.Sprintf("adopt-remove-subdir-%s", subdirs[i]))
+			operations = append(operations, NewDirDelete(delID, subdirResult.Unwrap()))
 		}
 	}
 

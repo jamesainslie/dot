@@ -124,13 +124,25 @@ func (s *ManageService) Remanage(ctx context.Context, packages ...string) error 
 	if !execResult.Success() {
 		return ErrMultiple{Errors: execResult.Errors}
 	}
-	// Update manifest
+	// Update manifest, preserving source type for each package
 	targetPathResult := NewTargetPath(s.targetDir)
 	if !targetPathResult.IsOk() {
 		return targetPathResult.UnwrapErr()
 	}
-	if err := s.manifestSvc.Update(ctx, targetPathResult.Unwrap(), s.packageDir, packages, plan); err != nil {
-		s.logger.Warn(ctx, "manifest_update_failed", "error", err)
+
+	// Load manifest to check source types
+	manifestResult := s.manifestSvc.Load(ctx, targetPathResult.Unwrap())
+	for _, pkg := range packages {
+		source := manifest.SourceManaged // Default
+		if manifestResult.IsOk() {
+			m := manifestResult.Unwrap()
+			if pkgInfo, exists := m.GetPackage(pkg); exists {
+				source = pkgInfo.Source
+			}
+		}
+		if err := s.manifestSvc.UpdateWithSource(ctx, targetPathResult.Unwrap(), s.packageDir, []string{pkg}, plan, source); err != nil {
+			s.logger.Warn(ctx, "manifest_update_failed", "package", pkg, "error", err)
+		}
 	}
 	return nil
 }
@@ -203,6 +215,16 @@ func (s *ManageService) planSinglePackageRemanage(
 		return s.planFullRemanage(ctx, pkg)
 	}
 
+	// Check if all links still exist - recreate if any are missing
+	if linksExist, err := s.verifyLinksExist(ctx, pkg, m); err != nil || !linksExist {
+		if err != nil {
+			s.logger.Warn(ctx, "link_verification_failed", "package", pkg, "error", err)
+		} else {
+			s.logger.Info(ctx, "missing_links_detected", "package", pkg)
+		}
+		return s.planFullRemanage(ctx, pkg)
+	}
+
 	s.logger.Info(ctx, "package_unchanged", "package", pkg)
 	return []Operation{}, map[string][]OperationID{}, nil
 }
@@ -224,6 +246,27 @@ func (s *ManageService) planNewPackageInstall(ctx context.Context, pkg string) (
 
 // planFullRemanage plans full unmanage + manage for a package.
 func (s *ManageService) planFullRemanage(ctx context.Context, pkg string) ([]Operation, map[string][]OperationID, error) {
+	// Check if this is an adopted package
+	targetPathResult := NewTargetPath(s.targetDir)
+	if !targetPathResult.IsOk() {
+		return nil, nil, targetPathResult.UnwrapErr()
+	}
+
+	manifestResult := s.manifestSvc.Load(ctx, targetPathResult.Unwrap())
+	var isAdopted bool
+	if manifestResult.IsOk() {
+		m := manifestResult.Unwrap()
+		if pkgInfo, exists := m.GetPackage(pkg); exists && pkgInfo.Source == manifest.SourceAdopted {
+			isAdopted = true
+		}
+	}
+
+	// For adopted packages, we need to recreate the original adoption pattern
+	// (single symlink from target to package root), not re-scan as a normal package
+	if isAdopted {
+		return s.planAdoptedPackageRemanage(ctx, pkg, manifestResult.Unwrap())
+	}
+
 	// Get unmanage operations first
 	unmanagePlan, err := s.unmanageSvc.PlanUnmanage(ctx, pkg)
 	if err != nil {
@@ -253,6 +296,51 @@ func (s *ManageService) planFullRemanage(ctx context.Context, pkg string) ([]Ope
 	return ops, packageOps, nil
 }
 
+// planAdoptedPackageRemanage plans remanage for an adopted package by recreating the original symlink.
+func (s *ManageService) planAdoptedPackageRemanage(ctx context.Context, pkg string, m manifest.Manifest) ([]Operation, map[string][]OperationID, error) {
+	pkgInfo, exists := m.GetPackage(pkg)
+	if !exists {
+		return nil, nil, fmt.Errorf("package %s not found in manifest", pkg)
+	}
+
+	// Adopted packages should have exactly one link (the original target path)
+	if len(pkgInfo.Links) != 1 {
+		s.logger.Warn(ctx, "adopted_package_unexpected_links", "package", pkg, "link_count", len(pkgInfo.Links))
+	}
+
+	// Create operations to recreate the symlink
+	var ops []Operation
+	packageOps := make(map[string][]OperationID)
+	var opIDs []OperationID
+
+	for _, link := range pkgInfo.Links {
+		// Delete existing symlink if it exists
+		targetPath := filepath.Join(s.targetDir, link)
+		targetPathResult := NewTargetPath(targetPath)
+		if targetPathResult.IsOk() {
+			delID := OperationID(fmt.Sprintf("remanage-del-%s", link))
+			ops = append(ops, NewLinkDelete(delID, targetPathResult.Unwrap()))
+			opIDs = append(opIDs, delID)
+		}
+
+		// Recreate symlink from target to package root
+		pkgPath := filepath.Join(s.packageDir, pkg)
+		sourcePathResult := NewFilePath(pkgPath)
+		if !sourcePathResult.IsOk() {
+			return nil, nil, fmt.Errorf("invalid package path: %w", sourcePathResult.UnwrapErr())
+		}
+
+		if targetPathResult.IsOk() {
+			linkID := OperationID(fmt.Sprintf("remanage-link-%s", link))
+			ops = append(ops, NewLinkCreate(linkID, sourcePathResult.Unwrap(), targetPathResult.Unwrap()))
+			opIDs = append(opIDs, linkID)
+		}
+	}
+
+	packageOps[pkg] = opIDs
+	return ops, packageOps, nil
+}
+
 // getPackagePath constructs and validates package path.
 func (s *ManageService) getPackagePath(pkg string) (PackagePath, error) {
 	pkgPathStr := filepath.Join(s.packageDir, pkg)
@@ -261,4 +349,24 @@ func (s *ManageService) getPackagePath(pkg string) (PackagePath, error) {
 		return PackagePath{}, pkgPathResult.UnwrapErr()
 	}
 	return pkgPathResult.Unwrap(), nil
+}
+
+// verifyLinksExist checks if all links in the manifest still exist in the filesystem.
+func (s *ManageService) verifyLinksExist(ctx context.Context, pkg string, m *manifest.Manifest) (bool, error) {
+	pkgInfo, exists := m.GetPackage(pkg)
+	if !exists {
+		return false, nil
+	}
+
+	// Check each link from the manifest
+	for _, link := range pkgInfo.Links {
+		linkPath := filepath.Join(s.targetDir, link)
+		_, err := s.fs.Stat(ctx, linkPath)
+		if err != nil {
+			// Link doesn't exist or can't be accessed
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

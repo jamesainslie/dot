@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -177,7 +178,13 @@ func (op LinkDelete) Dependencies() []Operation {
 }
 
 func (op LinkDelete) Execute(ctx context.Context, fs FS) error {
-	return fs.Remove(ctx, op.Target.String())
+	// Try to remove - if it doesn't exist, that's fine (idempotent)
+	err := fs.Remove(ctx, op.Target.String())
+	if err != nil && os.IsNotExist(err) {
+		// File doesn't exist - desired state achieved
+		return nil
+	}
+	return err
 }
 
 func (op LinkDelete) Rollback(ctx context.Context, fs FS) error {

@@ -17,7 +17,7 @@ type packageCommandFunc func(*dot.Client, context.Context, []string) error
 // executePackageCommand is a helper that handles the common pattern for package commands.
 // It builds the config, creates a client, executes the provided function, and prints success message.
 func executePackageCommand(cmd *cobra.Command, args []string, fn packageCommandFunc, actionVerb string) error {
-	cfg, err := buildConfig()
+	cfg, err := buildConfigWithCmd(cmd)
 	if err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 		return err
@@ -77,7 +77,7 @@ func getAvailablePackages() []string {
 
 // getInstalledPackages returns list of installed packages from the manifest.
 func getInstalledPackages() []string {
-	cfg, err := buildConfig()
+	cfg, err := buildConfigWithCmd(nil)
 	if err != nil {
 		return nil
 	}

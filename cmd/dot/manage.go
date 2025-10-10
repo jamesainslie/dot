@@ -28,7 +28,7 @@ directory to the target directory.`,
 
 // runManage handles the manage command execution.
 func runManage(cmd *cobra.Command, args []string) error {
-	cfg, err := buildConfig()
+	cfg, err := buildConfigWithCmd(cmd)
 	if err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 		return err

@@ -53,7 +53,7 @@ the filesystem - useful when packages no longer exist.`,
 
 // runUnmanage handles the unmanage command execution.
 func runUnmanage(cmd *cobra.Command, args []string, purge, noRestore, cleanup bool) error {
-	cfg, err := buildConfig()
+	cfg, err := buildConfigWithCmd(cmd)
 	if err != nil {
 		return err
 	}

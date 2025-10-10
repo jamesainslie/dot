@@ -3,6 +3,7 @@ package dot
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jamesainslie/dot/internal/adapters"
 	"github.com/jamesainslie/dot/internal/executor"
@@ -153,5 +154,62 @@ func TestManageService_Remanage(t *testing.T) {
 		// Remanage without changes
 		err = svc.Remanage(ctx, "test-pkg")
 		require.NoError(t, err)
+	})
+
+	t.Run("remanages adopted package", func(t *testing.T) {
+		fs := adapters.NewMemFS()
+		ctx := context.Background()
+		packageDir := "/test/packages"
+		targetDir := "/test/target"
+
+		// Setup adopted package structure
+		require.NoError(t, fs.MkdirAll(ctx, packageDir+"/dot-ssh", 0755))
+		require.NoError(t, fs.MkdirAll(ctx, targetDir, 0755))
+		require.NoError(t, fs.WriteFile(ctx, packageDir+"/dot-ssh/config", []byte("ssh config"), 0644))
+		require.NoError(t, fs.WriteFile(ctx, packageDir+"/dot-ssh/known_hosts", []byte("hosts"), 0644))
+
+		// Create manifest with adopted package
+		manifestStore := manifest.NewFSManifestStore(fs)
+		manifestSvc := newManifestService(fs, adapters.NewNoopLogger(), manifestStore)
+
+		targetPathResult := NewTargetPath(targetDir)
+		require.True(t, targetPathResult.IsOk())
+
+		m := manifest.New()
+		pkgInfo := manifest.PackageInfo{
+			Name:        "dot-ssh",
+			InstalledAt: time.Now(),
+			LinkCount:   1,
+			Links:       []string{".ssh"},
+			Source:      manifest.SourceAdopted,
+		}
+		m.AddPackage(pkgInfo)
+		err := manifestSvc.Save(ctx, targetPathResult.Unwrap(), m)
+		require.NoError(t, err)
+
+		// Create symlink to simulate adopted state
+		require.NoError(t, fs.Symlink(ctx, packageDir+"/dot-ssh", targetDir+"/.ssh"))
+
+		managePipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
+			FS:                 fs,
+			IgnoreSet:          ignore.NewDefaultIgnoreSet(),
+			Policies:           planner.ResolutionPolicies{OnFileExists: planner.PolicyFail},
+			PackageNameMapping: false,
+		})
+		exec := executor.New(executor.Opts{
+			FS:     fs,
+			Logger: adapters.NewNoopLogger(),
+			Tracer: adapters.NewNoopTracer(),
+		})
+		unmanageSvc := newUnmanageService(fs, adapters.NewNoopLogger(), exec, manifestSvc, packageDir, targetDir, false)
+		svc := newManageService(fs, adapters.NewNoopLogger(), managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
+
+		// Remanage adopted package
+		err = svc.Remanage(ctx, "dot-ssh")
+		require.NoError(t, err)
+
+		// Verify symlink still exists
+		linkExists := fs.Exists(ctx, targetDir+"/.ssh")
+		assert.True(t, linkExists)
 	})
 }

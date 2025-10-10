@@ -171,12 +171,3 @@ func (g *Generator) MarshalYAMLWithComments(cfg Config, installed []string) ([]b
 
 	return result, nil
 }
-
-// makeSet creates a set from a slice for O(1) membership testing.
-func makeSet(items []string) map[string]bool {
-	set := make(map[string]bool, len(items))
-	for _, item := range items {
-		set[item] = true
-	}
-	return set
-}

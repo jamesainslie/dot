@@ -26,6 +26,9 @@ func main() {
 		if executedCmd != nil && isArgValidationError(err) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
 			_ = executedCmd.Usage()
+		} else {
+			// Print all other errors to stderr
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
 
 		// Handle doctor-specific exit codes

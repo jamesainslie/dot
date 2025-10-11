@@ -150,6 +150,49 @@ func (s *UnmanageService) UnmanageWithOptions(ctx context.Context, opts Unmanage
 	return nil
 }
 
+// UnmanageAll removes all installed packages with specified options.
+// Returns the count of packages unmanaged.
+func (s *UnmanageService) UnmanageAll(ctx context.Context, opts UnmanageOptions) (int, error) {
+	s.logger.Info(ctx, "unmanaging_all_packages")
+
+	targetPathResult := NewTargetPath(s.targetDir)
+	if !targetPathResult.IsOk() {
+		return 0, targetPathResult.UnwrapErr()
+	}
+	targetPath := targetPathResult.Unwrap()
+
+	// Load manifest to get all packages
+	manifestResult := s.manifestSvc.Load(ctx, targetPath)
+	if !manifestResult.IsOk() {
+		err := manifestResult.UnwrapErr()
+		if isManifestNotFoundError(err) {
+			s.logger.Info(ctx, "no_manifest_nothing_to_unmanage")
+			return 0, nil
+		}
+		return 0, err
+	}
+	m := manifestResult.Unwrap()
+
+	// Get all package names
+	packages := make([]string, 0, len(m.Packages))
+	for pkgName := range m.Packages {
+		packages = append(packages, pkgName)
+	}
+
+	if len(packages) == 0 {
+		s.logger.Info(ctx, "no_packages_to_unmanage")
+		return 0, nil
+	}
+
+	// Use UnmanageWithOptions for the actual work
+	err := s.UnmanageWithOptions(ctx, opts, packages...)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(packages), nil
+}
+
 // filterOrphanedPackages returns only the packages that are orphaned.
 func (s *UnmanageService) filterOrphanedPackages(ctx context.Context, m manifest.Manifest, packages []string) []string {
 	orphaned := make([]string, 0, len(packages))

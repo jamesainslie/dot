@@ -139,6 +139,12 @@ func (c *Client) UnmanageWithOptions(ctx context.Context, opts UnmanageOptions, 
 	return c.unmanageSvc.UnmanageWithOptions(ctx, opts, packages...)
 }
 
+// UnmanageAll removes all installed packages with specified options.
+// Returns the count of packages unmanaged.
+func (c *Client) UnmanageAll(ctx context.Context, opts UnmanageOptions) (int, error) {
+	return c.unmanageSvc.UnmanageAll(ctx, opts)
+}
+
 // PlanUnmanage computes the execution plan for unmanaging packages.
 func (c *Client) PlanUnmanage(ctx context.Context, packages ...string) (Plan, error) {
 	return c.unmanageSvc.PlanUnmanage(ctx, packages...)

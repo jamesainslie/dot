@@ -457,6 +457,7 @@ Remove packages by deleting symlinks, with optional restoration or cleanup.
 **Synopsis**:
 ```bash
 dot unmanage [options] PACKAGE [PACKAGE...]
+dot unmanage --all [options]
 ```
 
 **Arguments**:
@@ -464,6 +465,8 @@ dot unmanage [options] PACKAGE [PACKAGE...]
 
 **Options**:
 - All global options
+- `--all`: Remove all managed packages
+- `--yes, --force`: Skip confirmation prompt (for use with --all)
 - `--purge`: Delete package directory after removing links
 - `--no-restore`: Skip restoring adopted packages to target
 - `--cleanup`: Remove orphaned packages from manifest only
@@ -485,8 +488,17 @@ dot unmanage --no-restore dot-ssh
 # Clean up orphaned packages
 dot unmanage --cleanup dot-old-package
 
-# Preview removal
-dot --dry-run unmanage vim
+# Remove all packages (with confirmation prompt)
+dot unmanage --all
+
+# Remove all packages without confirmation
+dot unmanage --all --yes
+
+# Remove all packages and delete directories
+dot unmanage --all --purge --force
+
+# Preview removing all packages
+dot --dry-run unmanage --all
 ```
 
 **Behavior**:
@@ -519,6 +531,26 @@ By default, `unmanage` **restores** adopted files to their original locations:
 
 Files are **copied** (not moved), so they remain in the package as a backup.
 
+**Remove All Packages**:
+
+Use `--all` to remove all managed packages at once:
+
+```bash
+# With confirmation prompt
+dot unmanage --all
+
+# Skip confirmation
+dot unmanage --all --yes
+```
+
+When using `--all`:
+1. Shows summary of all packages to be removed
+2. Displays operation type for each (remove, restore, purge)
+3. Requires confirmation unless `--yes`, `--force`, or `--dry-run` specified
+4. Applies same behavior as individual unmanage (restore adopted by default)
+
+This is useful for completely resetting your system to pre-dot state.
+
 **Cleanup Mode**:
 
 Use `--cleanup` to remove orphaned packages (missing links or directories):
@@ -534,6 +566,7 @@ Only updates manifest, no filesystem operations.
 - Preserves non-managed files
 - Validates link targets before deletion
 - Adopted packages restored by default (preserves your data)
+- Confirmation required for `--all` operations
 
 **Exit Codes**:
 - `0`: Success

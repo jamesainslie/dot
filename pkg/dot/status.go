@@ -10,6 +10,7 @@ type Status struct {
 // PackageInfo contains metadata about an installed package.
 type PackageInfo struct {
 	Name        string    `json:"name" yaml:"name"`
+	Source      string    `json:"source" yaml:"source"`
 	InstalledAt time.Time `json:"installed_at" yaml:"installed_at"`
 	LinkCount   int       `json:"link_count" yaml:"link_count"`
 	Links       []string  `json:"links" yaml:"links"`

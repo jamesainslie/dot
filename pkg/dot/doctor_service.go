@@ -358,7 +358,7 @@ func (s *DoctorService) scanDirectoryRecursive(
 	}
 }
 
-// checkForOrphanedLink checks if symlink is orphaned (not in manifest).
+// checkForOrphanedLink checks if symlink is orphaned (not in manifest) and validates target.
 func (s *DoctorService) checkForOrphanedLink(
 	ctx context.Context,
 	fullPath string,
@@ -381,7 +381,39 @@ func (s *DoctorService) checkForOrphanedLink(
 	managed := linkSet[normalizedRel] || linkSet[normalizedFull]
 
 	if !managed {
+		stats.TotalLinks++
 		stats.OrphanedLinks++
+
+		// Check if the orphaned symlink's target exists
+		target, err := s.fs.ReadLink(ctx, fullPath)
+		if err == nil {
+			// Resolve target to absolute path
+			var absTarget string
+			if filepath.IsAbs(target) {
+				absTarget = target
+			} else {
+				absTarget = filepath.Join(filepath.Dir(fullPath), target)
+			}
+
+			// Check if target exists
+			_, err = s.fs.Stat(ctx, absTarget)
+			if err != nil {
+				if os.IsNotExist(err) {
+					// Orphaned and broken
+					stats.BrokenLinks++
+					*issues = append(*issues, Issue{
+						Severity:   SeverityError,
+						Type:       IssueBrokenLink,
+						Path:       relPath,
+						Message:    "Unmanaged symlink with broken target: " + target,
+						Suggestion: "Remove manually or fix target, then use 'dot adopt' to manage",
+					})
+					return
+				}
+			}
+		}
+
+		// Orphaned but target exists (or couldn't check)
 		*issues = append(*issues, Issue{
 			Severity:   SeverityWarning,
 			Type:       IssueOrphanedLink,

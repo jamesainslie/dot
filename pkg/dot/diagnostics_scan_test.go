@@ -29,7 +29,8 @@ func TestScanMode_String(t *testing.T) {
 func TestDefaultScanConfig(t *testing.T) {
 	cfg := dot.DefaultScanConfig()
 
-	assert.Equal(t, dot.ScanOff, cfg.Mode)
+	// Default is now scoped scanning (not off)
+	assert.Equal(t, dot.ScanScoped, cfg.Mode)
 	assert.Equal(t, 10, cfg.MaxDepth)
 	assert.Nil(t, cfg.ScopeToDirs)
 	assert.NotEmpty(t, cfg.SkipPatterns)

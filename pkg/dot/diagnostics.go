@@ -148,11 +148,11 @@ type DiagnosticStats struct {
 type ScanMode int
 
 const (
-	// ScanOff disables orphaned link detection (fastest, current default).
+	// ScanOff disables orphaned link detection (fastest, use --scan-mode=off to enable).
 	ScanOff ScanMode = iota
-	// ScanScoped only scans directories containing managed links (recommended).
+	// ScanScoped only scans directories containing managed links (default, recommended).
 	ScanScoped
-	// ScanDeep performs full recursive scan with depth limits (slowest).
+	// ScanDeep performs full recursive scan with depth limits (slowest, thorough).
 	ScanDeep
 )
 
@@ -189,10 +189,11 @@ type ScanConfig struct {
 	SkipPatterns []string
 }
 
-// DefaultScanConfig returns the default scan configuration (off).
+// DefaultScanConfig returns the default scan configuration (scoped).
+// Scoped scanning checks directories containing managed links for orphaned symlinks.
 func DefaultScanConfig() ScanConfig {
 	return ScanConfig{
-		Mode:         ScanOff,
+		Mode:         ScanScoped,
 		MaxDepth:     10,
 		ScopeToDirs:  nil,
 		SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},

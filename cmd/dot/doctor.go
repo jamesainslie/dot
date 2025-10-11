@@ -36,9 +36,14 @@ func newDoctorCommand() *cobra.Command {
 		// Build scan config based on flags
 		var scanCfg dot.ScanConfig
 		switch scanMode {
-		case "off", "":
-			scanCfg = dot.DefaultScanConfig()
-		case "scoped":
+		case "off":
+			scanCfg = dot.ScanConfig{
+				Mode:         dot.ScanOff,
+				MaxDepth:     10,
+				ScopeToDirs:  nil,
+				SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},
+			}
+		case "scoped", "":
 			scanCfg = dot.ScopedScanConfig()
 		case "deep":
 			scanCfg = dot.DeepScanConfig(maxDepth)
@@ -184,17 +189,32 @@ func NewDoctorCommand(cfg *dot.Config) *cobra.Command {
 		Long: `Run comprehensive health checks on the dot installation.
 
 Checks for:
-  - Broken symlinks (links pointing to non-existent targets)
-  - Orphaned links (links not managed by dot)
+  - Broken symlinks in managed packages (links pointing to non-existent targets)
+  - Orphaned symlinks not in manifest (unmanaged links in target directory)
+  - Broken unmanaged symlinks (orphaned links with non-existent targets)
   - Permission issues
   - Manifest inconsistencies
 
+Orphan Detection:
+  By default, doctor uses scoped scanning to find unmanaged symlinks in
+  directories containing managed links. This efficiently detects leftover
+  symlinks from previously managed packages.
+
+  Use --scan-mode=off to disable orphan detection for faster checks.
+  Use --scan-mode=deep for thorough scanning of entire target directory.
+
 Exit codes:
   0 - Healthy (no issues found)
-  1 - Warnings detected
-  2 - Errors detected`,
-		Example: `  # Run health check
+  1 - Warnings detected (e.g., orphaned links)
+  2 - Errors detected (e.g., broken links)`,
+		Example: `  # Run health check with default scoped scanning
   dot doctor
+
+  # Run health check without orphan detection (faster)
+  dot doctor --scan-mode=off
+
+  # Run thorough scan of entire home directory
+  dot doctor --scan-mode=deep
 
   # Run health check with JSON output
   dot doctor --format=json
@@ -209,7 +229,7 @@ Exit codes:
 
 	cmd.Flags().StringVarP(&format, "format", "f", "text", "Output format (text, json, yaml, table)")
 	cmd.Flags().StringVar(&color, "color", "auto", "Colorize output (auto, always, never)")
-	cmd.Flags().String("scan-mode", "off", "Orphan detection mode (off, scoped, deep)")
+	cmd.Flags().String("scan-mode", "scoped", "Orphan detection mode (off, scoped, deep)")
 	cmd.Flags().Int("max-depth", 10, "Maximum recursion depth for deep scan")
 
 	return cmd

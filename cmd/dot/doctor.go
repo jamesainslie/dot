@@ -21,6 +21,10 @@ func newDoctorCommand() *cobra.Command {
 			return err
 		}
 
+		// Load extended config for table_style
+		configPath := getConfigFilePath()
+		extCfg, _ := loadConfigWithRepoPriority(configPath)
+
 		// Get flags
 		format, _ := cmd.Flags().GetString("format")
 		color, _ := cmd.Flags().GetString("color")
@@ -60,9 +64,12 @@ func newDoctorCommand() *cobra.Command {
 		// Determine colorization
 		colorize := shouldColorize(color)
 
-		// Create renderer
-		// TODO: Get table_style from config
-		r, err := renderer.NewRenderer(format, colorize, "")
+		// Create renderer with table_style from config
+		tableStyle := ""
+		if extCfg != nil {
+			tableStyle = extCfg.Output.TableStyle
+		}
+		r, err := renderer.NewRenderer(format, colorize, tableStyle)
 		if err != nil {
 			return fmt.Errorf("invalid format: %w", err)
 		}

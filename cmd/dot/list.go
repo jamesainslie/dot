@@ -80,6 +80,11 @@ func newListCommand() *cobra.Command {
 			return fmt.Errorf("render failed: %w", err)
 		}
 
+		// Add newline after output for better terminal spacing
+		if format == "text" || format == "table" {
+			fmt.Fprintln(cmd.OutOrStdout())
+		}
+
 		return nil
 	}
 

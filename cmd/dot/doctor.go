@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -60,9 +61,13 @@ func newDoctorCommand() *cobra.Command {
 			return fmt.Errorf("invalid format: %w", err)
 		}
 
-		// Render diagnostics
-		if err := r.RenderDiagnostics(cmd.OutOrStdout(), report); err != nil {
-			return fmt.Errorf("render failed: %w", err)
+		// Render diagnostics - use succinct output for text format
+		if format == "text" {
+			renderSuccinctDiagnostics(cmd.OutOrStdout(), report)
+		} else {
+			if err := r.RenderDiagnostics(cmd.OutOrStdout(), report); err != nil {
+				return fmt.Errorf("render failed: %w", err)
+			}
 		}
 
 		// Return error to set exit code based on health status
@@ -77,6 +82,95 @@ func newDoctorCommand() *cobra.Command {
 	}
 
 	return cmd
+}
+
+// renderSuccinctDiagnostics outputs diagnostics in a succinct, colorized format.
+func renderSuccinctDiagnostics(w io.Writer, report dot.DiagnosticReport) {
+	// Health status header
+	healthIcon, healthText, healthColor := getHealthDisplay(report.OverallHealth)
+	fmt.Fprintf(w, "%s %s\n",
+		healthIcon,
+		healthColor(healthText),
+	)
+
+	// Statistics summary if available
+	if report.Statistics.TotalLinks > 0 {
+		fmt.Fprintf(w, "  %s %s\n",
+			dim("•"),
+			dim(fmt.Sprintf("%d total links (%d managed, %d broken, %d orphaned)",
+				report.Statistics.TotalLinks,
+				report.Statistics.ManagedLinks,
+				report.Statistics.BrokenLinks,
+				report.Statistics.OrphanedLinks)),
+		)
+	}
+
+	// Issues grouped by severity
+	errors := filterIssuesBySeverity(report.Issues, dot.SeverityError)
+	warnings := filterIssuesBySeverity(report.Issues, dot.SeverityWarning)
+	infos := filterIssuesBySeverity(report.Issues, dot.SeverityInfo)
+
+	if len(errors) > 0 {
+		fmt.Fprintf(w, "\n%s %s\n", errorText("✗"), errorText(fmt.Sprintf("%d errors:", len(errors))))
+		renderIssueList(w, errors, errorText)
+	}
+
+	if len(warnings) > 0 {
+		fmt.Fprintf(w, "\n%s %s\n", warning("⚠"), warning(fmt.Sprintf("%d warnings:", len(warnings))))
+		renderIssueList(w, warnings, warning)
+	}
+
+	if len(infos) > 0 {
+		fmt.Fprintf(w, "\n%s %s\n", info("ℹ"), info(fmt.Sprintf("%d info:", len(infos))))
+		renderIssueList(w, infos, dim)
+	}
+
+	// Clean summary if no issues
+	if len(report.Issues) == 0 {
+		fmt.Fprintf(w, "  %s\n", success("No issues found"))
+	}
+}
+
+// getHealthDisplay returns icon, text, and color for health status
+func getHealthDisplay(health dot.HealthStatus) (string, string, func(string) string) {
+	switch health {
+	case dot.HealthOK:
+		return success("✓"), "Healthy", success
+	case dot.HealthWarnings:
+		return warning("⚠"), "Warnings detected", warning
+	case dot.HealthErrors:
+		return errorText("✗"), "Errors detected", errorText
+	default:
+		return dim("?"), "Unknown status", dim
+	}
+}
+
+// filterIssuesBySeverity returns issues matching the given severity
+func filterIssuesBySeverity(issues []dot.Issue, severity dot.IssueSeverity) []dot.Issue {
+	var filtered []dot.Issue
+	for _, issue := range issues {
+		if issue.Severity == severity {
+			filtered = append(filtered, issue)
+		}
+	}
+	return filtered
+}
+
+// renderIssueList renders a list of issues succinctly
+func renderIssueList(w io.Writer, issues []dot.Issue, colorFunc func(string) string) {
+	for _, issue := range issues {
+		fmt.Fprintf(w, "  %s %s",
+			dim("•"),
+			bold(issue.Path),
+		)
+		if issue.Message != "" {
+			fmt.Fprintf(w, " %s %s",
+				dim("—"),
+				dim(issue.Message),
+			)
+		}
+		fmt.Fprintln(w)
+	}
 }
 
 // NewDoctorCommand creates the doctor command.

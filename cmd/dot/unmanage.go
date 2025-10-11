@@ -173,15 +173,35 @@ func runUnmanageAll(cmd *cobra.Command, cfg dot.Config, client *dot.Client, ctx 
 
 // displayUnmanageAllSummary shows what will be unmanaged.
 func displayUnmanageAllSummary(packages []dot.PackageInfo, opts dot.UnmanageOptions, packageDir string) {
-	fmt.Printf("This will unmanage %d package(s):\n", len(packages))
+	fmt.Printf("This will unmanage %s:\n", accent(fmt.Sprintf("%d package(s)", len(packages))))
 	for _, pkg := range packages {
 		operation := getUnmanageOperation(pkg, opts)
+		operationColor := getOperationColor(operation)
 		// Format: package (operation, N links: link1, link2, ... | pkg-dir)
 		linkList := formatLinkList(pkg.Links)
 		pkgPath := packageDir + "/" + pkg.Name
-		fmt.Printf("  - %s (%s, %d links: %s | %s)\n", pkg.Name, operation, len(pkg.Links), linkList, pkgPath)
+		fmt.Printf("  %s %s %s %s %s %s\n",
+			dim("•"),
+			bold(pkg.Name),
+			dim("("),
+			operationColor(operation),
+			dim(fmt.Sprintf("%d links:", len(pkg.Links))),
+			dim(linkList+" | "+pkgPath+")"),
+		)
 	}
 	fmt.Println()
+}
+
+// getOperationColor returns the appropriate color function for an operation
+func getOperationColor(operation string) func(string) string {
+	switch operation {
+	case "purge":
+		return errorText
+	case "restore":
+		return info
+	default:
+		return accent
+	}
 }
 
 // formatLinkList joins links with commas, showing all if few, or truncating if many.
@@ -216,9 +236,17 @@ func reportUnmanageAllResults(count int, opts dot.UnmanageOptions, dryRun bool) 
 	}
 
 	if dryRun {
-		fmt.Printf("Would %s %d package(s)\n", operation, count)
+		fmt.Printf("%s %s %s\n",
+			dim("Would"),
+			operation,
+			accent(fmt.Sprintf("%d package(s)", count)),
+		)
 	} else {
-		fmt.Printf("Successfully %sd %d package(s)\n", operation, count)
+		fmt.Printf("%s %s %s\n",
+			success("✓"),
+			operation,
+			accent(fmt.Sprintf("%d package(s)", count)),
+		)
 	}
 }
 

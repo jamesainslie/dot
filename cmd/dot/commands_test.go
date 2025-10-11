@@ -506,3 +506,25 @@ func TestRootCommand_LogJSONFlag(t *testing.T) {
 	// Package doesn't exist, expect error
 	require.Error(t, err)
 }
+
+func TestGetOperationColor(t *testing.T) {
+	tests := []struct {
+		name      string
+		operation string
+	}{
+		{"purge", "purge"},
+		{"restore", "restore"},
+		{"remove", "remove"},
+		{"other", "other"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			colorFunc := getOperationColor(tt.operation)
+			require.NotNil(t, colorFunc)
+			// Just verify the function can be called
+			result := colorFunc("test")
+			require.Contains(t, result, "test")
+		})
+	}
+}

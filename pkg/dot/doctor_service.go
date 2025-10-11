@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 
 	"github.com/jamesainslie/dot/internal/manifest"
 )
@@ -222,6 +224,7 @@ func (s *DoctorService) checkLink(ctx context.Context, pkgName string, linkPath 
 }
 
 // performOrphanScan executes orphaned link scanning based on configuration.
+// Scans directories in parallel using worker pool for improved performance.
 func (s *DoctorService) performOrphanScan(
 	ctx context.Context,
 	m *manifest.Manifest,
@@ -233,9 +236,90 @@ func (s *DoctorService) performOrphanScan(
 	rootDirs := s.normalizeAndDeduplicateDirs(scanDirs, scanCfg.Mode)
 	linkSet := buildManagedLinkSet(m)
 
-	for _, dir := range rootDirs {
-		s.scanDirectory(ctx, dir, m, linkSet, scanCfg, issues, stats)
+	// Determine worker count
+	workers := scanCfg.MaxWorkers
+	if workers <= 0 {
+		workers = runtime.NumCPU()
 	}
+
+	// If only 1 worker or 1 directory, use sequential scan (no overhead)
+	if workers == 1 || len(rootDirs) == 1 {
+		for _, dir := range rootDirs {
+			if s.shouldStopScan(scanCfg, issues) {
+				break
+			}
+			s.scanDirectory(ctx, dir, m, linkSet, scanCfg, issues, stats)
+		}
+		return
+	}
+
+	// Parallel scan with worker pool
+	type scanResult struct {
+		issues []Issue
+		stats  DiagnosticStats
+	}
+
+	resultChan := make(chan scanResult, len(rootDirs))
+	dirChan := make(chan string, len(rootDirs))
+	var wg sync.WaitGroup
+
+	// Start workers
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for dir := range dirChan {
+				if ctx.Err() != nil {
+					return
+				}
+
+				localIssues := []Issue{}
+				localStats := DiagnosticStats{}
+				s.scanDirectory(ctx, dir, m, linkSet, scanCfg, &localIssues, &localStats)
+
+				resultChan <- scanResult{
+					issues: localIssues,
+					stats:  localStats,
+				}
+			}
+		}()
+	}
+
+	// Feed directories to workers
+	go func() {
+		for _, dir := range rootDirs {
+			dirChan <- dir
+		}
+		close(dirChan)
+	}()
+
+	// Wait for workers and close results
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Collect results
+	for result := range resultChan {
+		*issues = append(*issues, result.issues...)
+		stats.TotalLinks += result.stats.TotalLinks
+		stats.BrokenLinks += result.stats.BrokenLinks
+		stats.OrphanedLinks += result.stats.OrphanedLinks
+		stats.ManagedLinks += result.stats.ManagedLinks
+
+		// Check if we should stop early
+		if s.shouldStopScan(scanCfg, issues) {
+			// Drain remaining results
+			for range resultChan {
+			}
+			break
+		}
+	}
+}
+
+// shouldStopScan checks if scanning should stop early based on MaxIssues limit.
+func (s *DoctorService) shouldStopScan(scanCfg ScanConfig, issues *[]Issue) bool {
+	return scanCfg.MaxIssues > 0 && len(*issues) >= scanCfg.MaxIssues
 }
 
 // determineScanDirectories determines which directories to scan based on configuration.
@@ -306,6 +390,7 @@ func (s *DoctorService) scanForOrphanedLinksWithLimits(
 }
 
 // scanForOrphanedLinks recursively scans for symlinks not in the manifest.
+// Optimized to check symlink type from DirEntry without extra syscalls.
 func (s *DoctorService) scanForOrphanedLinks(
 	ctx context.Context,
 	dir string,
@@ -325,13 +410,24 @@ func (s *DoctorService) scanForOrphanedLinks(
 			continue
 		}
 
+		// Check MaxIssues limit
+		if s.shouldStopScan(scanCfg, issues) {
+			return nil
+		}
+
 		fullPath := filepath.Join(dir, entry.Name())
 
-		if entry.IsDir() {
-			s.scanDirectoryRecursive(ctx, fullPath, m, linkSet, scanCfg, issues, stats)
-		} else {
+		// Performance optimization: check type from DirEntry (no Lstat syscall)
+		entryType := entry.Type()
+
+		if entryType&os.ModeSymlink != 0 {
+			// It's a symlink - check if orphaned
 			s.checkForOrphanedLink(ctx, fullPath, linkSet, issues, stats)
+		} else if entry.IsDir() {
+			// It's a directory - recurse
+			s.scanDirectoryRecursive(ctx, fullPath, m, linkSet, scanCfg, issues, stats)
 		}
+		// Regular files are ignored (no need to check)
 	}
 	return nil
 }
@@ -359,6 +455,7 @@ func (s *DoctorService) scanDirectoryRecursive(
 }
 
 // checkForOrphanedLink checks if symlink is orphaned (not in manifest) and validates target.
+// Note: This function assumes fullPath is already confirmed to be a symlink by the caller.
 func (s *DoctorService) checkForOrphanedLink(
 	ctx context.Context,
 	fullPath string,
@@ -369,11 +466,6 @@ func (s *DoctorService) checkForOrphanedLink(
 	relPath, err := filepath.Rel(s.targetDir, fullPath)
 	if err != nil {
 		relPath = fullPath
-	}
-
-	isLink, err := s.fs.IsSymlink(ctx, fullPath)
-	if err != nil || !isLink {
-		return
 	}
 
 	normalizedRel := filepath.ToSlash(relPath)

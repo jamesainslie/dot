@@ -36,6 +36,69 @@ func TestConfigCommand_Init(t *testing.T) {
 	assert.NotNil(t, cfg)
 }
 
+func TestGetConfigValue(t *testing.T) {
+	cfg := &config.ExtendedConfig{
+		Directories: config.DirectoriesConfig{
+			Package:  "/test/package",
+			Target:   "/test/target",
+			Manifest: "/test/manifest",
+		},
+		Logging: config.LoggingConfig{
+			Level:       "INFO",
+			Format:      "text",
+			Destination: "stderr",
+		},
+		Symlinks: config.SymlinksConfig{
+			Mode:         "relative",
+			BackupSuffix: ".bak",
+			BackupDir:    "/test/backup",
+		},
+		Dotfile: config.DotfileConfig{
+			Prefix: "dot-",
+		},
+		Output: config.OutputConfig{
+			Format: "text",
+			Color:  "auto",
+		},
+		Packages: config.PackagesConfig{
+			SortBy: "name",
+		},
+	}
+
+	tests := []struct {
+		key      string
+		expected string
+		wantErr  bool
+	}{
+		{"directories.package", "/test/package", false},
+		{"directories.target", "/test/target", false},
+		{"directories.manifest", "/test/manifest", false},
+		{"logging.level", "INFO", false},
+		{"logging.format", "text", false},
+		{"logging.destination", "stderr", false},
+		{"symlinks.mode", "relative", false},
+		{"symlinks.backup_suffix", ".bak", false},
+		{"symlinks.backup_dir", "/test/backup", false},
+		{"dotfile.prefix", "dot-", false},
+		{"output.format", "text", false},
+		{"output.color", "auto", false},
+		{"packages.sort_by", "name", false},
+		{"unknown.key", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			value, err := getConfigValue(cfg, tt.key)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, value)
+			}
+		})
+	}
+}
+
 func TestConfigCommand_InitForce(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")

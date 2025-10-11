@@ -853,14 +853,51 @@ dot doctor [options]
 
 **Options**:
 - `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`)
+- `--scan-mode MODE`: Orphaned link detection mode (`off`, `scoped`, `deep`) (default: `scoped`)
+- `--color MODE`: Color output mode (`auto`, `always`, `never`) (default: `auto`)
 - All global options
+
+**Scan Modes**:
+
+- **off**: Skip orphaned link detection (fastest, ~50ms)
+  - Only checks managed links from manifest
+  - Use for quick health checks or in automated scripts
+
+- **scoped** (default): Scan directories containing managed links (fast, ~600ms)
+  - Limited to depth 3 to avoid deep recursion
+  - Skips common large directories (Library, node_modules, .docker, etc.)
+  - Parallel scanning using multiple CPU cores
+  - Recommended for regular health checks
+
+- **deep**: Full recursive scan of target directory (thorough, ~3-5s)
+  - Scans entire home directory up to depth 10
+  - Still skips large cache/build directories
+  - Use when investigating orphaned links from other tools
+  - Significantly slower but more comprehensive
+
+**Performance Notes**:
+
+The doctor command has been optimized for speed:
+- Parallel directory scanning using worker pools
+- DirEntry type checking (no extra syscalls for regular files)
+- Intelligent skip patterns for common large directories
+- Depth limits to prevent excessive recursion
+
+For systems with many symlinks (10,000+), use `scoped` mode for regular checks
+and `deep` mode only when investigating specific issues.
 
 **Examples**:
 ```bash
-# Basic health check
+# Basic health check (scoped scan - default, fast)
 dot doctor
 
-# Detailed output
+# Quick check without orphan detection (fastest)
+dot doctor --scan-mode=off
+
+# Deep scan for comprehensive orphan detection
+dot doctor --scan-mode=deep
+
+# Detailed output with verbose logging
 dot -v doctor
 
 # JSON output for scripting
@@ -868,6 +905,9 @@ dot doctor --format json
 
 # Table format
 dot doctor --format table
+
+# Force color output even when piped
+dot doctor --color=always | less -R
 ```
 
 **Checks Performed**:

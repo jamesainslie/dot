@@ -1,11 +1,12 @@
 package pretty
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 // Pager handles paginated output for long content.
@@ -50,6 +51,7 @@ func NewPager(config PagerConfig) *Pager {
 
 // Page displays content with pagination if in an interactive terminal.
 // If not interactive (piped or redirected), content is displayed without pagination.
+// Supports spacebar/Enter for next page, up/down arrows for line scrolling, and 'q' to quit.
 func (p *Pager) Page(content string) error {
 	lines := strings.Split(content, "\n")
 
@@ -65,56 +67,133 @@ func (p *Pager) Page(content string) error {
 		return err
 	}
 
-	// Otherwise, paginate
-	for i := 0; i < len(lines); i += p.pageSize {
-		end := i + p.pageSize
-		if end > len(lines) {
-			end = len(lines)
+	// Interactive pagination with keyboard controls
+	return p.pageInteractive(lines)
+}
+
+// pageInteractive handles interactive pagination with keyboard controls.
+func (p *Pager) pageInteractive(lines []string) error {
+	position := 0
+	maxPos := len(lines)
+
+	for position < maxPos {
+		// Calculate end position for current view
+		end := position + p.pageSize
+		if end > maxPos {
+			end = maxPos
 		}
 
-		// Print this page
-		pageContent := strings.Join(lines[i:end], "\n")
+		// Display current page
+		pageContent := strings.Join(lines[position:end], "\n")
 		fmt.Fprint(p.output, pageContent)
 
-		// If this is the last page, we're done
-		if end >= len(lines) {
+		// Show status line
+		remaining := maxPos - end
+		if remaining > 0 {
+			p.showStatusLine(position, end, maxPos)
+
+			// Get next action from user
+			action := p.getKeyPress()
+			
+			// Clear status line before showing next content
+			p.clearLine()
+			fmt.Fprintln(p.output)
+
+			switch action {
+			case actionQuit:
+				return nil
+			case actionPageDown:
+				position = end
+			case actionLineDown:
+				if position < maxPos-p.pageSize {
+					position++
+				} else {
+					// Can't scroll down further, treat as page down
+					position = end
+				}
+			case actionLineUp:
+				if position > 0 {
+					position--
+				}
+				// If can't scroll up, just stay at current position
+			}
+		} else {
+			// Last page, just display and exit
 			fmt.Fprintln(p.output)
 			break
 		}
-
-		// Show continuation prompt
-		remaining := len(lines) - end
-		if !p.promptContinue(remaining) {
-			fmt.Fprintln(p.output)
-			return nil
-		}
-		fmt.Fprintln(p.output)
 	}
 
 	return nil
 }
 
-// promptContinue shows a continuation prompt and waits for user input.
-// Returns true if user wants to continue, false otherwise.
-func (p *Pager) promptContinue(remainingLines int) bool {
-	// Use dim color for subtle prompt
-	prompt := Dim(fmt.Sprintf("\n--- More (%d lines remaining, press Enter to continue or q to quit) ---", remainingLines))
-	fmt.Fprint(p.output, prompt)
+// Action represents user input action
+type pagerAction int
 
-	// Read single character from stdin
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
+const (
+	actionQuit pagerAction = iota
+	actionPageDown
+	actionLineUp
+	actionLineDown
+)
+
+// clearLine clears the current line (used to remove status line).
+func (p *Pager) clearLine() {
+	// ANSI escape code to move cursor to start of line and clear it
+	fmt.Fprint(p.output, "\r\033[K")
+}
+
+// showStatusLine displays the pagination status and controls hint.
+func (p *Pager) showStatusLine(start, end, total int) {
+	percent := (end * 100) / total
+	status := fmt.Sprintf("\n%s [%d-%d/%d %d%%] Space/Enter: page down | ↑↓: scroll | q: quit %s",
+		Dim("───"),
+		start+1,
+		end,
+		total,
+		percent,
+		Dim("───"),
+	)
+	fmt.Fprint(p.output, status)
+}
+
+// getKeyPress reads a single keypress from stdin in raw mode.
+func (p *Pager) getKeyPress() pagerAction {
+	// Get file descriptor for stdin
+	fd := int(os.Stdin.Fd())
+
+	// Save current terminal state
+	oldState, err := term.MakeRaw(fd)
 	if err != nil {
-		return false
+		// Fallback to Enter-only mode if raw mode fails
+		return actionPageDown
+	}
+	defer term.Restore(fd, oldState)
+
+	// Read single key
+	buf := make([]byte, 3)
+	n, err := os.Stdin.Read(buf)
+	if err != nil || n == 0 {
+		return actionPageDown
 	}
 
-	// Check if user wants to quit
-	input = strings.TrimSpace(strings.ToLower(input))
-	if input == "q" || input == "quit" {
-		return false
+	// Handle key presses
+	switch {
+	case buf[0] == 'q' || buf[0] == 'Q':
+		return actionQuit
+	case buf[0] == ' ' || buf[0] == '\r' || buf[0] == '\n':
+		return actionPageDown
+	case n == 3 && buf[0] == 27 && buf[1] == 91:
+		// Arrow key escape sequence: ESC [ [A-D]
+		switch buf[2] {
+		case 65: // Up arrow
+			return actionLineUp
+		case 66: // Down arrow
+			return actionLineDown
+		}
 	}
 
-	return true
+	return actionPageDown
 }
 
 // PageLines is a convenience method for paging a slice of strings.

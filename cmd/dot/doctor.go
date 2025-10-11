@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/jamesainslie/dot/internal/cli/pretty"
 	"github.com/jamesainslie/dot/internal/cli/renderer"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
@@ -74,10 +77,22 @@ func newDoctorCommand() *cobra.Command {
 			return fmt.Errorf("invalid format: %w", err)
 		}
 
-		// Render diagnostics - use succinct output for text format
+		// Render diagnostics - use succinct output for text format with pagination
 		if format == "text" {
-			renderSuccinctDiagnostics(cmd.OutOrStdout(), report)
+			// Render to buffer first to enable pagination
+			var buf bytes.Buffer
+			renderSuccinctDiagnostics(&buf, report)
+			
+			// Use pager for output (auto-detects terminal size)
+			pager := pretty.NewPager(pretty.PagerConfig{
+				PageSize: 0, // 0 = auto-detect from terminal height
+				Output:   cmd.OutOrStdout(),
+			})
+			if err := pager.PageLines(strings.Split(buf.String(), "\n")); err != nil {
+				return fmt.Errorf("failed to display output: %w", err)
+			}
 		} else {
+			// For non-text formats, render directly without pagination
 			if err := r.RenderDiagnostics(cmd.OutOrStdout(), report); err != nil {
 				return fmt.Errorf("render failed: %w", err)
 			}

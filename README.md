@@ -76,12 +76,13 @@ This single command:
 - Creates all symlinks
 - Tracks repository information for updates
 
-With optional bootstrap configuration (`.dotbootstrap.yaml`), you can:
-- Define installation profiles (minimal, full, development)
-- Specify platform-specific packages
-- Set conflict resolution policies
+The repository can include:
+- **Configuration** (`.config/dot/config.yaml`): Repository-specific dot configuration that's automatically used after clone
+- **Bootstrap** (`.dotbootstrap.yaml`): Package selection profiles, platform requirements, and installation policies
 
-See [Bootstrap Configuration Specification](docs/user/bootstrap-config-spec.md) for details.
+**Repository configuration** allows your repository to define how it should be managed without circular dependency. See [Repository Configuration](docs/user/repository-config.md) for details.
+
+**Bootstrap configuration** enables installation profiles and platform-specific package selection. See [Bootstrap Specification](docs/user/bootstrap-config-spec.md) for details.
 
 ### Initial Setup
 

@@ -81,18 +81,26 @@ type CloneOptions struct {
 //  7. Install selected packages via ManageService
 //  8. Update manifest with repository information
 func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOptions) error {
+	s.logger.Info(ctx, "clone_operation_started", "url", repoURL, "package_dir", s.packageDir)
+
 	// Validate package directory
+	s.logger.Debug(ctx, "validating_package_directory", "path", s.packageDir, "force", opts.Force)
 	if err := validatePackageDir(ctx, s.fs, s.packageDir, opts.Force); err != nil {
+		s.logger.Error(ctx, "package_directory_validation_failed", "error", err)
 		return err
 	}
+	s.logger.Debug(ctx, "package_directory_validated")
 
 	// Resolve authentication
+	s.logger.Debug(ctx, "resolving_authentication", "url", repoURL)
 	auth, err := adapters.ResolveAuth(ctx, repoURL)
 	if err != nil {
+		s.logger.Error(ctx, "authentication_resolution_failed", "error", err)
 		return ErrAuthFailed{Cause: err}
 	}
+	s.logger.Debug(ctx, "authentication_resolved", "method", getAuthMethodName(auth))
 
-	s.logger.Info(ctx, "cloning_repository", "url", repoURL, "packageDir", s.packageDir)
+	s.logger.Info(ctx, "cloning_repository", "url", repoURL, "destination", s.packageDir)
 
 	// Clone repository
 	cloneOpts := adapters.CloneOptions{
@@ -101,19 +109,30 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 		Depth:  1, // Shallow clone for faster cloning
 	}
 
+	s.logger.Debug(ctx, "initiating_git_clone", "branch", opts.Branch, "depth", 1)
 	if err := s.cloner.Clone(ctx, repoURL, s.packageDir, cloneOpts); err != nil {
+		s.logger.Error(ctx, "git_clone_failed", "error", err)
 		return ErrCloneFailed{URL: repoURL, Cause: err}
 	}
 
-	s.logger.Info(ctx, "clone_successful", "path", s.packageDir)
+	s.logger.Info(ctx, "repository_cloned_successfully", "path", s.packageDir)
 
 	// Load bootstrap configuration if present
+	s.logger.Debug(ctx, "checking_for_bootstrap_config")
 	bootstrapConfig, hasBootstrap, err := loadBootstrapConfig(ctx, s.fs, s.packageDir)
 	if err != nil {
+		s.logger.Error(ctx, "bootstrap_config_load_failed", "error", err)
 		return err
 	}
 
+	if hasBootstrap {
+		s.logger.Info(ctx, "bootstrap_config_found", "packages", len(bootstrapConfig.Packages), "profiles", len(bootstrapConfig.Profiles))
+	} else {
+		s.logger.Debug(ctx, "no_bootstrap_config_found")
+	}
+
 	// Select packages to install
+	s.logger.Info(ctx, "selecting_packages", "has_bootstrap", hasBootstrap, "profile", opts.Profile, "interactive", opts.Interactive)
 	var packagesToInstall []string
 	if hasBootstrap {
 		packagesToInstall, err = s.selectPackagesWithBootstrap(ctx, bootstrapConfig, opts)
@@ -121,6 +140,7 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 		packagesToInstall, err = s.selectPackagesWithoutBootstrap(ctx, opts)
 	}
 	if err != nil {
+		s.logger.Error(ctx, "package_selection_failed", "error", err)
 		return err
 	}
 
@@ -129,19 +149,23 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 		return nil
 	}
 
-	s.logger.Info(ctx, "installing_packages", "count", len(packagesToInstall), "packages", packagesToInstall)
+	s.logger.Info(ctx, "packages_selected", "count", len(packagesToInstall), "packages", packagesToInstall)
 
 	// Install packages
 	if s.dryRun {
-		s.logger.Info(ctx, "dry_run_complete", "would_install", packagesToInstall)
+		s.logger.Info(ctx, "dry_run_mode", "would_install", packagesToInstall)
 		return nil
 	}
 
+	s.logger.Info(ctx, "installing_packages", "count", len(packagesToInstall))
 	if err := s.manageSvc.Manage(ctx, packagesToInstall...); err != nil {
+		s.logger.Error(ctx, "package_installation_failed", "error", err)
 		return fmt.Errorf("install packages: %w", err)
 	}
+	s.logger.Info(ctx, "packages_installed_successfully", "count", len(packagesToInstall))
 
 	// Update manifest with repository information
+	s.logger.Debug(ctx, "updating_manifest_with_repository_info")
 	branch := opts.Branch
 	if branch == "" {
 		// Read actual branch from repository HEAD
@@ -149,18 +173,27 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 		if err != nil {
 			// If we can't detect the branch (detached HEAD, IO error, etc.),
 			// fall back to "main" as a sensible default
-			s.logger.Warn(ctx, "failed_to_detect_branch", "error", err)
+			s.logger.Warn(ctx, "failed_to_detect_branch", "error", err, "fallback", "main")
 			branch = "main"
 		} else {
+			s.logger.Debug(ctx, "detected_branch", "branch", detectedBranch)
 			branch = detectedBranch
 		}
 	}
 
-	commitSHA, _ := getCommitSHA(s.packageDir) // Best effort, ignore errors
+	commitSHA, err := getCommitSHA(s.packageDir)
+	if err != nil {
+		s.logger.Debug(ctx, "failed_to_get_commit_sha", "error", err)
+	} else {
+		s.logger.Debug(ctx, "detected_commit_sha", "sha", commitSHA)
+	}
+
 	repoInfo := buildRepositoryInfo(repoURL, branch, commitSHA)
 
 	if err := s.updateManifestRepository(ctx, repoInfo); err != nil {
 		s.logger.Warn(ctx, "failed_to_update_manifest_repository", "error", err)
+	} else {
+		s.logger.Debug(ctx, "manifest_updated_with_repository_info")
 	}
 
 	s.logger.Info(ctx, "clone_complete", "packages_installed", len(packagesToInstall))
@@ -170,51 +203,65 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 // selectPackagesWithBootstrap selects packages using bootstrap configuration.
 func (s *CloneService) selectPackagesWithBootstrap(ctx context.Context, config bootstrap.Config, opts CloneOptions) ([]string, error) {
 	// Filter packages by platform
+	s.logger.Debug(ctx, "filtering_packages_by_platform", "platform", runtime.GOOS, "total_packages", len(config.Packages))
 	filtered := bootstrap.FilterPackagesByPlatform(config.Packages, runtime.GOOS)
 	allPackages := extractPackageNames(filtered)
+	s.logger.Debug(ctx, "platform_filtered_packages", "count", len(allPackages), "packages", allPackages)
 
 	// If profile specified, use it
 	if opts.Profile != "" {
+		s.logger.Info(ctx, "using_specified_profile", "profile", opts.Profile)
 		profilePackages, err := selectPackagesFromProfile(config, opts.Profile)
 		if err != nil {
+			s.logger.Error(ctx, "profile_selection_failed", "profile", opts.Profile, "error", err)
 			return nil, err
 		}
-		// Intersect profile packages with platform-filtered packages
-		return intersectPackages(profilePackages, allPackages), nil
+		result := intersectPackages(profilePackages, allPackages)
+		s.logger.Debug(ctx, "profile_packages_selected", "count", len(result))
+		return result, nil
 	}
 
 	// If interactive flag explicitly set, prompt user
 	if opts.Interactive {
+		s.logger.Info(ctx, "interactive_mode", "available_packages", len(allPackages))
 		return s.selector.Select(ctx, allPackages)
 	}
 
 	// Use default profile if configured
 	if config.Defaults.Profile != "" {
+		s.logger.Info(ctx, "using_default_profile", "profile", config.Defaults.Profile)
 		profilePackages, err := selectPackagesFromProfile(config, config.Defaults.Profile)
 		if err != nil {
+			s.logger.Error(ctx, "default_profile_selection_failed", "profile", config.Defaults.Profile, "error", err)
 			return nil, err
 		}
-		// Intersect profile packages with platform-filtered packages
-		return intersectPackages(profilePackages, allPackages), nil
+		result := intersectPackages(profilePackages, allPackages)
+		s.logger.Debug(ctx, "default_profile_packages_selected", "count", len(result))
+		return result, nil
 	}
 
 	// If terminal is interactive (and no default profile), prompt user
 	if terminal.IsInteractive() {
+		s.logger.Info(ctx, "terminal_interactive_detected", "prompting_user", true)
 		return s.selector.Select(ctx, allPackages)
 	}
 
 	// Install all packages (non-interactive mode with no profile)
+	s.logger.Info(ctx, "non_interactive_mode", "installing_all_packages", len(allPackages))
 	return allPackages, nil
 }
 
 // selectPackagesWithoutBootstrap selects packages when no bootstrap config exists.
 func (s *CloneService) selectPackagesWithoutBootstrap(ctx context.Context, opts CloneOptions) ([]string, error) {
 	// Discover packages in directory
+	s.logger.Debug(ctx, "discovering_packages", "directory", s.packageDir)
 	packages, err := discoverPackages(ctx, s.fs, s.packageDir)
 	if err != nil {
+		s.logger.Error(ctx, "package_discovery_failed", "error", err)
 		return nil, fmt.Errorf("discover packages: %w", err)
 	}
 
+	s.logger.Debug(ctx, "packages_discovered", "count", len(packages), "packages", packages)
 	if len(packages) == 0 {
 		s.logger.Warn(ctx, "no_packages_found", "packageDir", s.packageDir)
 		return []string{}, nil
@@ -222,10 +269,12 @@ func (s *CloneService) selectPackagesWithoutBootstrap(ctx context.Context, opts 
 
 	// If interactive flag or terminal is interactive, prompt user
 	if opts.Interactive || terminal.IsInteractive() {
+		s.logger.Info(ctx, "interactive_selection", "available_packages", len(packages))
 		return s.selector.Select(ctx, packages)
 	}
 
 	// Install all discovered packages
+	s.logger.Info(ctx, "auto_selecting_all_packages", "count", len(packages))
 	return packages, nil
 }
 
@@ -443,4 +492,22 @@ func getCommitSHA(repoPath string) (string, error) {
 	}
 
 	return headRef[:40], nil
+}
+
+// getAuthMethodName returns a human-readable name for the authentication method.
+func getAuthMethodName(auth adapters.AuthMethod) string {
+	if auth == nil {
+		return "none"
+	}
+
+	switch auth.(type) {
+	case adapters.NoAuth:
+		return "none"
+	case adapters.TokenAuth:
+		return "token"
+	case adapters.SSHAuth:
+		return "ssh"
+	default:
+		return "unknown"
+	}
 }

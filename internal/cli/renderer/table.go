@@ -3,8 +3,8 @@ package renderer
 import (
 	"fmt"
 	"io"
-	"strings"
 
+	"github.com/jamesainslie/dot/internal/cli/pretty"
 	"github.com/jamesainslie/dot/internal/domain"
 	"github.com/jamesainslie/dot/pkg/dot"
 )
@@ -23,67 +23,28 @@ func (r *TableRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 		return nil
 	}
 
-	// Build table
-	headers := []string{"Package", "Links", "Installed"}
-	rows := make([][]string, 0, len(status.Packages))
+	// Create table with Light style for clean, professional look
+	table := pretty.NewTableWriter(pretty.StyleLight, pretty.TableConfig{
+		ColorEnabled: r.colorize,
+		AutoWrap:     true,
+		MaxWidth:     0, // Auto-detect terminal width
+	})
 
+	// Set header
+	table.SetHeader("Package", "Links", "Installed")
+
+	// Add rows
 	for _, pkg := range status.Packages {
-		row := []string{
+		table.AppendRow(
 			pkg.Name,
 			fmt.Sprintf("%d", pkg.LinkCount),
 			formatDuration(pkg.InstalledAt),
-		}
-		rows = append(rows, row)
+		)
 	}
 
-	return r.renderTable(w, headers, rows)
-}
-
-func (r *TableRenderer) renderTable(w io.Writer, headers []string, rows [][]string) error {
-	// Calculate column widths
-	widths := make([]int, len(headers))
-	for i, h := range headers {
-		widths[i] = len(h)
-	}
-	for _, row := range rows {
-		for i, cell := range row {
-			if i < len(widths) && len(cell) > widths[i] {
-				widths[i] = len(cell)
-			}
-		}
-	}
-
-	// Render header
-	r.renderRow(w, headers, widths, true)
-	r.renderSeparator(w, widths)
-
-	// Render rows
-	for _, row := range rows {
-		r.renderRow(w, row, widths, false)
-	}
-
+	// Render
+	table.Render(w)
 	return nil
-}
-
-func (r *TableRenderer) renderRow(w io.Writer, cells []string, widths []int, header bool) {
-	parts := make([]string, len(cells))
-	for i, cell := range cells {
-		width := widths[i]
-		if header && r.colorize {
-			parts[i] = fmt.Sprintf("%s%-*s%s", r.scheme.Info, width, cell, r.resetColor())
-		} else {
-			parts[i] = fmt.Sprintf("%-*s", width, cell)
-		}
-	}
-	fmt.Fprintf(w, "  %s  \n", strings.Join(parts, "  "))
-}
-
-func (r *TableRenderer) renderSeparator(w io.Writer, widths []int) {
-	parts := make([]string, len(widths))
-	for i, width := range widths {
-		parts[i] = strings.Repeat("-", width)
-	}
-	fmt.Fprintf(w, "  %s  \n", strings.Join(parts, "  "))
 }
 
 func (r *TableRenderer) resetColor() string {
@@ -118,25 +79,30 @@ func (r *TableRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticRepo
 		return nil
 	}
 
-	headers := []string{"#", "Severity", "Type", "Path", "Message"}
-	rows := make([][]string, 0, len(report.Issues))
+	// Create table with Light style
+	table := pretty.NewTableWriter(pretty.StyleLight, pretty.TableConfig{
+		ColorEnabled: r.colorize,
+		AutoWrap:     true,
+		MaxWidth:     0, // Auto-detect terminal width
+	})
 
+	// Set header
+	table.SetHeader("#", "Severity", "Type", "Path", "Message")
+
+	// Add rows
 	for i, issue := range report.Issues {
-		pathDisplay := issue.Path
-		if len(pathDisplay) > 30 {
-			pathDisplay = pathDisplay[:27] + "..."
-		}
-
-		rows = append(rows, []string{
+		table.AppendRow(
 			fmt.Sprintf("%d", i+1),
 			issue.Severity.String(),
 			issue.Type.String(),
-			pathDisplay,
+			issue.Path, // Let TableWriter handle truncation/wrapping
 			issue.Message,
-		})
+		)
 	}
 
-	return r.renderTable(w, headers, rows)
+	// Render
+	table.Render(w)
+	return nil
 }
 
 func (r *TableRenderer) colorText(color string) string {
@@ -208,29 +174,30 @@ func (r *TableRenderer) RenderPlan(w io.Writer, plan domain.Plan) error {
 		return nil
 	}
 
-	// Build table of operations
-	headers := []string{"#", "Action", "Type", "Details"}
-	rows := make([][]string, 0, len(plan.Operations))
+	// Create table with Light style
+	table := pretty.NewTableWriter(pretty.StyleLight, pretty.TableConfig{
+		ColorEnabled: r.colorize,
+		AutoWrap:     true,
+		MaxWidth:     0, // Auto-detect terminal width
+	})
 
+	// Set header
+	table.SetHeader("#", "Action", "Type", "Details")
+
+	// Add rows
 	for i, op := range plan.Operations {
 		display := formatOperationForTable(op)
 
-		// Truncate details if too long
-		if len(display.Details) > 60 {
-			display.Details = display.Details[:57] + "..."
-		}
-
-		rows = append(rows, []string{
+		table.AppendRow(
 			fmt.Sprintf("%d", i+1),
 			display.Action,
 			display.Type,
-			display.Details,
-		})
+			display.Details, // Let TableWriter handle truncation/wrapping
+		)
 	}
 
-	if err := r.renderTable(w, headers, rows); err != nil {
-		return err
-	}
+	// Render
+	table.Render(w)
 
 	// Summary
 	fmt.Fprintln(w)

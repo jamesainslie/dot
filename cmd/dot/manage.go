@@ -56,7 +56,8 @@ func runManage(cmd *cobra.Command, args []string) error {
 		}
 
 		// Create renderer and render the plan
-		rend, err := renderer.NewRenderer("text", true)
+		// TODO: Get table_style from config
+		rend, err := renderer.NewRenderer("text", true, "")
 		if err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 			return err

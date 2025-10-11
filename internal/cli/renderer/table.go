@@ -3,6 +3,7 @@ package renderer
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/jamesainslie/dot/internal/cli/pretty"
 	"github.com/jamesainslie/dot/internal/domain"
@@ -11,9 +12,10 @@ import (
 
 // TableRenderer renders output as tables.
 type TableRenderer struct {
-	colorize bool
-	scheme   ColorScheme
-	width    int
+	colorize   bool
+	scheme     ColorScheme
+	width      int
+	tableStyle string // "default" = modern borders, "simple" = legacy plain text
 }
 
 // RenderStatus renders installation status as a table.
@@ -21,6 +23,11 @@ func (r *TableRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 	if len(status.Packages) == 0 {
 		fmt.Fprintln(w, "No packages installed")
 		return nil
+	}
+
+	// Use legacy simple rendering if configured
+	if r.tableStyle == "simple" {
+		return r.renderStatusSimple(w, status)
 	}
 
 	// Create table with Light style for clean, professional look
@@ -47,11 +54,78 @@ func (r *TableRenderer) RenderStatus(w io.Writer, status dot.Status) error {
 	return nil
 }
 
+// renderStatusSimple renders status using legacy plain text format.
+func (r *TableRenderer) renderStatusSimple(w io.Writer, status dot.Status) error {
+	headers := []string{"Package", "Links", "Installed"}
+	rows := make([][]string, 0, len(status.Packages))
+
+	for _, pkg := range status.Packages {
+		row := []string{
+			pkg.Name,
+			fmt.Sprintf("%d", pkg.LinkCount),
+			formatDuration(pkg.InstalledAt),
+		}
+		rows = append(rows, row)
+	}
+
+	return r.renderTableSimple(w, headers, rows)
+}
+
 func (r *TableRenderer) resetColor() string {
 	if r.colorize {
 		return "\033[0m"
 	}
 	return ""
+}
+
+// renderTableSimple renders a simple table with plain text formatting (legacy style).
+func (r *TableRenderer) renderTableSimple(w io.Writer, headers []string, rows [][]string) error {
+	// Calculate column widths
+	widths := make([]int, len(headers))
+	for i, h := range headers {
+		widths[i] = len(h)
+	}
+	for _, row := range rows {
+		for i, cell := range row {
+			if i < len(widths) && len(cell) > widths[i] {
+				widths[i] = len(cell)
+			}
+		}
+	}
+
+	// Render header
+	r.renderRowSimple(w, headers, widths, true)
+	r.renderSeparatorSimple(w, widths)
+
+	// Render rows
+	for _, row := range rows {
+		r.renderRowSimple(w, row, widths, false)
+	}
+
+	return nil
+}
+
+// renderRowSimple renders a single row with simple formatting.
+func (r *TableRenderer) renderRowSimple(w io.Writer, cells []string, widths []int, header bool) {
+	parts := make([]string, len(cells))
+	for i, cell := range cells {
+		width := widths[i]
+		if header && r.colorize {
+			parts[i] = fmt.Sprintf("%s%-*s%s", r.scheme.Info, width, cell, r.resetColor())
+		} else {
+			parts[i] = fmt.Sprintf("%-*s", width, cell)
+		}
+	}
+	fmt.Fprintf(w, "  %s  \n", strings.Join(parts, "  "))
+}
+
+// renderSeparatorSimple renders a separator line with simple formatting.
+func (r *TableRenderer) renderSeparatorSimple(w io.Writer, widths []int) {
+	parts := make([]string, len(widths))
+	for i, width := range widths {
+		parts[i] = strings.Repeat("-", width)
+	}
+	fmt.Fprintf(w, "  %s  \n", strings.Join(parts, "  "))
 }
 
 // RenderDiagnostics renders diagnostic report as a table.
@@ -79,6 +153,11 @@ func (r *TableRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticRepo
 		return nil
 	}
 
+	// Use legacy simple rendering if configured
+	if r.tableStyle == "simple" {
+		return r.renderDiagnosticsSimple(w, report.Issues)
+	}
+
 	// Create table with Light style
 	table := pretty.NewTableWriter(pretty.StyleLight, pretty.TableConfig{
 		ColorEnabled: r.colorize,
@@ -103,6 +182,29 @@ func (r *TableRenderer) RenderDiagnostics(w io.Writer, report dot.DiagnosticRepo
 	// Render
 	table.Render(w)
 	return nil
+}
+
+// renderDiagnosticsSimple renders diagnostics issues using legacy plain text format.
+func (r *TableRenderer) renderDiagnosticsSimple(w io.Writer, issues []dot.Issue) error {
+	headers := []string{"#", "Severity", "Type", "Path", "Message"}
+	rows := make([][]string, 0, len(issues))
+
+	for i, issue := range issues {
+		pathDisplay := issue.Path
+		if len(pathDisplay) > 30 {
+			pathDisplay = pathDisplay[:27] + "..."
+		}
+
+		rows = append(rows, []string{
+			fmt.Sprintf("%d", i+1),
+			issue.Severity.String(),
+			issue.Type.String(),
+			pathDisplay,
+			issue.Message,
+		})
+	}
+
+	return r.renderTableSimple(w, headers, rows)
 }
 
 func (r *TableRenderer) colorText(color string) string {
@@ -174,30 +276,37 @@ func (r *TableRenderer) RenderPlan(w io.Writer, plan domain.Plan) error {
 		return nil
 	}
 
-	// Create table with Light style
-	table := pretty.NewTableWriter(pretty.StyleLight, pretty.TableConfig{
-		ColorEnabled: r.colorize,
-		AutoWrap:     true,
-		MaxWidth:     0, // Auto-detect terminal width
-	})
+	// Use legacy simple rendering if configured
+	if r.tableStyle == "simple" {
+		if err := r.renderPlanSimple(w, plan.Operations); err != nil {
+			return err
+		}
+	} else {
+		// Create table with Light style
+		table := pretty.NewTableWriter(pretty.StyleLight, pretty.TableConfig{
+			ColorEnabled: r.colorize,
+			AutoWrap:     true,
+			MaxWidth:     0, // Auto-detect terminal width
+		})
 
-	// Set header
-	table.SetHeader("#", "Action", "Type", "Details")
+		// Set header
+		table.SetHeader("#", "Action", "Type", "Details")
 
-	// Add rows
-	for i, op := range plan.Operations {
-		display := formatOperationForTable(op)
+		// Add rows
+		for i, op := range plan.Operations {
+			display := formatOperationForTable(op)
 
-		table.AppendRow(
-			fmt.Sprintf("%d", i+1),
-			display.Action,
-			display.Type,
-			display.Details, // Let TableWriter handle truncation/wrapping
-		)
+			table.AppendRow(
+				fmt.Sprintf("%d", i+1),
+				display.Action,
+				display.Type,
+				display.Details, // Let TableWriter handle truncation/wrapping
+			)
+		}
+
+		// Render
+		table.Render(w)
 	}
-
-	// Render
-	table.Render(w)
 
 	// Summary
 	fmt.Fprintln(w)
@@ -233,4 +342,29 @@ func (r *TableRenderer) RenderPlan(w io.Writer, plan domain.Plan) error {
 	fmt.Fprintf(w, "  Conflicts: %d\n", len(plan.Metadata.Conflicts))
 
 	return nil
+}
+
+// renderPlanSimple renders execution plan using legacy plain text format.
+func (r *TableRenderer) renderPlanSimple(w io.Writer, operations []domain.Operation) error {
+	headers := []string{"#", "Action", "Type", "Details"}
+	rows := make([][]string, 0, len(operations))
+
+	for i, op := range operations {
+		display := formatOperationForTable(op)
+
+		// Truncate details if too long
+		details := display.Details
+		if len(details) > 60 {
+			details = details[:57] + "..."
+		}
+
+		rows = append(rows, []string{
+			fmt.Sprintf("%d", i+1),
+			display.Action,
+			display.Type,
+			details,
+		})
+	}
+
+	return r.renderTableSimple(w, headers, rows)
 }

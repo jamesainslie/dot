@@ -47,12 +47,19 @@ func DefaultColorScheme() ColorScheme {
 }
 
 // NewRenderer creates a new renderer based on the specified format.
-func NewRenderer(format string, colorize bool) (Renderer, error) {
+// tableStyle should be "default" (modern with borders) or "simple" (legacy plain text).
+// If empty, defaults to "default".
+func NewRenderer(format string, colorize bool, tableStyle string) (Renderer, error) {
 	width := getTerminalWidth()
 	scheme := DefaultColorScheme()
 
 	if !colorize {
 		scheme = ColorScheme{} // Disable colors
+	}
+
+	// Default tableStyle if not specified
+	if tableStyle == "" {
+		tableStyle = "default"
 	}
 
 	switch format {
@@ -73,9 +80,10 @@ func NewRenderer(format string, colorize bool) (Renderer, error) {
 		}, nil
 	case "table":
 		return &TableRenderer{
-			colorize: colorize,
-			scheme:   scheme,
-			width:    width,
+			colorize:   colorize,
+			scheme:     scheme,
+			width:      width,
+			tableStyle: tableStyle,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown format: %s (supported: text, json, yaml, table)", format)

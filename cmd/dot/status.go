@@ -40,7 +40,8 @@ func newStatusCommand() *cobra.Command {
 		colorize := shouldColorize(color)
 
 		// Create renderer
-		r, err := renderer.NewRenderer(format, colorize)
+		// TODO: Get table_style from config
+		r, err := renderer.NewRenderer(format, colorize, "")
 		if err != nil {
 			return fmt.Errorf("invalid format: %w", err)
 		}
@@ -97,7 +98,8 @@ The status includes installation timestamp, number of links, and link paths.`,
 			colorize := shouldColorize(color)
 
 			// Create renderer
-			r, err := renderer.NewRenderer(format, colorize)
+			// TODO: Get table_style from config
+			r, err := renderer.NewRenderer(format, colorize, "")
 			if err != nil {
 				return fmt.Errorf("invalid format: %w", err)
 			}

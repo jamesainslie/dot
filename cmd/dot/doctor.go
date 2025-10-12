@@ -82,7 +82,7 @@ func newDoctorCommand() *cobra.Command {
 			// Render to buffer first to enable pagination
 			var buf bytes.Buffer
 			renderSuccinctDiagnostics(&buf, report)
-			
+
 			// Use pager for output (auto-detects terminal size)
 			pager := pretty.NewPager(pretty.PagerConfig{
 				PageSize: 0, // 0 = auto-detect from terminal height

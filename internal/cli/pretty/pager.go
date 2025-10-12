@@ -94,7 +94,7 @@ func (p *Pager) pageInteractive(lines []string) error {
 
 			// Get next action from user
 			action := p.getKeyPress()
-			
+
 			// Clear status line completely (moves cursor back and erases the 2 lines of status)
 			p.clearStatusLine()
 
@@ -138,19 +138,20 @@ const (
 
 // clearStatusLine clears the status line without leaving blank lines.
 func (p *Pager) clearStatusLine() {
-	// Move cursor to beginning of current line (status line), then up 1 line
-	// This positions cursor at the start of the blank line before status
-	fmt.Fprint(p.output, "\r\033[1A")
-	// Clear from cursor to end of screen (removes blank line + status line)
+	// Status line has format: \n\n[status content]
+	// We need to move back and clear all 3 lines (2 newlines + status)
+	// Move cursor to beginning of line, then up 2 lines
+	fmt.Fprint(p.output, "\r\033[2A")
+	// Clear from cursor to end of screen (removes both blank lines + status line)
 	fmt.Fprint(p.output, "\033[J")
-	// Add single newline so next page starts on a new line (no extra blank lines)
+	// Add single newline so next page content continues properly
 	fmt.Fprint(p.output, "\n")
 }
 
 // showStatusLine displays the pagination status and controls hint.
 func (p *Pager) showStatusLine(start, end, total int) {
 	percent := (end * 100) / total
-	status := fmt.Sprintf("\n%s [%d-%d/%d %d%%] Space/Enter: page down | ↑↓: scroll | q: quit %s",
+	status := fmt.Sprintf("\n\n%s [%d-%d/%d %d%%] Space/Enter: page down | ↑↓: scroll | q: quit %s",
 		Dim("───"),
 		start+1,
 		end,

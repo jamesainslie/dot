@@ -81,6 +81,30 @@ func TestColorHelpers(t *testing.T) {
 	})
 }
 
+func TestColorHelpers_WithColors(t *testing.T) {
+	// Save and restore NO_COLOR
+	orig := os.Getenv("NO_COLOR")
+	defer func() {
+		if orig == "" {
+			os.Unsetenv("NO_COLOR")
+		} else {
+			os.Setenv("NO_COLOR", orig)
+		}
+	}()
+
+	os.Unsetenv("NO_COLOR")
+
+	t.Run("bold with colors enabled", func(t *testing.T) {
+		result := bold("test")
+		assert.Contains(t, result, "test")
+	})
+
+	t.Run("colorize with colors enabled", func(t *testing.T) {
+		result := colorize(mutedGreen, "test")
+		assert.Contains(t, result, "test")
+	})
+}
+
 func TestShouldUseColor(t *testing.T) {
 	// Save and restore NO_COLOR
 	orig := os.Getenv("NO_COLOR")

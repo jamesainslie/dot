@@ -1,9 +1,11 @@
 package pretty
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
-	"github.com/jedib0t/go-pretty/v6/list"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // ListStyle defines the visual style for lists.
@@ -18,11 +20,18 @@ const (
 	StyleNumbered
 )
 
-// ListWriter wraps go-pretty list.Writer with consistent styling.
+// ListWriter provides list rendering with lipgloss styling.
 type ListWriter struct {
-	writer list.Writer
-	style  ListStyle
-	config ListConfig
+	items       []listItem
+	style       ListStyle
+	config      ListConfig
+	indentLevel int
+}
+
+// listItem represents a single list item with its indentation level.
+type listItem struct {
+	content string
+	level   int
 }
 
 // ListConfig holds configuration for list rendering.
@@ -43,78 +52,88 @@ func DefaultListConfig() ListConfig {
 
 // NewListWriter creates a new list writer with the given style and config.
 func NewListWriter(style ListStyle, config ListConfig) *ListWriter {
-	l := list.NewWriter()
-
-	// Apply style
-	applyListStyle(l, style, config.ColorEnabled)
-
-	// Set indent
-	if config.Indent > 0 {
-		l.SetStyle(getListStyle(style, config.ColorEnabled, config.Indent))
-	}
-
 	return &ListWriter{
-		writer: l,
-		style:  style,
-		config: config,
+		items:       []listItem{},
+		style:       style,
+		config:      config,
+		indentLevel: 0,
 	}
 }
 
 // AppendItem adds an item to the list.
 func (w *ListWriter) AppendItem(item interface{}) {
-	w.writer.AppendItem(item)
+	w.items = append(w.items, listItem{
+		content: fmt.Sprintf("%v", item),
+		level:   w.indentLevel,
+	})
 }
 
 // AppendItems adds multiple items to the list.
 func (w *ListWriter) AppendItems(items []interface{}) {
-	w.writer.AppendItems(items)
+	for _, item := range items {
+		w.AppendItem(item)
+	}
 }
 
 // Indent increases the indentation level for subsequent items.
 func (w *ListWriter) Indent() {
-	w.writer.Indent()
+	w.indentLevel++
 }
 
 // UnIndent decreases the indentation level.
 func (w *ListWriter) UnIndent() {
-	w.writer.UnIndent()
+	if w.indentLevel > 0 {
+		w.indentLevel--
+	}
 }
 
 // Render outputs the list to the given writer.
 func (w *ListWriter) Render(out io.Writer) {
-	w.writer.SetOutputMirror(out)
-	w.writer.Render()
+	fmt.Fprint(out, w.RenderString())
 }
 
 // RenderString returns the list as a string.
 func (w *ListWriter) RenderString() string {
-	return w.writer.Render()
-}
+	var result strings.Builder
 
-// applyListStyle applies the selected style to the list writer.
-func applyListStyle(l list.Writer, style ListStyle, colorEnabled bool) {
-	l.SetStyle(getListStyle(style, colorEnabled, 2))
-}
-
-// getListStyle returns the appropriate list style.
-func getListStyle(style ListStyle, colorEnabled bool, indent int) list.Style {
-	var baseStyle list.Style
-
-	switch style {
-	case StyleTree:
-		baseStyle = list.StyleConnectedRounded
-	case StyleNumbered:
-		baseStyle = list.StyleDefault
-		// Style numbered doesn't need format customization - uses default numbering
-	default:
-		baseStyle = list.StyleBulletCircle
+	itemStyle := lipgloss.NewStyle()
+	if w.config.ColorEnabled {
+		itemStyle = itemStyle.Foreground(lipgloss.Color("252"))
 	}
 
-	// Customize indentation
-	baseStyle.LinePrefix = ""
+	for i, item := range w.items {
+		// Render indentation
+		indent := strings.Repeat(" ", item.level*w.config.Indent)
+		result.WriteString(indent)
 
-	// Note: Color customization for list items would require direct manipulation
-	// of the list output, which we'll skip for now to keep the API simple
+		// Render prefix based on style
+		prefix := w.getPrefix(item.level, i)
+		result.WriteString(prefix)
 
-	return baseStyle
+		// Render content
+		result.WriteString(itemStyle.Render(item.content))
+		result.WriteString("\n")
+	}
+
+	return result.String()
+}
+
+// getPrefix returns the appropriate prefix for the given item.
+func (w *ListWriter) getPrefix(level, index int) string {
+	prefixStyle := lipgloss.NewStyle()
+	if w.config.ColorEnabled {
+		prefixStyle = prefixStyle.Foreground(lipgloss.Color("240"))
+	}
+
+	switch w.style {
+	case StyleTree:
+		if level == 0 {
+			return prefixStyle.Render("├─ ")
+		}
+		return prefixStyle.Render("├─ ")
+	case StyleNumbered:
+		return prefixStyle.Render(fmt.Sprintf("%d. ", index+1))
+	default: // StyleBullet
+		return prefixStyle.Render("• ")
+	}
 }

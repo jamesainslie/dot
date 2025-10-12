@@ -1,18 +1,34 @@
 package pretty
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
-	"github.com/jedib0t/go-pretty/v6/progress"
+	"github.com/charmbracelet/lipgloss"
 )
 
-// ProgressTracker manages multiple progress indicators using go-pretty.
+// ProgressTracker manages multiple progress indicators using lipgloss.
 type ProgressTracker struct {
-	writer   progress.Writer
-	trackers map[string]*progress.Tracker
-	enabled  bool
+	output      io.Writer
+	trackers    map[string]*tracker
+	enabled     bool
+	ticker      *time.Ticker
+	done        chan bool
+	mu          sync.RWMutex
+	isRendering bool
+}
+
+// tracker represents a single progress tracker.
+type tracker struct {
+	message string
+	current int64
+	total   int64
+	done    bool
+	errored bool
 }
 
 // ProgressConfig holds configuration for progress tracking.
@@ -36,31 +52,12 @@ func DefaultProgressConfig() ProgressConfig {
 
 // NewProgressTracker creates a new progress tracker.
 func NewProgressTracker(config ProgressConfig) *ProgressTracker {
-	if !config.Enabled {
-		return &ProgressTracker{
-			enabled:  false,
-			trackers: make(map[string]*progress.Tracker),
-		}
-	}
-
-	pw := progress.NewWriter()
-	pw.SetOutputWriter(config.Output)
-	pw.SetAutoStop(false)
-	pw.SetTrackerLength(25)
-	pw.SetMessageLength(40)
-	pw.SetNumTrackersExpected(0)
-	pw.SetSortBy(progress.SortByNone)
-	pw.SetStyle(getProgressStyle())
-	pw.SetTrackerPosition(progress.PositionRight)
-	pw.SetUpdateFrequency(config.UpdateFrequency)
-	pw.Style().Visibility.TrackerOverall = false
-	pw.Style().Visibility.Time = true
-	pw.Style().Visibility.Value = true
-
 	return &ProgressTracker{
-		writer:   pw,
-		trackers: make(map[string]*progress.Tracker),
-		enabled:  true,
+		output:      config.Output,
+		trackers:    make(map[string]*tracker),
+		enabled:     config.Enabled,
+		done:        make(chan bool),
+		isRendering: false,
 	}
 }
 
@@ -70,14 +67,16 @@ func (pt *ProgressTracker) Track(id, message string, total int64) {
 		return
 	}
 
-	tracker := &progress.Tracker{
-		Message: message,
-		Total:   total,
-		Units:   progress.UnitsDefault,
-	}
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
 
-	pt.trackers[id] = tracker
-	pt.writer.AppendTracker(tracker)
+	pt.trackers[id] = &tracker{
+		message: message,
+		total:   total,
+		current: 0,
+		done:    false,
+		errored: false,
+	}
 }
 
 // Update updates the progress for a specific tracker.
@@ -86,8 +85,11 @@ func (pt *ProgressTracker) Update(id string, current int64) {
 		return
 	}
 
-	if tracker, ok := pt.trackers[id]; ok {
-		tracker.SetValue(current)
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	if t, ok := pt.trackers[id]; ok {
+		t.current = current
 	}
 }
 
@@ -97,8 +99,11 @@ func (pt *ProgressTracker) UpdateMessage(id, message string) {
 		return
 	}
 
-	if tracker, ok := pt.trackers[id]; ok {
-		tracker.UpdateMessage(message)
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	if t, ok := pt.trackers[id]; ok {
+		t.message = message
 	}
 }
 
@@ -108,8 +113,11 @@ func (pt *ProgressTracker) Increment(id string) {
 		return
 	}
 
-	if tracker, ok := pt.trackers[id]; ok {
-		tracker.Increment(1)
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	if t, ok := pt.trackers[id]; ok {
+		t.current++
 	}
 }
 
@@ -119,8 +127,12 @@ func (pt *ProgressTracker) MarkDone(id string) {
 		return
 	}
 
-	if tracker, ok := pt.trackers[id]; ok {
-		tracker.MarkAsDone()
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	if t, ok := pt.trackers[id]; ok {
+		t.done = true
+		t.current = t.total
 	}
 }
 
@@ -130,8 +142,11 @@ func (pt *ProgressTracker) MarkError(id string) {
 		return
 	}
 
-	if tracker, ok := pt.trackers[id]; ok {
-		tracker.MarkAsErrored()
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	if t, ok := pt.trackers[id]; ok {
+		t.errored = true
 	}
 }
 
@@ -140,7 +155,17 @@ func (pt *ProgressTracker) Start() {
 	if !pt.enabled {
 		return
 	}
-	go pt.writer.Render()
+
+	pt.mu.Lock()
+	if pt.isRendering {
+		pt.mu.Unlock()
+		return
+	}
+	pt.isRendering = true
+	pt.ticker = time.NewTicker(100 * time.Millisecond)
+	pt.mu.Unlock()
+
+	go pt.render()
 }
 
 // Stop stops rendering progress.
@@ -149,62 +174,116 @@ func (pt *ProgressTracker) Stop() {
 		return
 	}
 
-	// Mark any unfinished trackers as done
-	for _, tracker := range pt.trackers {
-		if !tracker.IsDone() {
-			tracker.MarkAsDone()
-		}
+	pt.mu.Lock()
+	if !pt.isRendering {
+		pt.mu.Unlock()
+		return
 	}
+	pt.mu.Unlock()
 
-	// Stop the writer (this will wait for render to finish)
-	pt.writer.Stop()
+	// Signal done
+	pt.done <- true
 
-	// Give a small grace period for goroutines to cleanup
+	// Wait for ticker to stop
 	time.Sleep(50 * time.Millisecond)
+
+	// Final render
+	pt.renderOnce()
 }
 
 // IsActive returns whether the tracker is currently active.
 func (pt *ProgressTracker) IsActive() bool {
-	return pt.enabled && pt.writer.IsRenderInProgress()
+	pt.mu.RLock()
+	defer pt.mu.RUnlock()
+	return pt.enabled && pt.isRendering
 }
 
-// getProgressStyle returns a subtle, professional progress style.
-func getProgressStyle() progress.Style {
-	style := progress.StyleDefault
+// render continuously renders progress updates.
+func (pt *ProgressTracker) render() {
+	for {
+		select {
+		case <-pt.done:
+			pt.mu.Lock()
+			pt.ticker.Stop()
+			pt.isRendering = false
+			pt.mu.Unlock()
+			return
+		case <-pt.ticker.C:
+			pt.renderOnce()
+		}
+	}
+}
 
-	// Use subtle colors
-	colorEnabled := ShouldUseColor()
-	if colorEnabled {
-		// Muted colors for professional look
-		style.Colors = progress.StyleColorsExample
-		style.Colors.Message = style.Colors.Message // Keep default
-		style.Colors.Tracker = style.Colors.Tracker // Keep default
-	} else {
-		// Disable colors
-		style.Colors = progress.StyleColorsDefault
+// renderOnce renders the current state once.
+func (pt *ProgressTracker) renderOnce() {
+	pt.mu.RLock()
+	defer pt.mu.RUnlock()
+
+	if len(pt.trackers) == 0 {
+		return
 	}
 
-	// Customize characters for cleaner look
-	style.Chars.BoxLeft = "["
-	style.Chars.BoxRight = "]"
-	style.Chars.Finished = "="
-	style.Chars.Unfinished = " "
+	// Clear previous lines (simple approach)
+	fmt.Fprint(pt.output, "\r")
 
-	// Options for better UX
-	style.Options.DoneString = "Done"
-	style.Options.ErrorString = "Failed"
-	style.Options.PercentFormat = "%5.1f%%"
-	style.Options.Separator = " "
-	style.Options.SpeedPosition = progress.PositionRight
+	for _, t := range pt.trackers {
+		line := pt.renderTracker(t)
+		fmt.Fprintln(pt.output, line)
+	}
 
-	// Visibility settings
-	style.Visibility.ETA = true
-	style.Visibility.Percentage = true
-	style.Visibility.Speed = false
-	style.Visibility.SpeedOverall = false
-	style.Visibility.Time = false
-	style.Visibility.TrackerOverall = false
-	style.Visibility.Value = true
+	// Move cursor up to overwrite next time
+	if len(pt.trackers) > 0 {
+		fmt.Fprintf(pt.output, "\033[%dA", len(pt.trackers))
+	}
+}
 
-	return style
+// renderTracker renders a single tracker.
+func (pt *ProgressTracker) renderTracker(t *tracker) string {
+	var result strings.Builder
+
+	// Message
+	msgStyle := lipgloss.NewStyle()
+	if ShouldUseColor() {
+		msgStyle = msgStyle.Foreground(lipgloss.Color("252"))
+	}
+	result.WriteString(msgStyle.Width(40).Render(Truncate(t.message, 40)))
+	result.WriteString(" ")
+
+	// Progress bar
+	barWidth := 25
+	var pct float64
+	if t.total > 0 {
+		pct = float64(t.current) / float64(t.total)
+	}
+	filled := int(pct * float64(barWidth))
+
+	barStyle := lipgloss.NewStyle()
+	if ShouldUseColor() {
+		if t.errored {
+			barStyle = barStyle.Foreground(lipgloss.Color("167"))
+		} else if t.done {
+			barStyle = barStyle.Foreground(lipgloss.Color("71"))
+		} else {
+			barStyle = barStyle.Foreground(lipgloss.Color("110"))
+		}
+	}
+
+	result.WriteString("[")
+	result.WriteString(barStyle.Render(strings.Repeat("=", filled)))
+	result.WriteString(strings.Repeat(" ", barWidth-filled))
+	result.WriteString("]")
+
+	// Percentage
+	result.WriteString(fmt.Sprintf(" %5.1f%% ", pct*100))
+
+	// Status
+	if t.errored {
+		result.WriteString(Error("Failed"))
+	} else if t.done {
+		result.WriteString(Success("Done"))
+	} else {
+		result.WriteString(fmt.Sprintf("%d/%d", t.current, t.total))
+	}
+
+	return result.String()
 }

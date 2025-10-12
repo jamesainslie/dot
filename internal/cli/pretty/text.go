@@ -1,28 +1,30 @@
 package pretty
 
 import (
-	"fmt"
 	"strings"
+	"unicode/utf8"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/charmbracelet/lipgloss"
 )
 
-// Color palette using 256-color codes for subtle, professional output.
-const (
+// Define lipgloss styles for consistent, professional output.
+var (
 	// Muted green for success states
-	colorSuccess = "\033[38;5;71m"
+	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("71"))
 	// Muted gold for warnings
-	colorWarning = "\033[38;5;179m"
+	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("179"))
 	// Muted red for errors
-	colorError = "\033[38;5;167m"
+	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("167"))
 	// Muted blue for informational messages
-	colorInfo = "\033[38;5;110m"
+	infoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("110"))
 	// Muted cyan for accents
-	colorAccent = "\033[38;5;109m"
+	accentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("109"))
 	// Gray for dimmed text
-	colorDim = "\033[38;5;245m"
-	// Reset to default
-	colorReset = "\033[0m"
+	dimStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	// Bold style
+	boldStyle = lipgloss.NewStyle().Bold(true)
+	// Underline style
+	underlineStyle = lipgloss.NewStyle().Underline(true)
 )
 
 // Success colors text in muted green.
@@ -30,7 +32,7 @@ func Success(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return colorSuccess + s + colorReset
+	return successStyle.Render(s)
 }
 
 // Warning colors text in muted gold.
@@ -38,7 +40,7 @@ func Warning(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return colorWarning + s + colorReset
+	return warningStyle.Render(s)
 }
 
 // Error colors text in muted red.
@@ -46,7 +48,7 @@ func Error(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return colorError + s + colorReset
+	return errorStyle.Render(s)
 }
 
 // Info colors text in muted blue.
@@ -54,7 +56,7 @@ func Info(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return colorInfo + s + colorReset
+	return infoStyle.Render(s)
 }
 
 // Accent colors text in muted cyan.
@@ -62,7 +64,7 @@ func Accent(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return colorAccent + s + colorReset
+	return accentStyle.Render(s)
 }
 
 // Dim colors text in gray.
@@ -70,7 +72,7 @@ func Dim(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return colorDim + s + colorReset
+	return dimStyle.Render(s)
 }
 
 // Bold makes text bold.
@@ -78,7 +80,7 @@ func Bold(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return text.Bold.Sprint(s)
+	return boldStyle.Render(s)
 }
 
 // Underline underlines text.
@@ -86,56 +88,84 @@ func Underline(s string) string {
 	if !ShouldUseColor() {
 		return s
 	}
-	return text.Underline.Sprint(s)
+	return underlineStyle.Render(s)
 }
 
 // Truncate shortens text to maxLen, adding ellipsis if needed.
 func Truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	if utf8.RuneCountInString(s) <= maxLen {
 		return s
 	}
 	if maxLen <= 3 {
-		return s[:maxLen]
+		runes := []rune(s)
+		if len(runes) > maxLen {
+			return string(runes[:maxLen])
+		}
+		return s
 	}
-	return s[:maxLen-3] + "..."
+	runes := []rune(s)
+	return string(runes[:maxLen-3]) + "..."
 }
 
 // AlignLeft pads string to width with spaces on the right.
 func AlignLeft(s string, width int) string {
-	return text.AlignLeft.Apply(s, width)
+	return lipgloss.NewStyle().Width(width).Align(lipgloss.Left).Render(s)
 }
 
 // AlignRight pads string to width with spaces on the left.
 func AlignRight(s string, width int) string {
-	return text.AlignRight.Apply(s, width)
+	return lipgloss.NewStyle().Width(width).Align(lipgloss.Right).Render(s)
 }
 
 // AlignCenter centers string within width.
 func AlignCenter(s string, width int) string {
-	return text.AlignCenter.Apply(s, width)
+	return lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(s)
 }
 
 // WrapText wraps text to specified width.
 func WrapText(s string, width int) string {
-	return text.WrapText(s, width)
+	if width <= 0 {
+		return s
+	}
+
+	var result strings.Builder
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return s
+	}
+
+	currentLine := words[0]
+	for _, word := range words[1:] {
+		if utf8.RuneCountInString(currentLine)+utf8.RuneCountInString(word)+1 <= width {
+			currentLine += " " + word
+		} else {
+			result.WriteString(currentLine)
+			result.WriteString("\n")
+			currentLine = word
+		}
+	}
+	result.WriteString(currentLine)
+	return result.String()
 }
 
 // Box draws a simple box around text with optional title.
 func Box(content string, title string) string {
-	if title == "" {
-		return fmt.Sprintf("┌─────────────────────────────────────────┐\n%s\n└─────────────────────────────────────────┘", content)
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(0, 1)
+
+	if title != "" {
+		boxStyle = boxStyle.BorderTop(true).BorderBottom(true).BorderLeft(true).BorderRight(true)
+		return lipgloss.JoinVertical(lipgloss.Left,
+			boxStyle.Copy().BorderBottom(false).Render(title),
+			boxStyle.Copy().BorderTop(false).Render(content),
+		)
 	}
-	return fmt.Sprintf("┌─ %s ──────────────────────────────────┐\n%s\n└─────────────────────────────────────────┘", title, content)
+
+	return boxStyle.Render(content)
 }
 
 // Indent adds leading spaces to each line.
 func Indent(s string, spaces int) string {
-	prefix := strings.Repeat(" ", spaces)
-	lines := strings.Split(s, "\n")
-	for i, line := range lines {
-		if len(line) > 0 {
-			lines[i] = prefix + line
-		}
-	}
-	return strings.Join(lines, "\n")
+	return lipgloss.NewStyle().PaddingLeft(spaces).Render(s)
 }

@@ -226,3 +226,37 @@ func TestListWriter_MultipleIndentLevels(t *testing.T) {
 	assert.Contains(t, output, "Level 1-B")
 	assert.Contains(t, output, "Back to Level 0")
 }
+
+func TestListWriter_getPrefix(t *testing.T) {
+	t.Run("bullet style", func(t *testing.T) {
+		config := DefaultListConfig()
+		lw := NewListWriter(StyleBullet, config)
+		prefix := lw.getPrefix(0, 0)
+		assert.Equal(t, "• ", prefix)
+	})
+
+	t.Run("tree style", func(t *testing.T) {
+		config := DefaultListConfig()
+		lw := NewListWriter(StyleTree, config)
+		prefix := lw.getPrefix(0, 0)
+		assert.Equal(t, "├─ ", prefix)
+	})
+
+	t.Run("numbered style", func(t *testing.T) {
+		config := DefaultListConfig()
+		lw := NewListWriter(StyleNumbered, config)
+		prefix := lw.getPrefix(0, 5)
+		assert.Equal(t, "6. ", prefix)
+	})
+}
+
+func TestListWriter_Render_EmptyWriter(t *testing.T) {
+	config := DefaultListConfig()
+	lw := NewListWriter(StyleBullet, config)
+
+	var buf bytes.Buffer
+	lw.Render(&buf)
+
+	// Empty list should produce no output
+	assert.Empty(t, buf.String())
+}

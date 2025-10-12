@@ -28,7 +28,7 @@ func TestNewProgressTracker(t *testing.T) {
 		pt := NewProgressTracker(config)
 		require.NotNil(t, pt)
 		assert.True(t, pt.enabled)
-		assert.NotNil(t, pt.writer)
+		assert.NotNil(t, pt.output)
 		assert.NotNil(t, pt.trackers)
 	})
 
@@ -57,7 +57,7 @@ func TestProgressTracker_Track(t *testing.T) {
 	pt.Track("test1", "Processing files", 100)
 
 	assert.Contains(t, pt.trackers, "test1")
-	assert.Equal(t, int64(100), pt.trackers["test1"].Total)
+	assert.Equal(t, int64(100), pt.trackers["test1"].total)
 }
 
 func TestProgressTracker_Update(t *testing.T) {
@@ -74,7 +74,7 @@ func TestProgressTracker_Update(t *testing.T) {
 	pt.Update("test", 50)
 
 	// Value should be updated
-	assert.Equal(t, int64(50), pt.trackers["test"].Value())
+	assert.Equal(t, int64(50), pt.trackers["test"].current)
 }
 
 func TestProgressTracker_UpdateMessage(t *testing.T) {
@@ -108,7 +108,7 @@ func TestProgressTracker_Increment(t *testing.T) {
 	pt.Increment("test")
 	pt.Increment("test")
 
-	assert.Equal(t, int64(2), pt.trackers["test"].Value())
+	assert.Equal(t, int64(2), pt.trackers["test"].current)
 }
 
 func TestProgressTracker_MarkDone(t *testing.T) {
@@ -124,7 +124,7 @@ func TestProgressTracker_MarkDone(t *testing.T) {
 
 	pt.MarkDone("test")
 
-	assert.True(t, pt.trackers["test"].IsDone())
+	assert.True(t, pt.trackers["test"].done)
 }
 
 func TestProgressTracker_MarkError(t *testing.T) {
@@ -198,9 +198,9 @@ func TestProgressTracker_MultipleTrackers(t *testing.T) {
 	pt.Update("task3", 25)
 
 	// Verify values are updated correctly
-	assert.Equal(t, int64(50), pt.trackers["task1"].Value())
-	assert.Equal(t, int64(100), pt.trackers["task2"].Value())
-	assert.Equal(t, int64(25), pt.trackers["task3"].Value())
+	assert.Equal(t, int64(50), pt.trackers["task1"].current)
+	assert.Equal(t, int64(100), pt.trackers["task2"].current)
+	assert.Equal(t, int64(25), pt.trackers["task3"].current)
 }
 
 func TestProgressTracker_DisabledDoesNothing(t *testing.T) {
@@ -272,14 +272,9 @@ func TestProgressTracker_IsActive(t *testing.T) {
 }
 
 func TestGetProgressStyle(t *testing.T) {
-	style := getProgressStyle()
-
-	// Verify style has expected properties
-	assert.NotEmpty(t, style.Chars.BoxLeft)
-	assert.NotEmpty(t, style.Chars.BoxRight)
-	assert.NotEmpty(t, style.Chars.Finished)
-	assert.NotEmpty(t, style.Options.DoneString)
-	assert.NotEmpty(t, style.Options.ErrorString)
+	// Test removed - getProgressStyle no longer exists in lipgloss implementation
+	// Progress bar rendering is handled internally by renderTracker
+	t.Skip("getProgressStyle removed in lipgloss implementation")
 }
 
 func TestProgressTracker_CompleteWorkflow(t *testing.T) {
@@ -316,7 +311,7 @@ func TestProgressTracker_CompleteWorkflow(t *testing.T) {
 	pt.MarkDone("upload")
 
 	// Verify all trackers are done
-	assert.True(t, pt.trackers["download"].IsDone())
-	assert.True(t, pt.trackers["process"].IsDone())
-	assert.True(t, pt.trackers["upload"].IsDone())
+	assert.True(t, pt.trackers["download"].done)
+	assert.True(t, pt.trackers["process"].done)
+	assert.True(t, pt.trackers["upload"].done)
 }

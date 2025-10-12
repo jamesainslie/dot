@@ -9,44 +9,115 @@ import (
 )
 
 func TestSuccess(t *testing.T) {
-	result := Success("test")
-	// Should contain "test" regardless of color
-	assert.Contains(t, result, "test")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Success("test")
+		assert.Contains(t, result, "test")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Success("test")
+		assert.Equal(t, "test", result)
+	})
 }
 
 func TestWarning(t *testing.T) {
-	result := Warning("warning")
-	assert.Contains(t, result, "warning")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Warning("warning")
+		assert.Contains(t, result, "warning")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Warning("warning")
+		assert.Equal(t, "warning", result)
+	})
 }
 
 func TestError(t *testing.T) {
-	result := Error("error")
-	assert.Contains(t, result, "error")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Error("error")
+		assert.Contains(t, result, "error")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Error("error")
+		assert.Equal(t, "error", result)
+	})
 }
 
 func TestInfo(t *testing.T) {
-	result := Info("info")
-	assert.Contains(t, result, "info")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Info("info")
+		assert.Contains(t, result, "info")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Info("info")
+		assert.Equal(t, "info", result)
+	})
 }
 
 func TestAccent(t *testing.T) {
-	result := Accent("accent")
-	assert.Contains(t, result, "accent")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Accent("accent")
+		assert.Contains(t, result, "accent")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Accent("accent")
+		assert.Equal(t, "accent", result)
+	})
 }
 
 func TestDim(t *testing.T) {
-	result := Dim("dim")
-	assert.Contains(t, result, "dim")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Dim("dim")
+		assert.Contains(t, result, "dim")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Dim("dim")
+		assert.Equal(t, "dim", result)
+	})
 }
 
 func TestBold(t *testing.T) {
-	result := Bold("bold")
-	assert.Contains(t, result, "bold")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Bold("bold")
+		assert.Contains(t, result, "bold")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Bold("bold")
+		assert.Equal(t, "bold", result)
+	})
 }
 
 func TestUnderline(t *testing.T) {
-	result := Underline("underline")
-	assert.Contains(t, result, "underline")
+	t.Run("with_colors", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		result := Underline("underline")
+		assert.Contains(t, result, "underline")
+	})
+	t.Run("without_colors", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		defer os.Unsetenv("NO_COLOR")
+		result := Underline("underline")
+		assert.Equal(t, "underline", result)
+	})
 }
 
 func TestColorFunctionsWithNO_COLOR(t *testing.T) {
@@ -162,16 +233,18 @@ func TestBox(t *testing.T) {
 	t.Run("without title", func(t *testing.T) {
 		result := Box("content", "")
 		assert.Contains(t, result, "content")
-		assert.Contains(t, result, "┌")
-		assert.Contains(t, result, "└")
+		// lipgloss uses rounded borders: ╭ and ╰
+		assert.True(t, strings.Contains(result, "╭") || strings.Contains(result, "┌"), "Should contain top border")
+		assert.True(t, strings.Contains(result, "╰") || strings.Contains(result, "└"), "Should contain bottom border")
 	})
 
 	t.Run("with title", func(t *testing.T) {
 		result := Box("content", "Title")
 		assert.Contains(t, result, "content")
 		assert.Contains(t, result, "Title")
-		assert.Contains(t, result, "┌")
-		assert.Contains(t, result, "└")
+		// lipgloss uses rounded borders: ╭ and ╰
+		assert.True(t, strings.Contains(result, "╭") || strings.Contains(result, "┌"), "Should contain top border")
+		assert.True(t, strings.Contains(result, "╰") || strings.Contains(result, "└"), "Should contain bottom border")
 	})
 }
 
@@ -189,12 +262,53 @@ func TestIndent(t *testing.T) {
 }
 
 func TestColorConstants(t *testing.T) {
-	// Verify color constants are defined
-	assert.NotEmpty(t, colorSuccess)
-	assert.NotEmpty(t, colorWarning)
-	assert.NotEmpty(t, colorError)
-	assert.NotEmpty(t, colorInfo)
-	assert.NotEmpty(t, colorAccent)
-	assert.NotEmpty(t, colorDim)
-	assert.NotEmpty(t, colorReset)
+	// Verify color styles are defined (internal lipgloss styles)
+	// In the lipgloss version, these are styles not string constants
+	assert.NotNil(t, successStyle)
+	assert.NotNil(t, warningStyle)
+	assert.NotNil(t, errorStyle)
+	assert.NotNil(t, infoStyle)
+	assert.NotNil(t, accentStyle)
+	assert.NotNil(t, dimStyle)
+}
+
+func TestWrapText_EdgeCases(t *testing.T) {
+	t.Run("zero width", func(t *testing.T) {
+		result := WrapText("test", 0)
+		assert.Equal(t, "test", result)
+	})
+
+	t.Run("empty string", func(t *testing.T) {
+		result := WrapText("", 20)
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("single word longer than width", func(t *testing.T) {
+		result := WrapText("verylongword", 5)
+		assert.Contains(t, result, "verylongword")
+	})
+}
+
+func TestAlign_EdgeCases(t *testing.T) {
+	t.Run("align with width zero", func(t *testing.T) {
+		result := AlignLeft("test", 0)
+		assert.Contains(t, result, "test")
+	})
+
+	t.Run("align empty string", func(t *testing.T) {
+		result := AlignCenter("", 10)
+		assert.NotNil(t, result)
+	})
+}
+
+func TestTruncate_Unicode(t *testing.T) {
+	t.Run("unicode characters", func(t *testing.T) {
+		result := Truncate("Hello 世界", 8)
+		assert.LessOrEqual(t, len([]rune(result)), 8)
+	})
+
+	t.Run("emoji", func(t *testing.T) {
+		result := Truncate("Test 🎉🎊🎈", 8)
+		assert.LessOrEqual(t, len([]rune(result)), 8)
+	})
 }

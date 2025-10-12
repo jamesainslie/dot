@@ -301,3 +301,90 @@ func TestPager_OutputWriter(t *testing.T) {
 	// Verify output goes to configured writer
 	assert.Equal(t, &buf, pager.output)
 }
+
+func TestPager_showStatusLine(t *testing.T) {
+	var buf bytes.Buffer
+	config := PagerConfig{
+		PageSize: 10,
+		Output:   &buf,
+	}
+
+	pager := NewPager(config)
+
+	// Test showStatusLine output
+	pager.showStatusLine(0, 50, 100)
+
+	output := buf.String()
+	// Should contain start, end, total
+	assert.Contains(t, output, "1-50/100")
+	// Should contain percentage
+	assert.Contains(t, output, "50%")
+	// Should contain control hints
+	assert.Contains(t, output, "Space/Enter")
+	assert.Contains(t, output, "q: quit")
+}
+
+func TestPager_clearStatusLine(t *testing.T) {
+	var buf bytes.Buffer
+	config := PagerConfig{
+		PageSize: 10,
+		Output:   &buf,
+	}
+
+	pager := NewPager(config)
+
+	// Test clearStatusLine output
+	pager.clearStatusLine()
+
+	output := buf.String()
+	// Should contain ANSI escape codes for cursor movement and clearing
+	assert.Contains(t, output, "\r")      // Carriage return
+	assert.Contains(t, output, "\033[2A") // Move cursor up 2 lines
+	assert.Contains(t, output, "\033[J")  // Clear from cursor to end of screen
+}
+
+func TestPager_getKeyPress(t *testing.T) {
+	var buf bytes.Buffer
+	config := PagerConfig{
+		PageSize: 10,
+		Output:   &buf,
+	}
+
+	pager := NewPager(config)
+
+	// In a non-interactive environment (test), getKeyPress should handle errors gracefully
+	// It will try to read from stdin and fallback to actionPageDown
+	action := pager.getKeyPress()
+
+	// Should return a valid action (likely actionPageDown as fallback in test environment)
+	assert.GreaterOrEqual(t, int(action), 0)
+	assert.LessOrEqual(t, int(action), 3)
+}
+
+func TestPager_pageInteractive(t *testing.T) {
+	var buf bytes.Buffer
+	config := PagerConfig{
+		PageSize: 5,
+		Output:   &buf,
+	}
+
+	pager := NewPager(config)
+
+	// Test with empty lines (edge case)
+	lines := []string{}
+	err := pager.pageInteractive(lines)
+	assert.NoError(t, err)
+
+	// Test with lines that fit on one page (non-interactive path)
+	buf.Reset()
+	lines = []string{"Line 1", "Line 2", "Line 3"}
+	err = pager.pageInteractive(lines)
+	assert.NoError(t, err)
+
+	output := buf.String()
+	assert.Contains(t, output, "Line 1")
+	assert.Contains(t, output, "Line 2")
+	assert.Contains(t, output, "Line 3")
+	// Should not show status line when all content fits
+	assert.NotContains(t, output, "Space/Enter")
+}

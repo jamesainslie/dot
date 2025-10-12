@@ -18,6 +18,12 @@ type DoctorService struct {
 	targetDir   string
 }
 
+// scanResult holds the results from scanning a single directory.
+type scanResult struct {
+	issues []Issue
+	stats  DiagnosticStats
+}
+
 // newDoctorService creates a new doctor service.
 func newDoctorService(
 	fs FS,
@@ -254,41 +260,29 @@ func (s *DoctorService) performOrphanScan(
 	}
 
 	// Parallel scan with worker pool
-	type scanResult struct {
-		issues []Issue
-		stats  DiagnosticStats
-	}
-
 	resultChan := make(chan scanResult, len(rootDirs))
 	dirChan := make(chan string, len(rootDirs))
 	var wg sync.WaitGroup
 
+	// Create cancellable context for early termination
+	workerCtx, cancelWorkers := context.WithCancel(ctx)
+	defer cancelWorkers()
+
 	// Start workers
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for dir := range dirChan {
-				if ctx.Err() != nil {
-					return
-				}
-
-				localIssues := []Issue{}
-				localStats := DiagnosticStats{}
-				s.scanDirectory(ctx, dir, m, linkSet, scanCfg, &localIssues, &localStats)
-
-				resultChan <- scanResult{
-					issues: localIssues,
-					stats:  localStats,
-				}
-			}
-		}()
+		go s.scanWorker(workerCtx, &wg, dirChan, resultChan, m, linkSet, scanCfg)
 	}
 
-	// Feed directories to workers
+	// Feed directories to workers with cancellation support
 	go func() {
 		for _, dir := range rootDirs {
-			dirChan <- dir
+			select {
+			case dirChan <- dir:
+			case <-workerCtx.Done():
+				close(dirChan)
+				return
+			}
 		}
 		close(dirChan)
 	}()
@@ -299,22 +293,81 @@ func (s *DoctorService) performOrphanScan(
 		close(resultChan)
 	}()
 
-	// Collect results
+	// Collect results, respecting MaxIssues budget
 	for result := range resultChan {
-		*issues = append(*issues, result.issues...)
-		stats.TotalLinks += result.stats.TotalLinks
-		stats.BrokenLinks += result.stats.BrokenLinks
-		stats.OrphanedLinks += result.stats.OrphanedLinks
-		stats.ManagedLinks += result.stats.ManagedLinks
-
-		// Check if we should stop early
-		if s.shouldStopScan(scanCfg, issues) {
-			// Drain remaining results
-			for range resultChan {
-			}
+		if s.collectScanResult(result, scanCfg, issues, stats, cancelWorkers, resultChan) {
 			break
 		}
 	}
+}
+
+// scanWorker processes directories from dirChan and sends results to resultChan.
+func (s *DoctorService) scanWorker(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	dirChan chan string,
+	resultChan chan scanResult,
+	m *manifest.Manifest,
+	linkSet map[string]bool,
+	scanCfg ScanConfig,
+) {
+	defer wg.Done()
+	for dir := range dirChan {
+		if ctx.Err() != nil {
+			return
+		}
+
+		localIssues := []Issue{}
+		localStats := DiagnosticStats{}
+		s.scanDirectory(ctx, dir, m, linkSet, scanCfg, &localIssues, &localStats)
+
+		// Only send result if context not cancelled
+		select {
+		case resultChan <- scanResult{
+			issues: localIssues,
+			stats:  localStats,
+		}:
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// collectScanResult processes a single scan result and returns true if collection should stop.
+func (s *DoctorService) collectScanResult(
+	result scanResult,
+	scanCfg ScanConfig,
+	issues *[]Issue,
+	stats *DiagnosticStats,
+	cancelWorkers context.CancelFunc,
+	resultChan chan scanResult,
+) bool {
+	// Respect remaining budget before appending
+	if scanCfg.MaxIssues > 0 {
+		remaining := scanCfg.MaxIssues - len(*issues)
+		if remaining <= 0 {
+			// Budget exhausted, cancel workers and drain results
+			cancelWorkers()
+			for range resultChan {
+			}
+			return true
+		}
+		// Truncate result to remaining budget
+		if len(result.issues) > remaining {
+			*issues = append(*issues, result.issues[:remaining]...)
+		} else {
+			*issues = append(*issues, result.issues...)
+		}
+	} else {
+		// No limit, append all
+		*issues = append(*issues, result.issues...)
+	}
+
+	stats.TotalLinks += result.stats.TotalLinks
+	stats.BrokenLinks += result.stats.BrokenLinks
+	stats.OrphanedLinks += result.stats.OrphanedLinks
+	stats.ManagedLinks += result.stats.ManagedLinks
+	return false
 }
 
 // shouldStopScan checks if scanning should stop early based on MaxIssues limit.

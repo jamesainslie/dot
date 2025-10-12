@@ -71,8 +71,8 @@ func TestClient_Doctor_MaxIssuesRespectedInParallelScan(t *testing.T) {
 
 	// Verify MaxIssues cap is respected
 	// Allow small overhead due to parallel collection race conditions, but should be close to limit
-	assert.LessOrEqual(t, len(report.Issues), 15,
-		"MaxIssues=10 should limit issues to ~10-15 (accounting for race), but got %d", len(report.Issues))
+	assert.LessOrEqual(t, len(report.Issues), 13,
+		"MaxIssues=10 should limit issues to <=13 (accounting for up to 3 workers), but got %d", len(report.Issues))
 }
 
 // TestClient_Doctor_MaxIssuesSingleLargeDirectory verifies that a single directory

@@ -19,6 +19,7 @@ type ProgressTracker struct {
 	updateFrequency time.Duration
 	ticker          *time.Ticker
 	done            chan bool
+	wg              sync.WaitGroup
 	mu              sync.RWMutex
 	isRendering     bool
 }
@@ -171,6 +172,7 @@ func (pt *ProgressTracker) Start() {
 		freq = 100 * time.Millisecond
 	}
 	pt.ticker = time.NewTicker(freq)
+	pt.wg.Add(1)
 	pt.mu.Unlock()
 
 	go pt.render()
@@ -192,8 +194,8 @@ func (pt *ProgressTracker) Stop() {
 	// Signal done
 	pt.done <- true
 
-	// Wait for ticker to stop
-	time.Sleep(50 * time.Millisecond)
+	// Wait for render goroutine to finish
+	pt.wg.Wait()
 
 	// Final render
 	pt.renderOnce()
@@ -208,6 +210,7 @@ func (pt *ProgressTracker) IsActive() bool {
 
 // render continuously renders progress updates.
 func (pt *ProgressTracker) render() {
+	defer pt.wg.Done()
 	for {
 		select {
 		case <-pt.done:

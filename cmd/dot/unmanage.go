@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/jamesainslie/dot/pkg/dot"
 )
@@ -154,7 +157,10 @@ func runUnmanageAll(cmd *cobra.Command, cfg dot.Config, client *dot.Client, ctx 
 
 	// Request confirmation unless --yes/--force/--dry-run
 	if !skipConfirm && !cfg.DryRun {
-		if !confirmAction("Proceed with unmanaging all packages?") {
+		if !isTerminal(cmd) {
+			return fmt.Errorf("stdin is not a terminal; use --yes to confirm")
+		}
+		if !confirmAction(cmd, "Proceed with unmanaging all packages?") {
 			fmt.Println("Operation cancelled")
 			return nil
 		}
@@ -250,11 +256,23 @@ func reportUnmanageAllResults(count int, opts dot.UnmanageOptions, dryRun bool) 
 	}
 }
 
-// confirmAction prompts the user for confirmation.
-func confirmAction(prompt string) bool {
+// isTerminal checks if the command's input stream is a terminal.
+func isTerminal(cmd *cobra.Command) bool {
+	in := cmd.InOrStdin()
+	if f, ok := in.(*os.File); ok {
+		return term.IsTerminal(int(f.Fd()))
+	}
+	return false
+}
+
+// confirmAction prompts the user for confirmation using the command's input stream.
+func confirmAction(cmd *cobra.Command, prompt string) bool {
 	fmt.Printf("%s [y/N]: ", prompt)
-	var response string
-	fmt.Scanln(&response)
+	reader := bufio.NewReader(cmd.InOrStdin())
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false
+	}
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
 }

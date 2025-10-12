@@ -315,3 +315,65 @@ func TestProgressTracker_CompleteWorkflow(t *testing.T) {
 	assert.True(t, pt.trackers["process"].done)
 	assert.True(t, pt.trackers["upload"].done)
 }
+
+func TestProgressTracker_UpdateFrequency(t *testing.T) {
+	t.Run("uses configured update frequency", func(t *testing.T) {
+		var buf bytes.Buffer
+		config := ProgressConfig{
+			Enabled:         true,
+			Output:          &buf,
+			UpdateFrequency: 200 * time.Millisecond,
+		}
+
+		pt := NewProgressTracker(config)
+		assert.Equal(t, 200*time.Millisecond, pt.updateFrequency)
+
+		pt.Track("test", "Processing", 100)
+		pt.Start()
+
+		// Verify ticker was created
+		assert.NotNil(t, pt.ticker)
+
+		pt.Stop()
+	})
+
+	t.Run("falls back to 100ms when zero", func(t *testing.T) {
+		var buf bytes.Buffer
+		config := ProgressConfig{
+			Enabled:         true,
+			Output:          &buf,
+			UpdateFrequency: 0,
+		}
+
+		pt := NewProgressTracker(config)
+		assert.Equal(t, time.Duration(0), pt.updateFrequency)
+
+		pt.Track("test", "Processing", 100)
+		pt.Start()
+
+		// Verify ticker was created (with fallback)
+		assert.NotNil(t, pt.ticker)
+
+		pt.Stop()
+	})
+
+	t.Run("falls back to 100ms when negative", func(t *testing.T) {
+		var buf bytes.Buffer
+		config := ProgressConfig{
+			Enabled:         true,
+			Output:          &buf,
+			UpdateFrequency: -50 * time.Millisecond,
+		}
+
+		pt := NewProgressTracker(config)
+		assert.Equal(t, -50*time.Millisecond, pt.updateFrequency)
+
+		pt.Track("test", "Processing", 100)
+		pt.Start()
+
+		// Verify ticker was created (with fallback)
+		assert.NotNil(t, pt.ticker)
+
+		pt.Stop()
+	})
+}

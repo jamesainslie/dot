@@ -107,11 +107,14 @@ func buildConfigWithCmd(cmd *cobra.Command) (dot.Config, error) {
 	// Load extended config - check repo location first, then XDG location
 	configPath := getConfigFilePath()
 	extCfg, err := loadConfigWithRepoPriority(configPath)
+	if err != nil {
+		return dot.Config{}, fmt.Errorf("load configuration: %w", err)
+	}
 
 	// Start with config file values
 	var packageDir, targetDir, backupDir, manifestDir string
 
-	if err == nil && extCfg != nil {
+	if extCfg != nil {
 		packageDir = extCfg.Directories.Package
 		targetDir = extCfg.Directories.Target
 		backupDir = extCfg.Symlinks.BackupDir

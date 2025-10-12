@@ -13,13 +13,14 @@ import (
 
 // ProgressTracker manages multiple progress indicators using lipgloss.
 type ProgressTracker struct {
-	output      io.Writer
-	trackers    map[string]*tracker
-	enabled     bool
-	ticker      *time.Ticker
-	done        chan bool
-	mu          sync.RWMutex
-	isRendering bool
+	output          io.Writer
+	trackers        map[string]*tracker
+	enabled         bool
+	updateFrequency time.Duration
+	ticker          *time.Ticker
+	done            chan bool
+	mu              sync.RWMutex
+	isRendering     bool
 }
 
 // tracker represents a single progress tracker.
@@ -53,11 +54,12 @@ func DefaultProgressConfig() ProgressConfig {
 // NewProgressTracker creates a new progress tracker.
 func NewProgressTracker(config ProgressConfig) *ProgressTracker {
 	return &ProgressTracker{
-		output:      config.Output,
-		trackers:    make(map[string]*tracker),
-		enabled:     config.Enabled,
-		done:        make(chan bool),
-		isRendering: false,
+		output:          config.Output,
+		trackers:        make(map[string]*tracker),
+		enabled:         config.Enabled,
+		updateFrequency: config.UpdateFrequency,
+		done:            make(chan bool),
+		isRendering:     false,
 	}
 }
 
@@ -162,7 +164,13 @@ func (pt *ProgressTracker) Start() {
 		return
 	}
 	pt.isRendering = true
-	pt.ticker = time.NewTicker(100 * time.Millisecond)
+
+	// Use configured update frequency, fallback to 100ms if zero or negative
+	freq := pt.updateFrequency
+	if freq <= 0 {
+		freq = 100 * time.Millisecond
+	}
+	pt.ticker = time.NewTicker(freq)
 	pt.mu.Unlock()
 
 	go pt.render()

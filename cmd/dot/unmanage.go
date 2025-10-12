@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -185,7 +186,7 @@ func displayUnmanageAllSummary(packages []dot.PackageInfo, opts dot.UnmanageOpti
 		operationColor := getOperationColor(operation)
 		// Format: package (operation, N links: link1, link2, ... | pkg-dir)
 		linkList := formatLinkList(pkg.Links)
-		pkgPath := packageDir + "/" + pkg.Name
+		pkgPath := filepath.Join(packageDir, pkg.Name)
 		fmt.Printf("  %s %s %s %s %s %s\n",
 			dim("•"),
 			bold(pkg.Name),

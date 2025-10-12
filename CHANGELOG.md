@@ -2,6 +2,52 @@
 ## [Unreleased]
 
 
+<a name="v0.4.2"></a>
+## [v0.4.2] - 2025-10-12
+### Docs
+- **changelog:** update for v0.4.2 release
+- **readme:** add clone and bootstrap commands to documentation
+
+### Feat
+- **cli:** refactor table rendering with go-pretty for professional UX
+- **cli:** add progress tracking using go-pretty
+- **cli:** add list and text formatting utilities
+- **cli:** add table infrastructure using go-pretty
+- **cli:** add muted colorization to doctor and unmanage commands
+- **config:** wire up table_style configuration to all commands
+- **doctor:** enable scoped orphan scanning by default and detect broken unmanaged links
+- **pager:** add keyboard controls for interactive pagination
+- **ui:** add automatic pagination to dot doctor output
+- **ui:** add configuration toggle between modern and legacy table styles
+- **unmanage:** add --all flag to unmanage all packages at once
+
+### Fix
+- **cli:** replace time.Sleep race with sync.WaitGroup in ProgressTracker
+- **clone:** resolve silent errors and add comprehensive logging
+- **pager:** remove blank lines left by status indicator after paging
+- **ui:** add newline after table output for better terminal spacing
+- **unmanage:** use filepath.Join for cross-platform path handling
+
+### Perf
+- **doctor:** optimize scan performance with parallel execution and smart filtering
+
+### Refactor
+- **cli:** improve config loading, progress tracker, and command UX
+- **cli:** migrate from go-pretty to lipgloss v1.1.0
+- **config:** simplify repository configuration loading
+- **doctor:** enhance orphan scan with worker context and result collection
+
+### Test
+- **terminal:** add comprehensive tests for terminal detection
+
+### Yak
+- **ci:** have a simple - pass fail on test coverage
+
+### Pull Requests
+- Merge pull request [#32](https://github.com/jamesainslie/dot/issues/32) from jamesainslie/fix-some-missed-bugs
+- Merge pull request [#31](https://github.com/jamesainslie/dot/issues/31) from jamesainslie/fix-silent-errors-when-cloning
+
+
 <a name="v0.4.1"></a>
 ## [v0.4.1] - 2025-10-10
 ### Docs
@@ -548,7 +594,8 @@ should not exist since it was an internal package.
 - Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
 
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.4.2...HEAD
+[v0.4.2]: https://github.com/jamesainslie/dot/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/jamesainslie/dot/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/jamesainslie/dot/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/jamesainslie/dot/compare/v0.3.0...v0.3.1

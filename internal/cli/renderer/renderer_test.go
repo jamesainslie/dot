@@ -47,7 +47,7 @@ func TestNewRenderer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := NewRenderer(tt.format, false)
+			r, err := NewRenderer(tt.format, false, "")
 			if tt.wantError {
 				assert.Error(t, err)
 				assert.Nil(t, r)

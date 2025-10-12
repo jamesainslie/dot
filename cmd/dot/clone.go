@@ -21,19 +21,28 @@ func newCloneCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clone <repository-url>",
 		Short: "Clone dotfiles repository and install packages",
-		Long: `Clone a dotfiles repository and install packages based on optional bootstrap configuration.
+		Long: `Clone a dotfiles repository and install packages.
 
 The clone command performs the following steps:
   1. Validates package directory is empty (unless --force is used)
   2. Clones the repository to the configured package directory
-  3. Loads optional .dotbootstrap.yaml configuration
-  4. Selects packages to install:
+  3. Detects and uses repository configuration (.config/dot/config.yaml)
+  4. Loads optional .dotbootstrap.yaml for package selection
+  5. Selects packages to install:
      - Via named profile (--profile)
      - Interactively (--interactive or automatic terminal detection)
      - All packages (non-interactive mode)
-  5. Filters packages by current platform
-  6. Installs selected packages
-  7. Updates manifest with repository tracking information
+  6. Filters packages by current platform
+  7. Installs selected packages
+  8. Updates manifest with repository tracking
+
+Repository Configuration:
+  If the repository contains .config/dot/config.yaml, it will be used
+  automatically for all subsequent dot commands. This allows repositories
+  to define their own management configuration without circular dependency.
+
+  Example: ~/.dotfiles/.config/dot/config.yaml defines how the repository
+  should be managed, and dot uses it automatically after clone.
 
 Authentication:
   The command automatically resolves authentication in this order:
@@ -43,12 +52,12 @@ Authentication:
   4. No authentication (public repositories only)
 
 Bootstrap Configuration:
-  If a .dotbootstrap.yaml file exists in the repository root, it defines:
+  If .dotbootstrap.yaml exists in the repository root, it defines:
   - Available packages with platform requirements
   - Named installation profiles
   - Default profile and conflict resolution policies
 
-  Without bootstrap configuration, all discovered packages are offered for installation.
+  Without bootstrap configuration, all discovered packages are offered.
 
 Examples:
   # Clone and install all packages

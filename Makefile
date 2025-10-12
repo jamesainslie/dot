@@ -1,4 +1,4 @@
-.PHONY: build test test-tparse lint clean install uninstall check qa help version version-major version-minor version-patch release release-tag changelog-update
+.PHONY: build test test-tparse lint clean install uninstall check qa help version version-major version-minor version-patch release release-tag changelog-update coverage-summary cs
 
 # Build variables
 BINARY_NAME := dot
@@ -81,8 +81,51 @@ uninstall:
 ## check: Run tests and linting (machine-readable output for CI/AI agents)
 check: test check-coverage lint vet
 
-## qa: Run tests with tparse, linting, and vetting (human-friendly output)
-qa: test-tparse lint vet
+## find-test-targets: Find functions/methods that need test coverage
+find-test-targets:
+	@go test ./internal/cli/pretty/... -coverprofile=pretty_cov.out
+	@go tool cover -func=pretty_cov.out | grep -v "100.0%" | grep '\.go:'
+
+## qa: Run tests with tparse, linting, vetting, and coverage summary (human-friendly output)
+qa: test-tparse lint vet coverage-summary
+
+## coverage-summary: Display coverage summary with threshold report
+coverage-summary:
+	@/bin/bash -c ' \
+	echo ""; \
+	echo "══════════════════════════════════════════════════════════"; \
+	echo "Coverage Summary"; \
+	echo "══════════════════════════════════════════════════════════"; \
+	if [ ! -f coverage.out ]; then \
+		echo "Error: coverage.out not found"; \
+		exit 1; \
+	fi; \
+	COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk "{print \$$3}" | sed "s/%//"); \
+	THRESHOLD=80.0; \
+	echo ""; \
+	printf "  Total Coverage:     %6.1f%%\n" $$COVERAGE; \
+	printf "  Required Threshold: %6.1f%%\n" $$THRESHOLD; \
+	echo ""; \
+	if [ "$$(echo "$$COVERAGE < $$THRESHOLD" | bc)" -eq 1 ]; then \
+		SHORTFALL=$$(echo "$$THRESHOLD - $$COVERAGE" | bc); \
+		printf "  Status: ✗ BELOW THRESHOLD\n"; \
+		printf "  Shortfall: %.1f%%\n" $$SHORTFALL; \
+		echo ""; \
+		echo "══════════════════════════════════════════════════════════"; \
+		echo "Action Required: Add tests to reach $$THRESHOLD%% coverage"; \
+		echo "══════════════════════════════════════════════════════════"; \
+		exit 1; \
+	else \
+		SURPLUS=$$(echo "$$COVERAGE - $$THRESHOLD" | bc); \
+		printf "  Status: ✓ PASSED\n"; \
+		printf "  Surplus: +%.1f%%\n" $$SURPLUS; \
+		echo ""; \
+		echo "══════════════════════════════════════════════════════════"; \
+	fi \
+	'
+
+## cs: Alias for coverage-summary
+cs: coverage-summary
 
 ## test-tparse: Run tests with tparse for formatted output
 test-tparse:

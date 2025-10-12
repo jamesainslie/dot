@@ -20,6 +20,10 @@ func newStatusCommand() *cobra.Command {
 			return err
 		}
 
+		// Load extended config for table_style
+		configPath := getConfigFilePath()
+		extCfg, _ := loadConfigWithRepoPriority(configPath)
+
 		// Get format and color from local flags
 		format, _ := cmd.Flags().GetString("format")
 		color, _ := cmd.Flags().GetString("color")
@@ -39,8 +43,12 @@ func newStatusCommand() *cobra.Command {
 		// Determine colorization
 		colorize := shouldColorize(color)
 
-		// Create renderer
-		r, err := renderer.NewRenderer(format, colorize)
+		// Create renderer with table_style from config
+		tableStyle := ""
+		if extCfg != nil {
+			tableStyle = extCfg.Output.TableStyle
+		}
+		r, err := renderer.NewRenderer(format, colorize, tableStyle)
 		if err != nil {
 			return fmt.Errorf("invalid format: %w", err)
 		}
@@ -48,6 +56,11 @@ func newStatusCommand() *cobra.Command {
 		// Render status
 		if err := r.RenderStatus(cmd.OutOrStdout(), status); err != nil {
 			return fmt.Errorf("render failed: %w", err)
+		}
+
+		// Add newline after output for better terminal spacing
+		if format == "text" || format == "table" {
+			fmt.Fprintln(cmd.OutOrStdout())
 		}
 
 		return nil
@@ -81,6 +94,10 @@ The status includes installation timestamp, number of links, and link paths.`,
   dot status --color=never`,
 		ValidArgsFunction: packageCompletion(true), // Complete with installed packages
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Load extended config for table_style
+			configPath := getConfigFilePath()
+			extCfg, _ := loadConfigWithRepoPriority(configPath)
+
 			// Create client
 			client, err := dot.NewClient(*cfg)
 			if err != nil {
@@ -96,8 +113,12 @@ The status includes installation timestamp, number of links, and link paths.`,
 			// Determine colorization
 			colorize := shouldColorize(color)
 
-			// Create renderer
-			r, err := renderer.NewRenderer(format, colorize)
+			// Create renderer with table_style from config
+			tableStyle := ""
+			if extCfg != nil {
+				tableStyle = extCfg.Output.TableStyle
+			}
+			r, err := renderer.NewRenderer(format, colorize, tableStyle)
 			if err != nil {
 				return fmt.Errorf("invalid format: %w", err)
 			}
@@ -105,6 +126,11 @@ The status includes installation timestamp, number of links, and link paths.`,
 			// Render status
 			if err := r.RenderStatus(cmd.OutOrStdout(), status); err != nil {
 				return fmt.Errorf("render failed: %w", err)
+			}
+
+			// Add newline after output for better terminal spacing
+			if format == "text" || format == "table" {
+				fmt.Fprintln(cmd.OutOrStdout())
 			}
 
 			return nil

@@ -34,6 +34,10 @@ func runManage(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Load extended config for table_style
+	configPath := getConfigFilePath()
+	extCfg, _ := loadConfigWithRepoPriority(configPath)
+
 	client, err := dot.NewClient(cfg)
 	if err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -55,8 +59,12 @@ func runManage(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		// Create renderer and render the plan
-		rend, err := renderer.NewRenderer("text", true)
+		// Create renderer and render the plan with table_style from config
+		tableStyle := ""
+		if extCfg != nil {
+			tableStyle = extCfg.Output.TableStyle
+		}
+		rend, err := renderer.NewRenderer("text", true, tableStyle)
 		if err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 			return err

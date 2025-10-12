@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -338,67 +339,147 @@ func runConfigListCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	// Display configuration
-	fmt.Printf("Configuration (from %s):\n\n", configPath)
+	// Build the configuration table output
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "%s\n\n", dim("Configuration from: "+configPath))
 
-	fmt.Println("Directories:")
-	fmt.Printf("  package: %s\n", cfg.Directories.Package)
-	fmt.Printf("  target: %s\n", cfg.Directories.Target)
-	fmt.Printf("  manifest: %s\n\n", cfg.Directories.Manifest)
+	// Create table for each section
+	sections := []struct {
+		name   string
+		render func(*bytes.Buffer, *config.ExtendedConfig)
+	}{
+		{"Directories", renderDirectoriesSection},
+		{"Logging", renderLoggingSection},
+		{"Symlinks", renderSymlinksSection},
+		{"Ignore", renderIgnoreSection},
+		{"Dotfile", renderDotfileSection},
+		{"Output", renderOutputSection},
+		{"Operations", renderOperationsSection},
+		{"Packages", renderPackagesSection},
+		{"Doctor", renderDoctorSection},
+		{"Experimental", renderExperimentalSection},
+	}
 
-	fmt.Println("Logging:")
-	fmt.Printf("  level: %s\n", cfg.Logging.Level)
-	fmt.Printf("  format: %s\n", cfg.Logging.Format)
-	fmt.Printf("  destination: %s\n", cfg.Logging.Destination)
-	fmt.Printf("  file: %s\n\n", cfg.Logging.File)
+	for i, section := range sections {
+		if i > 0 {
+			buf.WriteString("\n")
+		}
+		section.render(&buf, cfg)
+	}
 
-	fmt.Println("Symlinks:")
-	fmt.Printf("  mode: %s\n", cfg.Symlinks.Mode)
-	fmt.Printf("  folding: %t\n", cfg.Symlinks.Folding)
-	fmt.Printf("  overwrite: %t\n", cfg.Symlinks.Overwrite)
-	fmt.Printf("  backup: %t\n", cfg.Symlinks.Backup)
-	fmt.Printf("  backup_suffix: %s\n", cfg.Symlinks.BackupSuffix)
-	fmt.Printf("  backup_dir: %s\n\n", cfg.Symlinks.BackupDir)
-
-	fmt.Println("Ignore:")
-	fmt.Printf("  use_defaults: %t\n", cfg.Ignore.UseDefaults)
-	fmt.Printf("  patterns: %v\n", cfg.Ignore.Patterns)
-	fmt.Printf("  overrides: %v\n\n", cfg.Ignore.Overrides)
-
-	fmt.Println("Dotfile:")
-	fmt.Printf("  translate: %t\n", cfg.Dotfile.Translate)
-	fmt.Printf("  prefix: %s\n", cfg.Dotfile.Prefix)
-	fmt.Printf("  package_name_mapping: %t\n\n", cfg.Dotfile.PackageNameMapping)
-
-	fmt.Println("Output:")
-	fmt.Printf("  format: %s\n", cfg.Output.Format)
-	fmt.Printf("  color: %s\n", cfg.Output.Color)
-	fmt.Printf("  progress: %t\n", cfg.Output.Progress)
-	fmt.Printf("  verbosity: %d\n", cfg.Output.Verbosity)
-	fmt.Printf("  width: %d\n\n", cfg.Output.Width)
-
-	fmt.Println("Operations:")
-	fmt.Printf("  dry_run: %t\n", cfg.Operations.DryRun)
-	fmt.Printf("  atomic: %t\n", cfg.Operations.Atomic)
-	fmt.Printf("  max_parallel: %d\n\n", cfg.Operations.MaxParallel)
-
-	fmt.Println("Packages:")
-	fmt.Printf("  sort_by: %s\n", cfg.Packages.SortBy)
-	fmt.Printf("  auto_discover: %t\n", cfg.Packages.AutoDiscover)
-	fmt.Printf("  validate_names: %t\n\n", cfg.Packages.ValidateNames)
-
-	fmt.Println("Doctor:")
-	fmt.Printf("  auto_fix: %t\n", cfg.Doctor.AutoFix)
-	fmt.Printf("  check_manifest: %t\n", cfg.Doctor.CheckManifest)
-	fmt.Printf("  check_broken_links: %t\n", cfg.Doctor.CheckBrokenLinks)
-	fmt.Printf("  check_orphaned: %t\n", cfg.Doctor.CheckOrphaned)
-	fmt.Printf("  check_permissions: %t\n\n", cfg.Doctor.CheckPermissions)
-
-	fmt.Println("Experimental:")
-	fmt.Printf("  parallel: %t\n", cfg.Experimental.Parallel)
-	fmt.Printf("  profiling: %t\n", cfg.Experimental.Profiling)
-
+	// Output directly (pagination will be added in future commit)
+	fmt.Fprint(cmd.OutOrStdout(), buf.String())
 	return nil
+}
+
+// renderDirectoriesSection renders the directories configuration table.
+func renderDirectoriesSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Directories"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("package:"), cfg.Directories.Package)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("target:"), cfg.Directories.Target)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("manifest:"), cfg.Directories.Manifest)
+}
+
+// renderLoggingSection renders the logging configuration.
+func renderLoggingSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Logging"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("level:"), cfg.Logging.Level)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("format:"), cfg.Logging.Format)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("destination:"), cfg.Logging.Destination)
+	if cfg.Logging.File != "" {
+		fmt.Fprintf(buf, "  %-20s %s\n", dim("file:"), cfg.Logging.File)
+	}
+}
+
+// renderSymlinksSection renders the symlinks configuration.
+func renderSymlinksSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Symlinks"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("mode:"), cfg.Symlinks.Mode)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("folding:"), formatBool(cfg.Symlinks.Folding))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("overwrite:"), formatBool(cfg.Symlinks.Overwrite))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("backup:"), formatBool(cfg.Symlinks.Backup))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("backup_suffix:"), cfg.Symlinks.BackupSuffix)
+	if cfg.Symlinks.BackupDir != "" {
+		fmt.Fprintf(buf, "  %-20s %s\n", dim("backup_dir:"), cfg.Symlinks.BackupDir)
+	}
+}
+
+// renderIgnoreSection renders the ignore configuration section.
+func renderIgnoreSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Ignore"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("use_defaults:"), formatBool(cfg.Ignore.UseDefaults))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("patterns:"), formatSlice(cfg.Ignore.Patterns))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("overrides:"), formatSlice(cfg.Ignore.Overrides))
+}
+
+// renderDotfileSection renders the dotfile configuration section.
+func renderDotfileSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Dotfile"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("translate:"), formatBool(cfg.Dotfile.Translate))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("prefix:"), cfg.Dotfile.Prefix)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("package_name_mapping:"), formatBool(cfg.Dotfile.PackageNameMapping))
+}
+
+// renderOutputSection renders the output configuration section.
+func renderOutputSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Output"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("format:"), cfg.Output.Format)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("color:"), cfg.Output.Color)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("progress:"), formatBool(cfg.Output.Progress))
+	fmt.Fprintf(buf, "  %-20s %d\n", dim("verbosity:"), cfg.Output.Verbosity)
+	fmt.Fprintf(buf, "  %-20s %d\n", dim("width:"), cfg.Output.Width)
+}
+
+// renderOperationsSection renders the operations configuration section.
+func renderOperationsSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Operations"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("dry_run:"), formatBool(cfg.Operations.DryRun))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("atomic:"), formatBool(cfg.Operations.Atomic))
+	fmt.Fprintf(buf, "  %-20s %d\n", dim("max_parallel:"), cfg.Operations.MaxParallel)
+}
+
+// renderPackagesSection renders the packages configuration section.
+func renderPackagesSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Packages"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("sort_by:"), cfg.Packages.SortBy)
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("auto_discover:"), formatBool(cfg.Packages.AutoDiscover))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("validate_names:"), formatBool(cfg.Packages.ValidateNames))
+}
+
+// renderDoctorSection renders the doctor configuration section.
+func renderDoctorSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Doctor"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("auto_fix:"), formatBool(cfg.Doctor.AutoFix))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("check_manifest:"), formatBool(cfg.Doctor.CheckManifest))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("check_broken_links:"), formatBool(cfg.Doctor.CheckBrokenLinks))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("check_orphaned:"), formatBool(cfg.Doctor.CheckOrphaned))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("check_permissions:"), formatBool(cfg.Doctor.CheckPermissions))
+}
+
+// renderExperimentalSection renders the experimental configuration section.
+func renderExperimentalSection(buf *bytes.Buffer, cfg *config.ExtendedConfig) {
+	fmt.Fprintf(buf, "%s\n", bold("Experimental"))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("parallel:"), formatBool(cfg.Experimental.Parallel))
+	fmt.Fprintf(buf, "  %-20s %s\n", dim("profiling:"), formatBool(cfg.Experimental.Profiling))
+}
+
+// formatBool formats a boolean value for display.
+func formatBool(b bool) string {
+	if b {
+		return success("true")
+	}
+	return dim("false")
+}
+
+// formatSlice formats a string slice for display.
+func formatSlice(s []string) string {
+	if len(s) == 0 {
+		return dim("(none)")
+	}
+	if len(s) <= 3 {
+		return strings.Join(s, ", ")
+	}
+	return strings.Join(s[:3], ", ") + dim(fmt.Sprintf(" (+%d more)", len(s)-3))
 }
 
 // newConfigPathCommand creates the path subcommand.

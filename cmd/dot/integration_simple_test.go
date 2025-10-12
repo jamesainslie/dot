@@ -39,7 +39,8 @@ func TestDoctorCommand_Execute(t *testing.T) {
 	setupGlobalCfg(t)
 
 	rootCmd := NewRootCommand("dev", "none", "unknown")
-	rootCmd.SetArgs([]string{"doctor"})
+	// Use --scan-mode=off to skip slow filesystem scanning in tests
+	rootCmd.SetArgs([]string{"doctor", "--scan-mode=off"})
 
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)
@@ -82,7 +83,8 @@ func TestDoctorCommand_WithFormat(t *testing.T) {
 	setupGlobalCfg(t)
 
 	rootCmd := NewRootCommand("dev", "none", "unknown")
-	rootCmd.SetArgs([]string{"doctor", "--format=table"})
+	// Use --scan-mode=off to skip slow filesystem scanning in tests
+	rootCmd.SetArgs([]string{"doctor", "--format=table", "--scan-mode=off"})
 
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)

@@ -104,15 +104,17 @@ func buildConfigWithCmd(cmd *cobra.Command) (dot.Config, error) {
 	fs := adapters.NewOSFilesystem()
 	logger := createLogger()
 
-	// Load extended config
+	// Load extended config - check repo location first, then XDG location
 	configPath := getConfigFilePath()
-	loader := config.NewLoader("dot", configPath)
-	extCfg, err := loader.LoadWithEnv()
+	extCfg, err := loadConfigWithRepoPriority(configPath)
+	if err != nil {
+		return dot.Config{}, fmt.Errorf("load configuration: %w", err)
+	}
 
 	// Start with config file values
 	var packageDir, targetDir, backupDir, manifestDir string
 
-	if err == nil && extCfg != nil {
+	if extCfg != nil {
 		packageDir = extCfg.Directories.Package
 		targetDir = extCfg.Directories.Target
 		backupDir = extCfg.Symlinks.BackupDir
@@ -169,6 +171,49 @@ func buildConfigWithCmd(cmd *cobra.Command) (dot.Config, error) {
 	}
 
 	return cfg.WithDefaults(), nil
+}
+
+// loadConfigWithRepoPriority loads config checking repository location first.
+//
+// Priority order:
+//  1. If packageDir flag is set, check <packageDir>/.config/dot/config.yaml
+//  2. Otherwise, check standard repo location ~/.dotfiles/.config/dot/config.yaml
+//  3. Fall back to XDG location (provided configPath)
+//  4. Use defaults
+//
+// This allows repositories to define their own configuration without circular dependency.
+func loadConfigWithRepoPriority(xdgConfigPath string) (*config.ExtendedConfig, error) {
+	var packageDir string
+
+	// Check if packageDir was explicitly set via flag
+	if globalCfg.packageDir != "" && globalCfg.packageDir != "." {
+		packageDir = globalCfg.packageDir
+	} else {
+		// Use default packageDir location
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			packageDir = filepath.Join(homeDir, ".dotfiles")
+		}
+	}
+
+	// Try to load from repository first
+	if packageDir != "" {
+		repoConfigPath := filepath.Join(packageDir, ".config", "dot", "config.yaml")
+		if _, err := os.Stat(repoConfigPath); err == nil {
+			// Repository config exists - use it
+			loader := config.NewLoader("dot", repoConfigPath)
+			cfg, err := loader.LoadWithEnv()
+			if err == nil {
+				return cfg, nil
+			}
+			// If repo config exists but fails to load, that's an error
+			return nil, fmt.Errorf("load repository config: %w", err)
+		}
+	}
+
+	// Fall back to XDG location
+	loader := config.NewLoader("dot", xdgConfigPath)
+	return loader.LoadWithEnv()
 }
 
 // createLogger creates appropriate logger based on flags.

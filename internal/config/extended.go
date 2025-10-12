@@ -105,6 +105,9 @@ type OutputConfig struct {
 	// Enable colored output: auto, always, never
 	Color string `mapstructure:"color" json:"color" yaml:"color" toml:"color"`
 
+	// Table style: default (modern with borders), simple (legacy plain text)
+	TableStyle string `mapstructure:"table_style" json:"table_style" yaml:"table_style" toml:"table_style"`
+
 	// Show progress indicators
 	Progress bool `mapstructure:"progress" json:"progress" yaml:"progress" toml:"progress"`
 
@@ -203,11 +206,12 @@ func DefaultExtended() *ExtendedConfig {
 			PackageNameMapping: true,
 		},
 		Output: OutputConfig{
-			Format:    "text",
-			Color:     "auto",
-			Progress:  true,
-			Verbosity: 1,
-			Width:     0,
+			Format:     "text",
+			Color:      "auto",
+			TableStyle: "default",
+			Progress:   true,
+			Verbosity:  1,
+			Width:      0,
 		},
 		Operations: OperationsConfig{
 			DryRun:      false,

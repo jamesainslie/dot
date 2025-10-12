@@ -46,6 +46,7 @@ func (s *StatusService) Status(ctx context.Context, packages ...string) (Status,
 		for _, info := range m.Packages {
 			pkgInfos = append(pkgInfos, PackageInfo{
 				Name:        info.Name,
+				Source:      string(info.Source),
 				InstalledAt: info.InstalledAt,
 				LinkCount:   info.LinkCount,
 				Links:       info.Links,
@@ -57,6 +58,7 @@ func (s *StatusService) Status(ctx context.Context, packages ...string) (Status,
 			if info, exists := m.GetPackage(pkg); exists {
 				pkgInfos = append(pkgInfos, PackageInfo{
 					Name:        info.Name,
+					Source:      string(info.Source),
 					InstalledAt: info.InstalledAt,
 					LinkCount:   info.LinkCount,
 					Links:       info.Links,

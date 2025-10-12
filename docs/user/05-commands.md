@@ -457,6 +457,7 @@ Remove packages by deleting symlinks, with optional restoration or cleanup.
 **Synopsis**:
 ```bash
 dot unmanage [options] PACKAGE [PACKAGE...]
+dot unmanage --all [options]
 ```
 
 **Arguments**:
@@ -464,6 +465,8 @@ dot unmanage [options] PACKAGE [PACKAGE...]
 
 **Options**:
 - All global options
+- `--all`: Remove all managed packages
+- `--yes, --force`: Skip confirmation prompt (for use with --all)
 - `--purge`: Delete package directory after removing links
 - `--no-restore`: Skip restoring adopted packages to target
 - `--cleanup`: Remove orphaned packages from manifest only
@@ -485,8 +488,17 @@ dot unmanage --no-restore dot-ssh
 # Clean up orphaned packages
 dot unmanage --cleanup dot-old-package
 
-# Preview removal
-dot --dry-run unmanage vim
+# Remove all packages (with confirmation prompt)
+dot unmanage --all
+
+# Remove all packages without confirmation
+dot unmanage --all --yes
+
+# Remove all packages and delete directories
+dot unmanage --all --purge --force
+
+# Preview removing all packages
+dot --dry-run unmanage --all
 ```
 
 **Behavior**:
@@ -519,6 +531,26 @@ By default, `unmanage` **restores** adopted files to their original locations:
 
 Files are **copied** (not moved), so they remain in the package as a backup.
 
+**Remove All Packages**:
+
+Use `--all` to remove all managed packages at once:
+
+```bash
+# With confirmation prompt
+dot unmanage --all
+
+# Skip confirmation
+dot unmanage --all --yes
+```
+
+When using `--all`:
+1. Shows summary of all packages to be removed
+2. Displays operation type for each (remove, restore, purge)
+3. Requires confirmation unless `--yes`, `--force`, or `--dry-run` specified
+4. Applies same behavior as individual unmanage (restore adopted by default)
+
+This is useful for completely resetting your system to pre-dot state.
+
 **Cleanup Mode**:
 
 Use `--cleanup` to remove orphaned packages (missing links or directories):
@@ -534,6 +566,7 @@ Only updates manifest, no filesystem operations.
 - Preserves non-managed files
 - Validates link targets before deletion
 - Adopted packages restored by default (preserves your data)
+- Confirmation required for `--all` operations
 
 **Exit Codes**:
 - `0`: Success
@@ -820,14 +853,51 @@ dot doctor [options]
 
 **Options**:
 - `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`)
+- `--scan-mode MODE`: Orphaned link detection mode (`off`, `scoped`, `deep`) (default: `scoped`)
+- `--color MODE`: Color output mode (`auto`, `always`, `never`) (default: `auto`)
 - All global options
+
+**Scan Modes**:
+
+- **off**: Skip orphaned link detection (fastest, ~50ms)
+  - Only checks managed links from manifest
+  - Use for quick health checks or in automated scripts
+
+- **scoped** (default): Scan directories containing managed links (fast, ~600ms)
+  - Limited to depth 3 to avoid deep recursion
+  - Skips common large directories (Library, node_modules, .docker, etc.)
+  - Parallel scanning using multiple CPU cores
+  - Recommended for regular health checks
+
+- **deep**: Full recursive scan of target directory (thorough, ~3-5s)
+  - Scans entire home directory up to depth 10
+  - Still skips large cache/build directories
+  - Use when investigating orphaned links from other tools
+  - Significantly slower but more comprehensive
+
+**Performance Notes**:
+
+The doctor command has been optimized for speed:
+- Parallel directory scanning using worker pools
+- DirEntry type checking (no extra syscalls for regular files)
+- Intelligent skip patterns for common large directories
+- Depth limits to prevent excessive recursion
+
+For systems with many symlinks (10,000+), use `scoped` mode for regular checks
+and `deep` mode only when investigating specific issues.
 
 **Examples**:
 ```bash
-# Basic health check
+# Basic health check (scoped scan - default, fast)
 dot doctor
 
-# Detailed output
+# Quick check without orphan detection (fastest)
+dot doctor --scan-mode=off
+
+# Deep scan for comprehensive orphan detection
+dot doctor --scan-mode=deep
+
+# Detailed output with verbose logging
 dot -v doctor
 
 # JSON output for scripting
@@ -835,6 +905,9 @@ dot doctor --format json
 
 # Table format
 dot doctor --format table
+
+# Force color output even when piped
+dot doctor --color=always | less -R
 ```
 
 **Checks Performed**:

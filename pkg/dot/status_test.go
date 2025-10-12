@@ -31,14 +31,31 @@ func TestPackageInfo(t *testing.T) {
 	now := time.Now()
 	info := dot.PackageInfo{
 		Name:        "zsh",
+		Source:      "managed",
 		InstalledAt: now,
 		LinkCount:   5,
 		Links:       []string{".zshrc", ".zshenv", ".zsh/"},
 	}
 
 	require.Equal(t, "zsh", info.Name)
+	require.Equal(t, "managed", info.Source)
 	require.Equal(t, 5, info.LinkCount)
 	require.Len(t, info.Links, 3)
+}
+
+func TestPackageInfo_AdoptedSource(t *testing.T) {
+	now := time.Now()
+	info := dot.PackageInfo{
+		Name:        "ssh",
+		Source:      "adopted",
+		InstalledAt: now,
+		LinkCount:   2,
+		Links:       []string{".ssh/config", ".ssh/known_hosts"},
+	}
+
+	require.Equal(t, "ssh", info.Name)
+	require.Equal(t, "adopted", info.Source)
+	require.Equal(t, 2, info.LinkCount)
 }
 
 func TestStatusEmpty(t *testing.T) {

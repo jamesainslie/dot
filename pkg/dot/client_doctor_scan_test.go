@@ -41,15 +41,15 @@ func TestClient_Doctor_OrphanedLinkDetection(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, report.Statistics.OrphanedLinks >= 1, "Expected to detect orphaned link")
 
-	// Verify issues reported
-	hasOrphanIssue := false
+	// Verify issues reported - broken orphaned link is reported as broken link (error)
+	hasOrphanOrBrokenIssue := false
 	for _, issue := range report.Issues {
-		if issue.Type == dot.IssueOrphanedLink {
-			hasOrphanIssue = true
+		if issue.Type == dot.IssueOrphanedLink || issue.Type == dot.IssueBrokenLink {
+			hasOrphanOrBrokenIssue = true
 			break
 		}
 	}
-	assert.True(t, hasOrphanIssue, "Expected orphaned link issue")
+	assert.True(t, hasOrphanOrBrokenIssue, "Expected orphaned or broken link issue")
 }
 
 func TestClient_Doctor_NestedDirectories(t *testing.T) {
@@ -112,4 +112,99 @@ func TestClient_Doctor_SkipPatterns(t *testing.T) {
 
 	// Links in skipped directories should not be reported as orphans
 	assert.NotNil(t, report)
+}
+
+func TestClient_Doctor_OrphanedLinkBrokenTarget(t *testing.T) {
+	fs := adapters.NewMemFS()
+	ctx := context.Background()
+
+	// Setup
+	require.NoError(t, fs.MkdirAll(ctx, "/test/packages/app", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/test/target", 0755))
+	require.NoError(t, fs.WriteFile(ctx, "/test/packages/app/dot-config", []byte("cfg"), 0644))
+
+	cfg := dot.Config{
+		PackageDir: "/test/packages",
+		TargetDir:  "/test/target",
+		FS:         fs,
+		Logger:     adapters.NewNoopLogger(),
+	}
+
+	client, err := dot.NewClient(cfg)
+	require.NoError(t, err)
+
+	// Manage package
+	err = client.Manage(ctx, "app")
+	require.NoError(t, err)
+
+	// Create orphaned symlink with broken target
+	require.NoError(t, fs.Symlink(ctx, "/nonexistent", "/test/target/.orphaned-broken"))
+
+	// Create orphaned symlink with valid target
+	require.NoError(t, fs.MkdirAll(ctx, "/test/valid-target", 0755))
+	require.NoError(t, fs.Symlink(ctx, "/test/valid-target", "/test/target/.orphaned-ok"))
+
+	// Test scoped scan
+	report, err := client.DoctorWithScan(ctx, dot.ScopedScanConfig())
+	require.NoError(t, err)
+
+	// Should detect 2 orphaned links
+	assert.Equal(t, 2, report.Statistics.OrphanedLinks, "Expected 2 orphaned links")
+
+	// Should detect 1 broken link
+	assert.Equal(t, 1, report.Statistics.BrokenLinks, "Expected 1 broken link")
+
+	// Verify issue types
+	brokenCount := 0
+	orphanedCount := 0
+	for _, issue := range report.Issues {
+		if issue.Type == dot.IssueBrokenLink {
+			brokenCount++
+			assert.Equal(t, dot.SeverityError, issue.Severity, "Broken link should be error")
+			assert.Contains(t, issue.Path, "orphaned-broken", "Broken issue should reference broken symlink")
+		}
+		if issue.Type == dot.IssueOrphanedLink {
+			orphanedCount++
+			assert.Equal(t, dot.SeverityWarning, issue.Severity, "Orphaned link should be warning")
+			assert.Contains(t, issue.Path, "orphaned-ok", "Orphaned issue should reference valid symlink")
+		}
+	}
+
+	assert.Equal(t, 1, brokenCount, "Expected 1 broken link issue")
+	assert.Equal(t, 1, orphanedCount, "Expected 1 orphaned link issue")
+}
+
+func TestClient_Doctor_DefaultScanMode(t *testing.T) {
+	fs := adapters.NewMemFS()
+	ctx := context.Background()
+
+	// Setup
+	require.NoError(t, fs.MkdirAll(ctx, "/test/packages/app", 0755))
+	require.NoError(t, fs.MkdirAll(ctx, "/test/target", 0755))
+	require.NoError(t, fs.WriteFile(ctx, "/test/packages/app/dot-file", []byte("x"), 0644))
+
+	cfg := dot.Config{
+		PackageDir: "/test/packages",
+		TargetDir:  "/test/target",
+		FS:         fs,
+		Logger:     adapters.NewNoopLogger(),
+	}
+
+	client, err := dot.NewClient(cfg)
+	require.NoError(t, err)
+
+	// Manage package
+	err = client.Manage(ctx, "app")
+	require.NoError(t, err)
+
+	// Create orphaned symlink
+	require.NoError(t, fs.WriteFile(ctx, "/test/target-file", []byte("x"), 0644))
+	require.NoError(t, fs.Symlink(ctx, "/test/target-file", "/test/target/.orphan"))
+
+	// Test default doctor (should use scoped scanning)
+	report, err := client.Doctor(ctx)
+	require.NoError(t, err)
+
+	// Should detect orphaned link with default scoped scanning
+	assert.Equal(t, 1, report.Statistics.OrphanedLinks, "Expected default scoped scan to detect orphan")
 }

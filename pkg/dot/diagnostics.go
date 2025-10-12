@@ -148,11 +148,11 @@ type DiagnosticStats struct {
 type ScanMode int
 
 const (
-	// ScanOff disables orphaned link detection (fastest, current default).
+	// ScanOff disables orphaned link detection (fastest, use --scan-mode=off to enable).
 	ScanOff ScanMode = iota
-	// ScanScoped only scans directories containing managed links (recommended).
+	// ScanScoped only scans directories containing managed links (default, recommended).
 	ScanScoped
-	// ScanDeep performs full recursive scan with depth limits (slowest).
+	// ScanDeep performs full recursive scan with depth limits (slowest, thorough).
 	ScanDeep
 )
 
@@ -176,8 +176,8 @@ type ScanConfig struct {
 	Mode ScanMode
 
 	// MaxDepth limits directory recursion depth.
-	// Values <= 0 are normalized to 10 by constructor helpers.
-	// Default: 10
+	// Values <= 0 are normalized to 3 (scoped) or 10 (deep) by constructor helpers.
+	// Default: 3 (scoped), 10 (deep)
 	MaxDepth int
 
 	// ScopeToDirs limits scanning to specific directories.
@@ -185,17 +185,52 @@ type ScanConfig struct {
 	ScopeToDirs []string
 
 	// SkipPatterns are directory names/patterns to skip during scanning.
-	// Default constructors include: [".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"]
+	// Default constructors include common large directories unlikely to contain dotfile symlinks.
 	SkipPatterns []string
+
+	// MaxWorkers limits parallel directory scanning goroutines.
+	// Values <= 0 default to runtime.NumCPU().
+	// Set to 1 to disable parallel scanning.
+	// Default: 0 (use NumCPU)
+	MaxWorkers int
+
+	// MaxIssues limits the number of issues to collect before stopping scan.
+	// Values <= 0 mean unlimited (scan everything).
+	// Useful for fast health checks without full enumeration.
+	// Default: 0 (unlimited)
+	MaxIssues int
 }
 
-// DefaultScanConfig returns the default scan configuration (off).
+// defaultSkipPatterns returns common directories to skip during scanning.
+// These are large directories unlikely to contain dotfile symlinks.
+func defaultSkipPatterns() []string {
+	return []string{
+		// Version control
+		".git", ".svn", ".hg",
+		// Build artifacts and dependencies
+		"node_modules", "vendor", "__pycache__", ".terraform",
+		// Package manager caches
+		".cache", ".npm", ".cargo", ".rustup", ".pyenv", ".rbenv",
+		".gradle", ".m2", "go/pkg",
+		// Application state and data
+		".docker", ".rd", ".local/share", ".kube/cache",
+		// Editor caches
+		".vscode", ".config/Code",
+		// System directories (macOS)
+		"Library", ".Trash",
+	}
+}
+
+// DefaultScanConfig returns the default scan configuration (scoped).
+// Scoped scanning checks directories containing managed links for orphaned symlinks.
 func DefaultScanConfig() ScanConfig {
 	return ScanConfig{
-		Mode:         ScanOff,
-		MaxDepth:     10,
+		Mode:         ScanScoped,
+		MaxDepth:     3,
 		ScopeToDirs:  nil,
-		SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},
+		SkipPatterns: defaultSkipPatterns(),
+		MaxWorkers:   0, // Use NumCPU
+		MaxIssues:    0, // Unlimited
 	}
 }
 
@@ -203,9 +238,11 @@ func DefaultScanConfig() ScanConfig {
 func ScopedScanConfig() ScanConfig {
 	return ScanConfig{
 		Mode:         ScanScoped,
-		MaxDepth:     10,
+		MaxDepth:     3,
 		ScopeToDirs:  nil,
-		SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},
+		SkipPatterns: defaultSkipPatterns(),
+		MaxWorkers:   0,
+		MaxIssues:    0,
 	}
 }
 
@@ -218,6 +255,8 @@ func DeepScanConfig(maxDepth int) ScanConfig {
 		Mode:         ScanDeep,
 		MaxDepth:     maxDepth,
 		ScopeToDirs:  nil,
-		SkipPatterns: []string{".git", "node_modules", ".cache", ".npm", ".cargo", ".rustup"},
+		SkipPatterns: defaultSkipPatterns(),
+		MaxWorkers:   0,
+		MaxIssues:    0,
 	}
 }

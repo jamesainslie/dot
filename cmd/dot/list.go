@@ -21,6 +21,10 @@ func newListCommand() *cobra.Command {
 			return err
 		}
 
+		// Load extended config for table_style
+		configPath := getConfigFilePath()
+		extCfg, _ := loadConfigWithRepoPriority(configPath)
+
 		// Get flags
 		format, _ := cmd.Flags().GetString("format")
 		color, _ := cmd.Flags().GetString("color")
@@ -61,8 +65,12 @@ func newListCommand() *cobra.Command {
 			fmt.Fprintln(cmd.OutOrStdout())
 		}
 
-		// Create renderer
-		r, err := renderer.NewRenderer(format, colorize)
+		// Create renderer with table_style from config
+		tableStyle := ""
+		if extCfg != nil {
+			tableStyle = extCfg.Output.TableStyle
+		}
+		r, err := renderer.NewRenderer(format, colorize, tableStyle)
 		if err != nil {
 			return fmt.Errorf("invalid format: %w", err)
 		}
@@ -70,6 +78,11 @@ func newListCommand() *cobra.Command {
 		// Render list
 		if err := r.RenderStatus(cmd.OutOrStdout(), status); err != nil {
 			return fmt.Errorf("render failed: %w", err)
+		}
+
+		// Add newline after output for better terminal spacing
+		if format == "text" || format == "table" {
+			fmt.Fprintln(cmd.OutOrStdout())
 		}
 
 		return nil

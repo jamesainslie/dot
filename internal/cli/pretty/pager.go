@@ -95,9 +95,8 @@ func (p *Pager) pageInteractive(lines []string) error {
 			// Get next action from user
 			action := p.getKeyPress()
 			
-			// Clear status line before showing next content
-			p.clearLine()
-			fmt.Fprintln(p.output)
+			// Clear status line completely (moves cursor back and erases the 2 lines of status)
+			p.clearStatusLine()
 
 			switch action {
 			case actionQuit:
@@ -137,10 +136,15 @@ const (
 	actionLineDown
 )
 
-// clearLine clears the current line (used to remove status line).
-func (p *Pager) clearLine() {
-	// ANSI escape code to move cursor to start of line and clear it
-	fmt.Fprint(p.output, "\r\033[K")
+// clearStatusLine clears the status line without leaving blank lines.
+func (p *Pager) clearStatusLine() {
+	// Move cursor to beginning of current line (status line), then up 1 line
+	// This positions cursor at the start of the blank line before status
+	fmt.Fprint(p.output, "\r\033[1A")
+	// Clear from cursor to end of screen (removes blank line + status line)
+	fmt.Fprint(p.output, "\033[J")
+	// Add single newline so next page starts on a new line (no extra blank lines)
+	fmt.Fprint(p.output, "\n")
 }
 
 // showStatusLine displays the pagination status and controls hint.

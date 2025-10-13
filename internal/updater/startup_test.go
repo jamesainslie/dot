@@ -281,21 +281,25 @@ func TestColorize(t *testing.T) {
 
 	t.Run("with NO_COLOR set", func(t *testing.T) {
 		os.Setenv("NO_COLOR", "1")
-		result := colorize(colorCyan, "test")
+		var buf bytes.Buffer
+		checker := NewStartupChecker("v1.0.0", config.DefaultExtended(), t.TempDir(), &buf)
+		result := checker.colorize(colorCyan, "test")
 		assert.Equal(t, "test", result, "should not add color when NO_COLOR is set")
 	})
 
-	t.Run("with NO_COLOR unset", func(t *testing.T) {
+	t.Run("with colors enabled", func(t *testing.T) {
 		os.Unsetenv("NO_COLOR")
-		// Note: This will still return plain text if not running in a terminal
-		// but we're testing the NO_COLOR logic works
-		result := colorize(colorCyan, "test")
-		// Either colored or plain depending on terminal
-		assert.NotEmpty(t, result)
+		var buf bytes.Buffer
+		checker := NewStartupChecker("v1.0.0", config.DefaultExtended(), t.TempDir(), &buf)
+		// Force colors enabled for testing
+		checker.useColor = true
+		result := checker.colorize(colorCyan, "test")
+		assert.Contains(t, result, "test")
+		assert.NotEqual(t, "test", result, "should add color codes")
 	})
 }
 
-func TestShouldUseColor(t *testing.T) {
+func TestDetectColor(t *testing.T) {
 	// Save and restore NO_COLOR
 	oldNoColor := os.Getenv("NO_COLOR")
 	defer func() {
@@ -308,13 +312,14 @@ func TestShouldUseColor(t *testing.T) {
 
 	t.Run("respects NO_COLOR", func(t *testing.T) {
 		os.Setenv("NO_COLOR", "1")
-		assert.False(t, shouldUseColor())
+		var buf bytes.Buffer
+		assert.False(t, detectColor(&buf))
 	})
 
-	t.Run("without NO_COLOR", func(t *testing.T) {
+	t.Run("detects non-terminal", func(t *testing.T) {
 		os.Unsetenv("NO_COLOR")
-		// Result depends on whether stdout is a terminal
-		// Just verify it doesn't panic
-		_ = shouldUseColor()
+		var buf bytes.Buffer
+		// Buffer doesn't have Fd(), so should return false
+		assert.False(t, detectColor(&buf))
 	})
 }

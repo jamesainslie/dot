@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jamesainslie/dot/internal/config"
@@ -17,6 +18,7 @@ type StartupChecker struct {
 	stateManager   *StateManager
 	checker        *VersionChecker
 	output         io.Writer
+	useColor       bool
 }
 
 // NewStartupChecker creates a new startup checker.
@@ -27,6 +29,7 @@ func NewStartupChecker(currentVersion string, cfg *config.ExtendedConfig, config
 		stateManager:   NewStateManager(configDir),
 		checker:        NewVersionChecker(cfg.Update.Repository),
 		output:         output,
+		useColor:       detectColor(output),
 	}
 }
 
@@ -103,24 +106,21 @@ const (
 	colorReset  = "\033[0m"
 )
 
-// shouldUseColor determines if color output should be enabled
-func shouldUseColor() bool {
-	// Check NO_COLOR environment variable
+// detectColor determines if color output should be enabled for the given writer
+func detectColor(w io.Writer) bool {
 	if os.Getenv("NO_COLOR") != "" {
 		return false
 	}
-
-	// Check if stdout is a terminal
-	if !term.IsTerminal(int(os.Stdout.Fd())) {
-		return false
+	// Check if the writer has an Fd() (e.g., *os.File)
+	if f, ok := w.(interface{ Fd() uintptr }); ok {
+		return term.IsTerminal(int(f.Fd()))
 	}
-
-	return true
+	return false
 }
 
-// colorize applies color if colors should be used
-func colorize(color, text string) string {
-	if !shouldUseColor() {
+// colorize applies color if enabled
+func (sc *StartupChecker) colorize(color, text string) string {
+	if !sc.useColor {
 		return text
 	}
 	return color + text + colorReset
@@ -144,18 +144,18 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 
 	// Box drawing characters (always visible)
 	boxColor := colorGray
-	topLeft := colorize(boxColor, "┌")
-	topRight := colorize(boxColor, "┐")
-	bottomLeft := colorize(boxColor, "└")
-	bottomRight := colorize(boxColor, "┘")
-	vertical := colorize(boxColor, "│")
-	horizontal := colorize(boxColor, "─────────────────────────────────────────────────────────")
+	topLeft := sc.colorize(boxColor, "┌")
+	topRight := sc.colorize(boxColor, "┐")
+	bottomLeft := sc.colorize(boxColor, "└")
+	bottomRight := sc.colorize(boxColor, "┘")
+	vertical := sc.colorize(boxColor, "│")
+	horizontal := sc.colorize(boxColor, "─────────────────────────────────────────────────────────")
 
 	fmt.Fprintf(sc.output, "\n")
 	fmt.Fprintf(sc.output, "%s%s%s\n", topLeft, horizontal, topRight)
 
 	// Title line with bold and cyan
-	title := colorize(colorBold+colorCyan, "A new version of dot is available!")
+	title := sc.colorize(colorBold+colorCyan, "A new version of dot is available!")
 	titleLen := len(stripANSI(title))
 	titlePad := 57 - titleLen - 2 // -2 for "  " prefix
 	fmt.Fprintf(sc.output, "%s  %s%*s%s\n", vertical, title, titlePad, "", vertical)
@@ -164,16 +164,16 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 	fmt.Fprintf(sc.output, "%s%-57s%s\n", vertical, "", vertical)
 
 	// Current version line
-	currentLabel := colorize(colorGray, "Current:")
-	currentVer := colorize(colorYellow, current)
+	currentLabel := sc.colorize(colorGray, "Current:")
+	currentVer := sc.colorize(colorYellow, current)
 	currentLine := fmt.Sprintf("  %s %s", currentLabel, currentVer)
 	currentLen := len(stripANSI(currentLine))
 	currentPad := 57 - currentLen
 	fmt.Fprintf(sc.output, "%s%s%*s%s\n", vertical, currentLine, currentPad, "", vertical)
 
 	// Latest version line
-	latestLabel := colorize(colorGray, "Latest:")
-	latestVer := colorize(colorGreen, latest)
+	latestLabel := sc.colorize(colorGray, "Latest:")
+	latestVer := sc.colorize(colorGreen, latest)
 	latestLine := fmt.Sprintf("  %s  %s", latestLabel, latestVer)
 	latestLen := len(stripANSI(latestLine))
 	latestPad := 57 - latestLen
@@ -183,7 +183,7 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 	fmt.Fprintf(sc.output, "%s%-57s%s\n", vertical, "", vertical)
 
 	// Upgrade message
-	upgradeCmd := colorize(colorCyan, "'dot upgrade'")
+	upgradeCmd := sc.colorize(colorCyan, "'dot upgrade'")
 	upgradeMsg := fmt.Sprintf("  Run %s to update", upgradeCmd)
 	upgradeMsgLen := len(stripANSI(upgradeMsg))
 	upgradePad := 57 - upgradeMsgLen
@@ -195,9 +195,8 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 
 // stripANSI removes ANSI escape codes for length calculation
 func stripANSI(s string) string {
-	// Simple regex would be better, but for length calc we can use a simpler approach
-	// This is a basic implementation - count visible characters
-	result := ""
+	var b strings.Builder
+	b.Grow(len(s))
 	inEscape := false
 	for _, r := range s {
 		if r == '\033' {
@@ -210,7 +209,7 @@ func stripANSI(s string) string {
 			}
 			continue
 		}
-		result += string(r)
+		b.WriteRune(r)
 	}
-	return result
+	return b.String()
 }

@@ -270,9 +270,9 @@ Version checking:
    ```
 
 4. **Use appropriate check frequency**
-   - Workstations: 24-168 hours (daily to weekly)
-   - Servers: 168+ hours (weekly or longer)
-   - CI/CD: disabled
+- Workstations: 24-168 hours (daily to weekly)
+- Servers: 168+ hours (weekly or longer)
+- CI/CD: disabled
 
 5. **Test upgrades in development first**
    ```bash

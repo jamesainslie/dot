@@ -2,6 +2,34 @@
 ## [Unreleased]
 
 
+<a name="v0.4.3"></a>
+## [v0.4.3] - 2025-10-13
+### Docs
+- **changelog:** update for v0.4.3 release
+- **user:** add comprehensive upgrade and version management documentation
+
+### Feat
+- **cli:** integrate startup version check into root command
+- **cli:** implement dot upgrade command with comprehensive testing
+- **config:** add update configuration for package manager and version checking
+- **updater:** add colorized output to update notification
+- **updater:** implement startup version checking system
+- **updater:** add version checker and package manager services
+
+### Fix
+- **updater:** address critical bugs and security issues
+- **updater:** correct notification box alignment and version truncation
+
+### Refactor
+- **updater:** optimize color detection and ANSI stripping
+
+### Test
+- **quality:** increase coverage to 80.2% and fix quality issues
+
+### Pull Requests
+- Merge pull request [#33](https://github.com/jamesainslie/dot/issues/33) from jamesainslie/feature-upgrade-command
+
+
 <a name="v0.4.2"></a>
 ## [v0.4.2] - 2025-10-12
 ### Docs
@@ -594,7 +622,8 @@ should not exist since it was an internal package.
 - Merge pull request [#1](https://github.com/jamesainslie/dot/issues/1) from jamesainslie/jamesainslie-implement-func-scanner
 
 
-[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/jamesainslie/dot/compare/v0.4.3...HEAD
+[v0.4.3]: https://github.com/jamesainslie/dot/compare/v0.4.2...v0.4.3
 [v0.4.2]: https://github.com/jamesainslie/dot/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/jamesainslie/dot/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/jamesainslie/dot/compare/v0.3.1...v0.4.0

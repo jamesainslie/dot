@@ -3,9 +3,11 @@ package updater
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/jamesainslie/dot/internal/config"
+	"golang.org/x/term"
 )
 
 // StartupChecker performs update checks at application startup.
@@ -91,6 +93,39 @@ func (sc *StartupChecker) Check() (*CheckResult, error) {
 	}, nil
 }
 
+// Color codes for terminal output
+const (
+	colorCyan   = "\033[38;5;109m" // Muted cyan for accents
+	colorGreen  = "\033[38;5;71m"  // Muted green for success
+	colorYellow = "\033[38;5;179m" // Muted yellow for version highlight
+	colorGray   = "\033[38;5;245m" // Muted gray for box
+	colorBold   = "\033[1m"
+	colorReset  = "\033[0m"
+)
+
+// shouldUseColor determines if color output should be enabled
+func shouldUseColor() bool {
+	// Check NO_COLOR environment variable
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+
+	// Check if stdout is a terminal
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return false
+	}
+
+	return true
+}
+
+// colorize applies color if colors should be used
+func colorize(color, text string) string {
+	if !shouldUseColor() {
+		return text
+	}
+	return color + text + colorReset
+}
+
 // ShowNotification displays an update notification to the user.
 func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 	if result.SkipCheck || !result.UpdateAvailable {
@@ -107,23 +142,75 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 		latest = latest[:17] + "..."
 	}
 
-	const boxWidth = 57 // Interior width
+	// Box drawing characters (always visible)
+	boxColor := colorGray
+	topLeft := colorize(boxColor, "┌")
+	topRight := colorize(boxColor, "┐")
+	bottomLeft := colorize(boxColor, "└")
+	bottomRight := colorize(boxColor, "┘")
+	vertical := colorize(boxColor, "│")
+	horizontal := colorize(boxColor, "─────────────────────────────────────────────────────────")
 	
 	fmt.Fprintf(sc.output, "\n")
-	fmt.Fprintf(sc.output, "┌─────────────────────────────────────────────────────────┐\n")
-	fmt.Fprintf(sc.output, "│  A new version of dot is available!                    │\n")
-	fmt.Fprintf(sc.output, "│                                                         │\n")
+	fmt.Fprintf(sc.output, "%s%s%s\n", topLeft, horizontal, topRight)
 	
-	// Format version lines with proper padding
-	currentLine := fmt.Sprintf("  Current: %-20s", current)
-	fmt.Fprintf(sc.output, "│%-57s│\n", currentLine)
+	// Title line with bold and cyan
+	title := colorize(colorBold+colorCyan, "A new version of dot is available!")
+	titleLen := len(stripANSI(title))
+	titlePad := 57 - titleLen - 2 // -2 for "  " prefix
+	fmt.Fprintf(sc.output, "%s  %s%*s%s\n", vertical, title, titlePad, "", vertical)
 	
-	latestLine := fmt.Sprintf("  Latest:  %-20s", latest)
-	fmt.Fprintf(sc.output, "│%-57s│\n", latestLine)
+	// Empty line
+	fmt.Fprintf(sc.output, "%s%-57s%s\n", vertical, "", vertical)
 	
-	fmt.Fprintf(sc.output, "│                                                         │\n")
-	fmt.Fprintf(sc.output, "│  Run 'dot upgrade' to update                            │\n")
-	fmt.Fprintf(sc.output, "└─────────────────────────────────────────────────────────┘\n")
+	// Current version line
+	currentLabel := colorize(colorGray, "Current:")
+	currentVer := colorize(colorYellow, current)
+	currentLine := fmt.Sprintf("  %s %s", currentLabel, currentVer)
+	currentLen := len(stripANSI(currentLine))
+	currentPad := 57 - currentLen
+	fmt.Fprintf(sc.output, "%s%s%*s%s\n", vertical, currentLine, currentPad, "", vertical)
+	
+	// Latest version line  
+	latestLabel := colorize(colorGray, "Latest:")
+	latestVer := colorize(colorGreen, latest)
+	latestLine := fmt.Sprintf("  %s  %s", latestLabel, latestVer)
+	latestLen := len(stripANSI(latestLine))
+	latestPad := 57 - latestLen
+	fmt.Fprintf(sc.output, "%s%s%*s%s\n", vertical, latestLine, latestPad, "", vertical)
+	
+	// Empty line
+	fmt.Fprintf(sc.output, "%s%-57s%s\n", vertical, "", vertical)
+	
+	// Upgrade message
+	upgradeCmd := colorize(colorCyan, "'dot upgrade'")
+	upgradeMsg := fmt.Sprintf("  Run %s to update", upgradeCmd)
+	upgradeMsgLen := len(stripANSI(upgradeMsg))
+	upgradePad := 57 - upgradeMsgLen
+	fmt.Fprintf(sc.output, "%s%s%*s%s\n", vertical, upgradeMsg, upgradePad, "", vertical)
+	
+	fmt.Fprintf(sc.output, "%s%s%s\n", bottomLeft, horizontal, bottomRight)
 	fmt.Fprintf(sc.output, "\n")
 }
 
+// stripANSI removes ANSI escape codes for length calculation
+func stripANSI(s string) string {
+	// Simple regex would be better, but for length calc we can use a simpler approach
+	// This is a basic implementation - count visible characters
+	result := ""
+	inEscape := false
+	for _, r := range s {
+		if r == '\033' {
+			inEscape = true
+			continue
+		}
+		if inEscape {
+			if r == 'm' {
+				inEscape = false
+			}
+			continue
+		}
+		result += string(r)
+	}
+	return result
+}

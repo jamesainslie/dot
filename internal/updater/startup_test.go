@@ -2,6 +2,7 @@ package updater
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -136,7 +137,7 @@ func TestStartupChecker_ShowNotification(t *testing.T) {
 
 		assert.NotEmpty(t, output)
 		assert.Contains(t, output, "new version")
-		assert.Contains(t, output, "1.0.0") // current version
+		assert.Contains(t, output, "1.0.0")  // current version
 		assert.Contains(t, output, "v2.0.0") // latest version
 		assert.Contains(t, output, "dot upgrade")
 		assert.Contains(t, output, "┌") // box drawing characters
@@ -226,3 +227,94 @@ func TestStartupChecker_ShowNotification_LongVersions(t *testing.T) {
 	}
 }
 
+func TestStripANSI(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			"no escape codes",
+			"plain text",
+			"plain text",
+		},
+		{
+			"with color code",
+			"\033[38;5;71mgreen text\033[0m",
+			"green text",
+		},
+		{
+			"with bold",
+			"\033[1mbold text\033[0m",
+			"bold text",
+		},
+		{
+			"mixed codes",
+			"\033[1m\033[38;5;109mcyan bold\033[0m text",
+			"cyan bold text",
+		},
+		{
+			"empty string",
+			"",
+			"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stripANSI(tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestColorize(t *testing.T) {
+	// Save and restore NO_COLOR
+	oldNoColor := os.Getenv("NO_COLOR")
+	defer func() {
+		if oldNoColor == "" {
+			os.Unsetenv("NO_COLOR")
+		} else {
+			os.Setenv("NO_COLOR", oldNoColor)
+		}
+	}()
+
+	t.Run("with NO_COLOR set", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		result := colorize(colorCyan, "test")
+		assert.Equal(t, "test", result, "should not add color when NO_COLOR is set")
+	})
+
+	t.Run("with NO_COLOR unset", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		// Note: This will still return plain text if not running in a terminal
+		// but we're testing the NO_COLOR logic works
+		result := colorize(colorCyan, "test")
+		// Either colored or plain depending on terminal
+		assert.NotEmpty(t, result)
+	})
+}
+
+func TestShouldUseColor(t *testing.T) {
+	// Save and restore NO_COLOR
+	oldNoColor := os.Getenv("NO_COLOR")
+	defer func() {
+		if oldNoColor == "" {
+			os.Unsetenv("NO_COLOR")
+		} else {
+			os.Setenv("NO_COLOR", oldNoColor)
+		}
+	}()
+
+	t.Run("respects NO_COLOR", func(t *testing.T) {
+		os.Setenv("NO_COLOR", "1")
+		assert.False(t, shouldUseColor())
+	})
+
+	t.Run("without NO_COLOR", func(t *testing.T) {
+		os.Unsetenv("NO_COLOR")
+		// Result depends on whether stdout is a terminal
+		// Just verify it doesn't panic
+		_ = shouldUseColor()
+	})
+}

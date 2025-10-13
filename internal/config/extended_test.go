@@ -66,6 +66,13 @@ func TestExtendedConfig_Default(t *testing.T) {
 	assert.True(t, cfg.Doctor.CheckOrphaned)
 	assert.True(t, cfg.Doctor.CheckPermissions)
 
+	// Update
+	assert.True(t, cfg.Update.CheckOnStartup)
+	assert.Equal(t, 24, cfg.Update.CheckFrequency)
+	assert.Equal(t, "auto", cfg.Update.PackageManager)
+	assert.Equal(t, "jamesainslie/dot", cfg.Update.Repository)
+	assert.False(t, cfg.Update.IncludePrerelease)
+
 	// Experimental
 	assert.False(t, cfg.Experimental.Parallel)
 	assert.False(t, cfg.Experimental.Profiling)
@@ -380,6 +387,50 @@ func TestExtendedConfig_ValidateOperations(t *testing.T) {
 	// Test invalid max_parallel
 	cfg.Operations.MaxParallel = -1
 	assert.Error(t, cfg.Validate())
+}
+
+func TestExtendedConfig_ValidateUpdate(t *testing.T) {
+	tests := []struct {
+		name      string
+		frequency int
+		pkgMgr    string
+		repo      string
+		wantErr   bool
+	}{
+		{"valid defaults", 24, "auto", "jamesainslie/dot", false},
+		{"valid check frequency 0", 0, "auto", "jamesainslie/dot", false},
+		{"valid check frequency -1 (disabled)", -1, "auto", "jamesainslie/dot", false},
+		{"invalid check frequency -2", -2, "auto", "jamesainslie/dot", true},
+		{"valid package manager brew", 24, "brew", "jamesainslie/dot", false},
+		{"valid package manager apt", 24, "apt", "jamesainslie/dot", false},
+		{"valid package manager yum", 24, "yum", "jamesainslie/dot", false},
+		{"valid package manager pacman", 24, "pacman", "jamesainslie/dot", false},
+		{"valid package manager dnf", 24, "dnf", "jamesainslie/dot", false},
+		{"valid package manager zypper", 24, "zypper", "jamesainslie/dot", false},
+		{"valid package manager manual", 24, "manual", "jamesainslie/dot", false},
+		{"invalid package manager", 24, "invalid-mgr", "jamesainslie/dot", true},
+		{"empty repository", 24, "auto", "", true},
+		{"invalid repository format (no slash)", 24, "auto", "invalid", true},
+		{"invalid repository format (empty owner)", 24, "auto", "/repo", true},
+		{"invalid repository format (empty repo)", 24, "auto", "owner/", true},
+		{"valid different repository", 24, "auto", "owner/different-repo", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.DefaultExtended()
+			cfg.Update.CheckFrequency = tt.frequency
+			cfg.Update.PackageManager = tt.pkgMgr
+			cfg.Update.Repository = tt.repo
+
+			err := cfg.Validate()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestExtendedConfig_MarshalYAML(t *testing.T) {

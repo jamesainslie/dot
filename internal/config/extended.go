@@ -20,6 +20,7 @@ type ExtendedConfig struct {
 	Operations   OperationsConfig   `mapstructure:"operations" json:"operations" yaml:"operations" toml:"operations"`
 	Packages     PackagesConfig     `mapstructure:"packages" json:"packages" yaml:"packages" toml:"packages"`
 	Doctor       DoctorConfig       `mapstructure:"doctor" json:"doctor" yaml:"doctor" toml:"doctor"`
+	Update       UpdateConfig       `mapstructure:"update" json:"update" yaml:"update" toml:"update"`
 	Experimental ExperimentalConfig `mapstructure:"experimental" json:"experimental" yaml:"experimental" toml:"experimental"`
 }
 
@@ -160,6 +161,24 @@ type DoctorConfig struct {
 	CheckPermissions bool `mapstructure:"check_permissions" json:"check_permissions" yaml:"check_permissions" toml:"check_permissions"`
 }
 
+// UpdateConfig contains update and upgrade configuration.
+type UpdateConfig struct {
+	// Enable automatic version checking at startup
+	CheckOnStartup bool `mapstructure:"check_on_startup" json:"check_on_startup" yaml:"check_on_startup" toml:"check_on_startup"`
+
+	// Frequency of version checks in hours (0 = always check, -1 = never check)
+	CheckFrequency int `mapstructure:"check_frequency" json:"check_frequency" yaml:"check_frequency" toml:"check_frequency"`
+
+	// Package manager to use for upgrades: auto, brew, apt, yum, pacman, manual
+	PackageManager string `mapstructure:"package_manager" json:"package_manager" yaml:"package_manager" toml:"package_manager"`
+
+	// Repository URL for GitHub releases
+	Repository string `mapstructure:"repository" json:"repository" yaml:"repository" toml:"repository"`
+
+	// Enable pre-release versions
+	IncludePrerelease bool `mapstructure:"include_prerelease" json:"include_prerelease" yaml:"include_prerelease" toml:"include_prerelease"`
+}
+
 // ExperimentalConfig contains experimental feature flags.
 type ExperimentalConfig struct {
 	// Enable parallel operations
@@ -230,6 +249,13 @@ func DefaultExtended() *ExtendedConfig {
 			CheckOrphaned:    true,
 			CheckPermissions: true,
 		},
+		Update: UpdateConfig{
+			CheckOnStartup:    true,
+			CheckFrequency:    24, // Check once per day
+			PackageManager:    "auto",
+			Repository:        "jamesainslie/dot",
+			IncludePrerelease: false,
+		},
 		Experimental: ExperimentalConfig{
 			Parallel:  false,
 			Profiling: false,
@@ -282,6 +308,9 @@ func (c *ExtendedConfig) Validate() error {
 		return err
 	}
 	if err := c.validatePackages(); err != nil {
+		return err
+	}
+	if err := c.validateUpdate(); err != nil {
 		return err
 	}
 
@@ -404,6 +433,32 @@ func (c *ExtendedConfig) validatePackages() error {
 	if !contains(validSortBy, c.Packages.SortBy) {
 		return fmt.Errorf("packages.sort_by: invalid sort field %q (must be one of: %s)",
 			c.Packages.SortBy, strings.Join(validSortBy, ", "))
+	}
+
+	return nil
+}
+
+func (c *ExtendedConfig) validateUpdate() error {
+	if c.Update.CheckFrequency < -1 {
+		return fmt.Errorf("update.check_frequency: check frequency cannot be less than -1, got %d",
+			c.Update.CheckFrequency)
+	}
+
+	validPackageManagers := []string{"auto", "brew", "apt", "yum", "pacman", "dnf", "zypper", "manual"}
+	if !contains(validPackageManagers, c.Update.PackageManager) {
+		return fmt.Errorf("update.package_manager: invalid package manager %q (must be one of: %s)",
+			c.Update.PackageManager, strings.Join(validPackageManagers, ", "))
+	}
+
+	if c.Update.Repository == "" {
+		return fmt.Errorf("update.repository: repository cannot be empty")
+	}
+
+	// Basic validation for repository format (owner/repo)
+	parts := strings.Split(c.Update.Repository, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return fmt.Errorf("update.repository: repository must be in 'owner/repo' format, got %q",
+			c.Update.Repository)
 	}
 
 	return nil

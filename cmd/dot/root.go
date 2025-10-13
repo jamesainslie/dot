@@ -10,6 +10,7 @@ import (
 
 	"github.com/jamesainslie/dot/internal/adapters"
 	"github.com/jamesainslie/dot/internal/config"
+	"github.com/jamesainslie/dot/internal/updater"
 	"github.com/jamesainslie/dot/pkg/dot"
 	"github.com/spf13/cobra"
 )
@@ -40,6 +41,11 @@ comprehensive conflict detection, and incremental updates.`,
 		Version:       fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date),
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Perform startup version check (non-blocking)
+			performStartupVersionCheck(version)
+			return nil
+		},
 	}
 
 	// Set up flag error function to show usage on flag parsing errors
@@ -87,6 +93,7 @@ comprehensive conflict detection, and incremental updates.`,
 		newDoctorCommand(),
 		newConfigCommand(),
 		newCloneCommand(),
+		newUpgradeCommand(version),
 	)
 
 	return rootCmd
@@ -293,4 +300,35 @@ func shouldColorize(color string) bool {
 	default:
 		return false
 	}
+}
+
+// performStartupVersionCheck performs a non-blocking version check at startup.
+func performStartupVersionCheck(currentVersion string) {
+	// Don't check if this is a dev build
+	if currentVersion == "dev" {
+		return
+	}
+
+	// Load configuration
+	configPath := getConfigFilePath()
+	loader := config.NewLoader("dot", configPath)
+	cfg, err := loader.LoadWithEnv()
+	if err != nil {
+		// If config fails to load, use defaults (which has checking disabled by default)
+		cfg = config.DefaultExtended()
+	}
+
+	// Don't check if disabled
+	if !cfg.Update.CheckOnStartup {
+		return
+	}
+
+	// Perform check
+	configDir := filepath.Dir(configPath)
+	checker := updater.NewStartupChecker(currentVersion, cfg, configDir, os.Stdout)
+	result, err := checker.Check()
+	if err != nil {
+		return // Silent failure
+	}
+	checker.ShowNotification(result)
 }

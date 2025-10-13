@@ -18,8 +18,12 @@ func TestBrewManager(t *testing.T) {
 func TestAptManager(t *testing.T) {
 	mgr := &AptManager{}
 	assert.Equal(t, "apt", mgr.Name())
-	assert.NotEmpty(t, mgr.UpgradeCommand())
-	assert.Contains(t, mgr.UpgradeCommand(), "apt")
+	cmd := mgr.UpgradeCommand()
+	assert.NotEmpty(t, cmd)
+	// Should contain apt-get (not apt) for --only-upgrade support
+	assert.Contains(t, cmd, "apt-get")
+	assert.Contains(t, cmd, "--only-upgrade")
+	assert.Contains(t, cmd, "dot")
 
 	// IsAvailable should not panic
 	available := mgr.IsAvailable()

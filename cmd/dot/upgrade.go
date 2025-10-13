@@ -165,38 +165,23 @@ func confirmUpgrade() bool {
 	return response == "y" || response == "yes"
 }
 
-// executeUpgradeCommand executes the upgrade command.
+// executeUpgradeCommand executes the upgrade command directly without shell invocation.
 func executeUpgradeCommand(cmd []string) error {
-	if len(cmd) > 1 && contains(cmd, "&&") {
-		// Execute as shell command
-		// #nosec G204 -- Command comes from package manager interface, not user input
-		shellCmd := exec.Command("sh", "-c", strings.Join(cmd, " "))
-		shellCmd.Stdout = os.Stdout
-		shellCmd.Stderr = os.Stderr
-		shellCmd.Stdin = os.Stdin
-		if err := shellCmd.Run(); err != nil {
-			return fmt.Errorf("upgrade failed: %w", err)
-		}
-	} else {
-		// Execute as direct command
-		// #nosec G204 -- Command comes from package manager interface, not user input
-		upgradeCmd := exec.Command(cmd[0], cmd[1:]...)
-		upgradeCmd.Stdout = os.Stdout
-		upgradeCmd.Stderr = os.Stderr
-		upgradeCmd.Stdin = os.Stdin
-		if err := upgradeCmd.Run(); err != nil {
-			return fmt.Errorf("upgrade failed: %w", err)
-		}
+	if len(cmd) == 0 {
+		return fmt.Errorf("empty upgrade command")
 	}
-	return nil
-}
 
-// contains checks if a slice contains a string.
-func contains(slice []string, str string) bool {
-	for _, s := range slice {
-		if s == str {
-			return true
-		}
+	// Execute command directly (no shell invocation)
+	// Command comes from trusted PackageManager interface, not user input
+	// #nosec G204 -- Command source is PackageManager interface, not user-controlled
+	upgradeCmd := exec.Command(cmd[0], cmd[1:]...)
+	upgradeCmd.Stdout = os.Stdout
+	upgradeCmd.Stderr = os.Stderr
+	upgradeCmd.Stdin = os.Stdin
+
+	if err := upgradeCmd.Run(); err != nil {
+		return fmt.Errorf("upgrade failed: %w", err)
 	}
-	return false
+
+	return nil
 }

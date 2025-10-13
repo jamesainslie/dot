@@ -45,7 +45,9 @@ func (a *AptManager) IsAvailable() bool {
 }
 
 func (a *AptManager) UpgradeCommand() []string {
-	return []string{"sudo", "apt", "update", "&&", "sudo", "apt", "upgrade", "-y", "dot"}
+	// Use apt-get install --only-upgrade which works with exec.Command
+	// Note: This assumes the package is already installed
+	return []string{"sudo", "apt-get", "install", "--only-upgrade", "-y", "dot"}
 }
 
 // YumManager represents YUM package manager.

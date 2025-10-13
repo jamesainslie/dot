@@ -39,10 +39,10 @@ func TestStartupChecker_Check_Disabled(t *testing.T) {
 	assert.False(t, result.UpdateAvailable)
 }
 
-func TestStartupChecker_Check_ZeroFrequency(t *testing.T) {
+func TestStartupChecker_Check_DisabledFrequency(t *testing.T) {
 	cfg := config.DefaultExtended()
 	cfg.Update.CheckOnStartup = true
-	cfg.Update.CheckFrequency = 0 // Disabled
+	cfg.Update.CheckFrequency = -1 // Disabled (-1 means never check)
 
 	tmpDir := t.TempDir()
 	var buf bytes.Buffer
@@ -51,6 +51,25 @@ func TestStartupChecker_Check_ZeroFrequency(t *testing.T) {
 	result, err := sc.Check()
 	require.NoError(t, err)
 	assert.True(t, result.SkipCheck)
+}
+
+func TestStartupChecker_Check_AlwaysCheck(t *testing.T) {
+	cfg := config.DefaultExtended()
+	cfg.Update.CheckOnStartup = true
+	cfg.Update.CheckFrequency = 0 // Always check (0 means check every time)
+
+	tmpDir := t.TempDir()
+	var buf bytes.Buffer
+	sc := NewStartupChecker("1.0.0", cfg, tmpDir, &buf)
+
+	result, err := sc.Check()
+	require.NoError(t, err)
+	// With frequency=0, check should be attempted
+	// The outcome depends on network availability and GitHub API
+	assert.NotNil(t, result, "Should return a result")
+	// Just verify that the check was attempted (state file should be updated)
+	state, _ := sc.stateManager.Load()
+	assert.NotNil(t, state, "State should be created even if check fails")
 }
 
 func TestStartupChecker_Check_NotDueYet(t *testing.T) {

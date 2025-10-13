@@ -45,11 +45,11 @@ func (sm *StateManager) Load() (*CheckState, error) {
 	return &state, nil
 }
 
-// Save saves the check state to disk.
+// Save saves the check state to disk atomically with restrictive permissions.
 func (sm *StateManager) Save(state *CheckState) error {
-	// Ensure directory exists
+	// Ensure directory exists with restrictive permissions
 	dir := filepath.Dir(sm.statePath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create state directory: %w", err)
 	}
 
@@ -58,8 +58,30 @@ func (sm *StateManager) Save(state *CheckState) error {
 		return fmt.Errorf("marshal state: %w", err)
 	}
 
-	if err := os.WriteFile(sm.statePath, data, 0o600); err != nil {
-		return fmt.Errorf("write state file: %w", err)
+	// Write atomically using temp file + rename
+	tmp, err := os.CreateTemp(dir, "update-check.*.json")
+	if err != nil {
+		return fmt.Errorf("create temp state file: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName) // Clean up if we fail
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("write temp state file: %w", err)
+	}
+
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return fmt.Errorf("chmod temp state file: %w", err)
+	}
+
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp state file: %w", err)
+	}
+
+	if err := os.Rename(tmpName, sm.statePath); err != nil {
+		return fmt.Errorf("replace state file: %w", err)
 	}
 
 	return nil

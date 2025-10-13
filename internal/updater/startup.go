@@ -49,16 +49,25 @@ func (sc *StartupChecker) Check() (*CheckResult, error) {
 	}
 
 	// Check if we should perform a check based on frequency
-	frequency := time.Duration(sc.config.Update.CheckFrequency) * time.Hour
-	if frequency <= 0 {
-		// Disabled via frequency
+	cf := sc.config.Update.CheckFrequency
+	if cf < 0 {
+		// Disabled via frequency (-1)
 		return &CheckResult{SkipCheck: true}, nil
 	}
 
-	shouldCheck, err := sc.stateManager.ShouldCheck(frequency)
-	if err != nil {
-		// Don't fail startup on state file errors
-		return &CheckResult{SkipCheck: true}, nil
+	var shouldCheck bool
+	if cf == 0 {
+		// Always check (0 means check every time)
+		shouldCheck = true
+	} else {
+		// Use frequency-based checking
+		frequency := time.Duration(cf) * time.Hour
+		var err error
+		shouldCheck, err = sc.stateManager.ShouldCheck(frequency)
+		if err != nil {
+			// Don't fail startup on state file errors
+			return &CheckResult{SkipCheck: true}, nil
+		}
 	}
 
 	if !shouldCheck {
@@ -132,14 +141,16 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 		return
 	}
 
-	// Truncate version strings if too long
+	// Truncate version strings if too long (use rune-based slicing for UTF-8 safety)
 	current := sc.currentVersion
-	if len(current) > 20 {
-		current = current[:17] + "..."
+	if len([]rune(current)) > 20 {
+		runes := []rune(current)
+		current = string(runes[:17]) + "..."
 	}
 	latest := result.LatestVersion
-	if len(latest) > 20 {
-		latest = latest[:17] + "..."
+	if len([]rune(latest)) > 20 {
+		runes := []rune(latest)
+		latest = string(runes[:17]) + "..."
 	}
 
 	// Box drawing characters (always visible)

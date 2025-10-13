@@ -204,4 +204,3 @@ func TestCheckState_JSON(t *testing.T) {
 	assert.Equal(t, state.LastCheck.Unix(), loaded.LastCheck.Unix())
 	assert.Equal(t, state.LastSkip.Unix(), loaded.LastSkip.Unix())
 }
-

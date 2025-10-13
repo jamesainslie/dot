@@ -204,18 +204,18 @@ func TestStartupChecker_ShowNotification_LongVersions(t *testing.T) {
 
 	// Verify truncation occurred
 	assert.Contains(t, output, "...")
-	
+
 	// Verify box is properly formed
 	assert.Contains(t, output, "┌")
 	assert.Contains(t, output, "└")
 	assert.Contains(t, output, "│")
-	
+
 	// Verify content is present
 	assert.Contains(t, output, "new version")
 	assert.Contains(t, output, "Current:")
 	assert.Contains(t, output, "Latest:")
 	assert.Contains(t, output, "dot upgrade")
-	
+
 	// Verify no lines are excessively long
 	// Note: UTF-8 box drawing characters may have byte lengths different from display width
 	lines := strings.Split(output, "\n")

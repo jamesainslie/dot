@@ -58,7 +58,7 @@ func (sm *StateManager) Save(state *CheckState) error {
 		return fmt.Errorf("marshal state: %w", err)
 	}
 
-	if err := os.WriteFile(sm.statePath, data, 0o644); err != nil {
+	if err := os.WriteFile(sm.statePath, data, 0o600); err != nil {
 		return fmt.Errorf("write state file: %w", err)
 	}
 
@@ -103,4 +103,3 @@ func (sm *StateManager) RecordSkip() error {
 	state.LastSkip = time.Now()
 	return sm.Save(state)
 }
-

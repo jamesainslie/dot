@@ -150,19 +150,19 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 	bottomRight := colorize(boxColor, "┘")
 	vertical := colorize(boxColor, "│")
 	horizontal := colorize(boxColor, "─────────────────────────────────────────────────────────")
-	
+
 	fmt.Fprintf(sc.output, "\n")
 	fmt.Fprintf(sc.output, "%s%s%s\n", topLeft, horizontal, topRight)
-	
+
 	// Title line with bold and cyan
 	title := colorize(colorBold+colorCyan, "A new version of dot is available!")
 	titleLen := len(stripANSI(title))
 	titlePad := 57 - titleLen - 2 // -2 for "  " prefix
 	fmt.Fprintf(sc.output, "%s  %s%*s%s\n", vertical, title, titlePad, "", vertical)
-	
+
 	// Empty line
 	fmt.Fprintf(sc.output, "%s%-57s%s\n", vertical, "", vertical)
-	
+
 	// Current version line
 	currentLabel := colorize(colorGray, "Current:")
 	currentVer := colorize(colorYellow, current)
@@ -170,25 +170,25 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 	currentLen := len(stripANSI(currentLine))
 	currentPad := 57 - currentLen
 	fmt.Fprintf(sc.output, "%s%s%*s%s\n", vertical, currentLine, currentPad, "", vertical)
-	
-	// Latest version line  
+
+	// Latest version line
 	latestLabel := colorize(colorGray, "Latest:")
 	latestVer := colorize(colorGreen, latest)
 	latestLine := fmt.Sprintf("  %s  %s", latestLabel, latestVer)
 	latestLen := len(stripANSI(latestLine))
 	latestPad := 57 - latestLen
 	fmt.Fprintf(sc.output, "%s%s%*s%s\n", vertical, latestLine, latestPad, "", vertical)
-	
+
 	// Empty line
 	fmt.Fprintf(sc.output, "%s%-57s%s\n", vertical, "", vertical)
-	
+
 	// Upgrade message
 	upgradeCmd := colorize(colorCyan, "'dot upgrade'")
 	upgradeMsg := fmt.Sprintf("  Run %s to update", upgradeCmd)
 	upgradeMsgLen := len(stripANSI(upgradeMsg))
 	upgradePad := 57 - upgradeMsgLen
 	fmt.Fprintf(sc.output, "%s%s%*s%s\n", vertical, upgradeMsg, upgradePad, "", vertical)
-	
+
 	fmt.Fprintf(sc.output, "%s%s%s\n", bottomLeft, horizontal, bottomRight)
 	fmt.Fprintf(sc.output, "\n")
 }

@@ -53,7 +53,7 @@ func TestParseVersion(t *testing.T) {
 			assert.Equal(t, tt.wantMinor, v.Minor)
 			assert.Equal(t, tt.wantPatch, v.Patch)
 			assert.Equal(t, tt.wantPreRel, v.PreRelease)
-			
+
 			// Verify the Raw field is set
 			assert.NotEmpty(t, v.Raw)
 		})

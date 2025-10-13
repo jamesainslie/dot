@@ -52,11 +52,8 @@ Configuration (in ~/.config/dot/config.yaml):
 // runUpgrade handles the upgrade command execution.
 func runUpgrade(currentVersion string, yes, checkOnly bool) error {
 	// Load configuration
-	configPath := getConfigFilePath()
-	loader := config.NewLoader("dot", configPath)
-	cfg, err := loader.LoadWithEnv()
+	cfg, err := loadConfig()
 	if err != nil {
-		// Use defaults if config load fails
 		cfg = config.DefaultExtended()
 	}
 
@@ -76,28 +73,7 @@ func runUpgrade(currentVersion string, yes, checkOnly bool) error {
 	}
 
 	// Display update information
-	fmt.Printf("\n%s A new version is available!\n\n", info("ⓘ"))
-	fmt.Printf("  Current version:  %s\n", accent(currentVersion))
-	fmt.Printf("  Latest version:   %s\n", accent(latestRelease.TagName))
-	fmt.Printf("  Release URL:      %s\n\n", dim(latestRelease.HTMLURL))
-
-	if latestRelease.Body != "" {
-		fmt.Println(bold("Release Notes:"))
-		// Show first few lines of release notes
-		lines := strings.Split(latestRelease.Body, "\n")
-		maxLines := 10
-		if len(lines) > maxLines {
-			for i := 0; i < maxLines; i++ {
-				fmt.Printf("  %s\n", dim(lines[i]))
-			}
-			fmt.Printf("  %s\n\n", dim("..."))
-		} else {
-			for _, line := range lines {
-				fmt.Printf("  %s\n", dim(line))
-			}
-			fmt.Println()
-		}
-	}
+	displayUpdateInfo(currentVersion, latestRelease)
 
 	if checkOnly {
 		fmt.Printf("Run %s to upgrade.\n", accent("dot upgrade"))
@@ -112,9 +88,7 @@ func runUpgrade(currentVersion string, yes, checkOnly bool) error {
 
 	// Handle manual upgrade
 	if pkgMgr.Name() == "manual" {
-		fmt.Println(bold("Manual Upgrade Instructions:"))
-		fmt.Printf("\n  Visit the release page to download the latest version:\n")
-		fmt.Printf("  %s\n\n", accent(latestRelease.HTMLURL))
+		displayManualInstructions(latestRelease.HTMLURL)
 		return nil
 	}
 
@@ -124,46 +98,96 @@ func runUpgrade(currentVersion string, yes, checkOnly bool) error {
 	fmt.Printf("Upgrade command: %s\n\n", dim(strings.Join(cmd, " ")))
 
 	// Confirm upgrade
-	if !yes {
-		fmt.Printf("Do you want to upgrade now? [y/N]: ")
-		var response string
-		fmt.Scanln(&response)
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Upgrade cancelled.")
-			return nil
-		}
+	if !yes && !confirmUpgrade() {
+		fmt.Println("Upgrade cancelled.")
+		return nil
 	}
 
 	// Execute upgrade
 	fmt.Printf("\n%s Upgrading...\n\n", info("→"))
-
-	// Handle compound commands (with &&)
-	if len(cmd) > 1 && contains(cmd, "&&") {
-		// Execute as shell command
-		shellCmd := exec.Command("sh", "-c", strings.Join(cmd, " "))
-		shellCmd.Stdout = os.Stdout
-		shellCmd.Stderr = os.Stderr
-		shellCmd.Stdin = os.Stdin
-
-		if err := shellCmd.Run(); err != nil {
-			return fmt.Errorf("upgrade failed: %w", err)
-		}
-	} else {
-		// Execute as direct command
-		upgradeCmd := exec.Command(cmd[0], cmd[1:]...)
-		upgradeCmd.Stdout = os.Stdout
-		upgradeCmd.Stderr = os.Stderr
-		upgradeCmd.Stdin = os.Stdin
-
-		if err := upgradeCmd.Run(); err != nil {
-			return fmt.Errorf("upgrade failed: %w", err)
-		}
+	if err := executeUpgradeCommand(cmd); err != nil {
+		return err
 	}
 
 	fmt.Printf("\n%s Upgrade completed successfully!\n", success("✓"))
 	fmt.Printf("Run %s to verify the new version.\n", accent("dot --version"))
 
+	return nil
+}
+
+// loadConfig loads the configuration from the config file.
+func loadConfig() (*config.ExtendedConfig, error) {
+	configPath := getConfigFilePath()
+	loader := config.NewLoader("dot", configPath)
+	return loader.LoadWithEnv()
+}
+
+// displayUpdateInfo shows update information and release notes.
+func displayUpdateInfo(currentVersion string, release *updater.GitHubRelease) {
+	fmt.Printf("\n%s A new version is available!\n\n", info("ⓘ"))
+	fmt.Printf("  Current version:  %s\n", accent(currentVersion))
+	fmt.Printf("  Latest version:   %s\n", accent(release.TagName))
+	fmt.Printf("  Release URL:      %s\n\n", dim(release.HTMLURL))
+
+	if release.Body == "" {
+		return
+	}
+
+	fmt.Println(bold("Release Notes:"))
+	lines := strings.Split(release.Body, "\n")
+	maxLines := 10
+	if len(lines) > maxLines {
+		for i := 0; i < maxLines; i++ {
+			fmt.Printf("  %s\n", dim(lines[i]))
+		}
+		fmt.Printf("  %s\n\n", dim("..."))
+	} else {
+		for _, line := range lines {
+			fmt.Printf("  %s\n", dim(line))
+		}
+		fmt.Println()
+	}
+}
+
+// displayManualInstructions shows manual upgrade instructions.
+func displayManualInstructions(releaseURL string) {
+	fmt.Println(bold("Manual Upgrade Instructions:"))
+	fmt.Printf("\n  Visit the release page to download the latest version:\n")
+	fmt.Printf("  %s\n\n", accent(releaseURL))
+}
+
+// confirmUpgrade prompts the user for upgrade confirmation.
+func confirmUpgrade() bool {
+	fmt.Printf("Do you want to upgrade now? [y/N]: ")
+	var response string
+	fmt.Scanln(&response)
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
+}
+
+// executeUpgradeCommand executes the upgrade command.
+func executeUpgradeCommand(cmd []string) error {
+	if len(cmd) > 1 && contains(cmd, "&&") {
+		// Execute as shell command
+		// #nosec G204 -- Command comes from package manager interface, not user input
+		shellCmd := exec.Command("sh", "-c", strings.Join(cmd, " "))
+		shellCmd.Stdout = os.Stdout
+		shellCmd.Stderr = os.Stderr
+		shellCmd.Stdin = os.Stdin
+		if err := shellCmd.Run(); err != nil {
+			return fmt.Errorf("upgrade failed: %w", err)
+		}
+	} else {
+		// Execute as direct command
+		// #nosec G204 -- Command comes from package manager interface, not user input
+		upgradeCmd := exec.Command(cmd[0], cmd[1:]...)
+		upgradeCmd.Stdout = os.Stdout
+		upgradeCmd.Stderr = os.Stderr
+		upgradeCmd.Stdin = os.Stdin
+		if err := upgradeCmd.Run(); err != nil {
+			return fmt.Errorf("upgrade failed: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -176,4 +200,3 @@ func contains(slice []string, str string) bool {
 	}
 	return false
 }
-

@@ -97,15 +97,33 @@ func (sc *StartupChecker) ShowNotification(result *CheckResult) {
 		return
 	}
 
+	// Truncate version strings if too long
+	current := sc.currentVersion
+	if len(current) > 20 {
+		current = current[:17] + "..."
+	}
+	latest := result.LatestVersion
+	if len(latest) > 20 {
+		latest = latest[:17] + "..."
+	}
+
+	const boxWidth = 57 // Interior width
+	
 	fmt.Fprintf(sc.output, "\n")
-	fmt.Fprintf(sc.output, "╭─────────────────────────────────────────────────────────────╮\n")
-	fmt.Fprintf(sc.output, "│  A new version of dot is available!                        │\n")
-	fmt.Fprintf(sc.output, "│                                                             │\n")
-	fmt.Fprintf(sc.output, "│  Current: %-49s │\n", sc.currentVersion)
-	fmt.Fprintf(sc.output, "│  Latest:  %-49s │\n", result.LatestVersion)
-	fmt.Fprintf(sc.output, "│                                                             │\n")
-	fmt.Fprintf(sc.output, "│  Run 'dot upgrade' to update                                │\n")
-	fmt.Fprintf(sc.output, "╰─────────────────────────────────────────────────────────────╯\n")
+	fmt.Fprintf(sc.output, "┌─────────────────────────────────────────────────────────┐\n")
+	fmt.Fprintf(sc.output, "│  A new version of dot is available!                    │\n")
+	fmt.Fprintf(sc.output, "│                                                         │\n")
+	
+	// Format version lines with proper padding
+	currentLine := fmt.Sprintf("  Current: %-20s", current)
+	fmt.Fprintf(sc.output, "│%-57s│\n", currentLine)
+	
+	latestLine := fmt.Sprintf("  Latest:  %-20s", latest)
+	fmt.Fprintf(sc.output, "│%-57s│\n", latestLine)
+	
+	fmt.Fprintf(sc.output, "│                                                         │\n")
+	fmt.Fprintf(sc.output, "│  Run 'dot upgrade' to update                            │\n")
+	fmt.Fprintf(sc.output, "└─────────────────────────────────────────────────────────┘\n")
 	fmt.Fprintf(sc.output, "\n")
 }
 

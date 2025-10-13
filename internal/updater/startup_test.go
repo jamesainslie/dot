@@ -126,7 +126,7 @@ func TestStartupChecker_ShowNotification(t *testing.T) {
 		buf.Reset()
 		result := &CheckResult{
 			UpdateAvailable: true,
-			LatestVersion:   "2.0.0",
+			LatestVersion:   "v2.0.0",
 			ReleaseURL:      "https://github.com/owner/repo/releases/tag/v2.0.0",
 			SkipCheck:       false,
 		}
@@ -137,8 +137,10 @@ func TestStartupChecker_ShowNotification(t *testing.T) {
 		assert.NotEmpty(t, output)
 		assert.Contains(t, output, "new version")
 		assert.Contains(t, output, "1.0.0") // current version
-		assert.Contains(t, output, "2.0.0") // latest version
+		assert.Contains(t, output, "v2.0.0") // latest version
 		assert.Contains(t, output, "dot upgrade")
+		assert.Contains(t, output, "┌") // box drawing characters
+		assert.Contains(t, output, "└")
 	})
 }
 
@@ -173,12 +175,54 @@ func TestStartupChecker_ShowNotification_Format(t *testing.T) {
 	output := buf.String()
 
 	// Verify box drawing characters are present
-	assert.Contains(t, output, "╭")
-	assert.Contains(t, output, "╰")
+	assert.Contains(t, output, "┌")
+	assert.Contains(t, output, "└")
 	assert.Contains(t, output, "│")
 
 	// Verify content is aligned
 	lines := strings.Split(output, "\n")
 	assert.True(t, len(lines) > 5, "should have multiple lines")
+}
+
+func TestStartupChecker_ShowNotification_LongVersions(t *testing.T) {
+	cfg := config.DefaultExtended()
+	var buf bytes.Buffer
+
+	// Test with very long version strings
+	sc := NewStartupChecker("v1.0.0-very-long-version-string-that-exceeds-limit", cfg, "/test/config", &buf)
+
+	result := &CheckResult{
+		UpdateAvailable: true,
+		LatestVersion:   "v2.0.0-another-very-long-version-string",
+		ReleaseURL:      "https://github.com/test/repo/releases",
+		SkipCheck:       false,
+	}
+
+	sc.ShowNotification(result)
+	output := buf.String()
+
+	// Verify truncation occurred
+	assert.Contains(t, output, "...")
+	
+	// Verify box is properly formed
+	assert.Contains(t, output, "┌")
+	assert.Contains(t, output, "└")
+	assert.Contains(t, output, "│")
+	
+	// Verify content is present
+	assert.Contains(t, output, "new version")
+	assert.Contains(t, output, "Current:")
+	assert.Contains(t, output, "Latest:")
+	assert.Contains(t, output, "dot upgrade")
+	
+	// Verify no lines are excessively long
+	// Note: UTF-8 box drawing characters may have byte lengths different from display width
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if len(line) > 0 {
+			// Allow for UTF-8 encoding overhead
+			assert.LessOrEqual(t, len(line), 200, "line should not be excessively long: %q", line)
+		}
+	}
 }
 

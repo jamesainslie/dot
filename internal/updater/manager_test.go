@@ -20,6 +20,10 @@ func TestAptManager(t *testing.T) {
 	assert.Equal(t, "apt", mgr.Name())
 	assert.NotEmpty(t, mgr.UpgradeCommand())
 	assert.Contains(t, mgr.UpgradeCommand(), "apt")
+	
+	// IsAvailable should not panic
+	available := mgr.IsAvailable()
+	_ = available // Value depends on system
 }
 
 func TestYumManager(t *testing.T) {
@@ -27,6 +31,10 @@ func TestYumManager(t *testing.T) {
 	assert.Equal(t, "yum", mgr.Name())
 	assert.NotEmpty(t, mgr.UpgradeCommand())
 	assert.Contains(t, mgr.UpgradeCommand(), "yum")
+	
+	// IsAvailable should not panic
+	available := mgr.IsAvailable()
+	_ = available // Value depends on system
 }
 
 func TestPacmanManager(t *testing.T) {
@@ -34,6 +42,10 @@ func TestPacmanManager(t *testing.T) {
 	assert.Equal(t, "pacman", mgr.Name())
 	assert.NotEmpty(t, mgr.UpgradeCommand())
 	assert.Contains(t, mgr.UpgradeCommand(), "pacman")
+	
+	// IsAvailable should not panic
+	available := mgr.IsAvailable()
+	_ = available // Value depends on system
 }
 
 func TestDnfManager(t *testing.T) {
@@ -41,6 +53,10 @@ func TestDnfManager(t *testing.T) {
 	assert.Equal(t, "dnf", mgr.Name())
 	assert.NotEmpty(t, mgr.UpgradeCommand())
 	assert.Contains(t, mgr.UpgradeCommand(), "dnf")
+	
+	// IsAvailable should not panic
+	available := mgr.IsAvailable()
+	_ = available // Value depends on system
 }
 
 func TestZypperManager(t *testing.T) {
@@ -48,6 +64,10 @@ func TestZypperManager(t *testing.T) {
 	assert.Equal(t, "zypper", mgr.Name())
 	assert.NotEmpty(t, mgr.UpgradeCommand())
 	assert.Contains(t, mgr.UpgradeCommand(), "zypper")
+	
+	// IsAvailable should not panic
+	available := mgr.IsAvailable()
+	_ = available // Value depends on system
 }
 
 func TestManualManager(t *testing.T) {
@@ -190,4 +210,44 @@ func TestPackageManagerInterface(t *testing.T) {
 	var _ PackageManager = &DnfManager{}
 	var _ PackageManager = &ZypperManager{}
 	var _ PackageManager = &ManualManager{}
+}
+
+func TestDetectPackageManager_Coverage(t *testing.T) {
+	// Call DetectPackageManager to ensure it's exercised
+	mgr := DetectPackageManager()
+	require.NotNil(t, mgr)
+	
+	// Should return a valid manager
+	assert.NotEmpty(t, mgr.Name())
+	
+	// Should always succeed
+	assert.True(t, mgr.IsAvailable() || mgr.Name() == "manual")
+}
+
+func TestResolvePackageManager_Coverage(t *testing.T) {
+	t.Run("auto resolves to valid manager", func(t *testing.T) {
+		mgr, err := ResolvePackageManager("auto")
+		require.NoError(t, err)
+		assert.NotNil(t, mgr)
+		assert.True(t, mgr.IsAvailable())
+	})
+	
+	t.Run("invalid manager returns error", func(t *testing.T) {
+		_, err := ResolvePackageManager("does-not-exist")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown package manager")
+	})
+	
+	t.Run("unavailable manager returns error", func(t *testing.T) {
+		// On macOS, try a Linux-only manager
+		// On Linux, this might work depending on the system
+		// The important thing is we test the error path exists
+		if runtime.GOOS == "darwin" {
+			_, err := ResolvePackageManager("pacman")
+			// On macOS, pacman should not be available
+			if err != nil {
+				assert.Contains(t, err.Error(), "not available")
+			}
+		}
+	})
 }

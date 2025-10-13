@@ -83,6 +83,14 @@ Comprehensive guide to using dot for dotfile and configuration management.
    - Command terminology
    - Concept definitions
 
+10. [Updates and Version Management](10-updates.md)
+   - Upgrade command
+   - Package manager configuration
+   - Startup version checking
+   - Pre-release versions
+   - Troubleshooting updates
+   - Security considerations
+
 ## Additional Resources
 
 ### For Developers

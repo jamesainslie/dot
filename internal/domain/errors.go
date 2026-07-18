@@ -96,7 +96,10 @@ type ErrExecutionFailed struct {
 	Executed   int
 	Failed     int
 	RolledBack int
-	Errors     []error
+	// RollbackFailed counts executed operations whose rollback failed or was
+	// impossible, leaving their effects in place.
+	RollbackFailed int
+	Errors         []error
 }
 
 func (e ErrExecutionFailed) Error() string {
@@ -104,6 +107,9 @@ func (e ErrExecutionFailed) Error() string {
 	fmt.Fprintf(&b, "execution failed: %d succeeded, %d failed", e.Executed, e.Failed)
 	if e.RolledBack > 0 {
 		fmt.Fprintf(&b, ", %d rolled back", e.RolledBack)
+	}
+	if e.RollbackFailed > 0 {
+		fmt.Fprintf(&b, ", %d operations could not be rolled back", e.RollbackFailed)
 	}
 	if len(e.Errors) > 0 {
 		fmt.Fprintf(&b, "\nerrors:\n")
@@ -117,6 +123,29 @@ func (e ErrExecutionFailed) Error() string {
 // Unwrap returns the underlying errors.
 func (e ErrExecutionFailed) Unwrap() []error {
 	return e.Errors
+}
+
+// ErrUnsafeDelete indicates a deletion was refused because the filesystem
+// state did not match the state recorded when the operation was planned.
+type ErrUnsafeDelete struct {
+	Path   string
+	Reason string
+}
+
+func (e ErrUnsafeDelete) Error() string {
+	return fmt.Sprintf("refusing to delete %s: %s", e.Path, e.Reason)
+}
+
+// ErrRollbackImpossible indicates an executed operation cannot be rolled back
+// because the information needed to restore the previous state was not
+// preserved.
+type ErrRollbackImpossible struct {
+	Path   string
+	Reason string
+}
+
+func (e ErrRollbackImpossible) Error() string {
+	return fmt.Sprintf("cannot roll back operation on %s: %s", e.Path, e.Reason)
 }
 
 // ErrSourceNotFound indicates an operation source file does not exist.

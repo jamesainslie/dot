@@ -370,7 +370,7 @@ func (s *AdoptService) createDirectoryAdoptOperations(ctx context.Context, sourc
 		subdirResult := NewFilePath(subdirPath)
 		if subdirResult.IsOk() {
 			delID := OperationID(fmt.Sprintf("adopt-remove-subdir-%s", subdirs[i]))
-			operations = append(operations, NewDirDelete(delID, subdirResult.Unwrap()))
+			operations = append(operations, s.newDirDeleteRecordingMode(ctx, delID, subdirPath, subdirResult.Unwrap()))
 		}
 	}
 
@@ -385,7 +385,7 @@ func (s *AdoptService) createDirectoryAdoptOperations(ctx context.Context, sourc
 	delID := OperationID(fmt.Sprintf("adopt-remove-empty-%s", originalPath))
 	sourceDirFilePath := NewFilePath(sourceDir)
 	if sourceDirFilePath.IsOk() {
-		operations = append(operations, NewDirDelete(delID, sourceDirFilePath.Unwrap()))
+		operations = append(operations, s.newDirDeleteRecordingMode(ctx, delID, sourceDir, sourceDirFilePath.Unwrap()))
 	}
 
 	// Create symlink from original location to package root
@@ -398,6 +398,15 @@ func (s *AdoptService) createDirectoryAdoptOperations(ctx context.Context, sourc
 	operations = append(operations, NewLinkCreate(linkID, pkgRootResult.Unwrap(), sourceDirPath))
 
 	return operations, nil
+}
+
+// newDirDeleteRecordingMode creates a DirDelete operation, recording the
+// directory's current permissions so rollback can restore them.
+func (s *AdoptService) newDirDeleteRecordingMode(ctx context.Context, id OperationID, dirPath string, path FilePath) Operation {
+	if info, err := s.fs.Stat(ctx, dirPath); err == nil {
+		return NewDirDeleteWithMode(id, path, info.Mode().Perm())
+	}
+	return NewDirDelete(id, path)
 }
 
 // collectDirectoryFiles recursively collects all file paths in a directory.

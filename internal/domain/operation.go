@@ -160,6 +160,13 @@ func (op LinkCreate) Equals(other Operation) bool {
 type LinkDelete struct {
 	OpID   OperationID
 	Target TargetPath
+
+	// Destination is the symlink destination observed when the operation was
+	// planned. When set, Execute verifies the link still points there before
+	// deleting, and Rollback recreates the link. When empty, Execute still
+	// refuses to delete anything that is not a symlink, but Rollback cannot
+	// restore the link.
+	Destination string
 }
 
 // NewLinkDelete creates a new link deletion operation.
@@ -167,6 +174,16 @@ func NewLinkDelete(id OperationID, target TargetPath) LinkDelete {
 	return LinkDelete{
 		OpID:   id,
 		Target: target,
+	}
+}
+
+// NewLinkDeleteWithDestination creates a link deletion operation that records
+// the symlink destination observed at plan time.
+func NewLinkDeleteWithDestination(id OperationID, target TargetPath, destination string) LinkDelete {
+	return LinkDelete{
+		OpID:        id,
+		Target:      target,
+		Destination: destination,
 	}
 }
 
@@ -190,18 +207,72 @@ func (op LinkDelete) Dependencies() []Operation {
 }
 
 func (op LinkDelete) Execute(ctx context.Context, fs FS) error {
-	// Try to remove - if it doesn't exist, that's fine (idempotent)
-	err := fs.Remove(ctx, op.Target.String())
+	target := op.Target.String()
+
+	// Missing target means the desired state is already achieved (idempotent).
+	info, err := fs.Lstat(ctx, target)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("lstat %s: %w", target, err)
+	}
+
+	// Never delete anything that is not a symlink.
+	if info.Mode()&os.ModeSymlink == 0 {
+		return ErrUnsafeDelete{
+			Path:   target,
+			Reason: "expected a symlink but found a regular file or directory",
+		}
+	}
+
+	// When a destination was recorded at plan time, verify the link still
+	// points there before deleting.
+	if op.Destination != "" {
+		actual, err := fs.ReadLink(ctx, target)
+		if err != nil {
+			return fmt.Errorf("readlink %s: %w", target, err)
+		}
+		if actual != op.Destination {
+			return ErrUnsafeDelete{
+				Path:   target,
+				Reason: fmt.Sprintf("symlink points to %q, expected %q", actual, op.Destination),
+			}
+		}
+	}
+
+	err = fs.Remove(ctx, target)
 	if err != nil && os.IsNotExist(err) {
-		// File doesn't exist - desired state achieved
+		// Already removed - desired state achieved
 		return nil
 	}
 	return err
 }
 
 func (op LinkDelete) Rollback(ctx context.Context, fs FS) error {
-	// Cannot restore deleted link without knowing original target
-	// This would require storing the original target in the operation
+	target := op.Target.String()
+
+	if op.Destination == "" {
+		return ErrRollbackImpossible{
+			Path:   target,
+			Reason: "symlink destination was not recorded at plan time",
+		}
+	}
+
+	// If something already exists at the target, only accept a symlink that
+	// already points at the recorded destination.
+	if info, err := fs.Lstat(ctx, target); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			if actual, readErr := fs.ReadLink(ctx, target); readErr == nil && actual == op.Destination {
+				return nil
+			}
+		}
+		return fmt.Errorf("cannot restore link %s: path already exists", target)
+	}
+
+	if err := fs.Symlink(ctx, op.Destination, target); err != nil {
+		return fmt.Errorf("restore link %s -> %s: %w", target, op.Destination, err)
+	}
 	return nil
 }
 
@@ -280,6 +351,10 @@ func (op DirCreate) Equals(other Operation) bool {
 type DirDelete struct {
 	OpID OperationID
 	Path FilePath
+
+	// Mode is the directory permission mode observed when the operation was
+	// planned. Rollback restores it; when zero, DefaultDirPerms is used.
+	Mode os.FileMode
 }
 
 // NewDirDelete creates a new directory deletion operation.
@@ -287,6 +362,16 @@ func NewDirDelete(id OperationID, path FilePath) DirDelete {
 	return DirDelete{
 		OpID: id,
 		Path: path,
+	}
+}
+
+// NewDirDeleteWithMode creates a directory deletion operation that records the
+// directory permissions observed at plan time so rollback can restore them.
+func NewDirDeleteWithMode(id OperationID, path FilePath, mode os.FileMode) DirDelete {
+	return DirDelete{
+		OpID: id,
+		Path: path,
+		Mode: mode,
 	}
 }
 
@@ -314,7 +399,11 @@ func (op DirDelete) Execute(ctx context.Context, fs FS) error {
 }
 
 func (op DirDelete) Rollback(ctx context.Context, fs FS) error {
-	return fs.Mkdir(ctx, op.Path.String(), DefaultDirPerms)
+	mode := op.Mode
+	if mode == 0 {
+		mode = DefaultDirPerms
+	}
+	return fs.Mkdir(ctx, op.Path.String(), mode.Perm())
 }
 
 func (op DirDelete) String() string {
@@ -370,9 +459,12 @@ func (op DirRemoveAll) Execute(ctx context.Context, fs FS) error {
 }
 
 func (op DirRemoveAll) Rollback(ctx context.Context, fs FS) error {
-	// Cannot restore recursively deleted directory without backup
-	// Would require storing entire directory tree in operation
-	return nil
+	// Restoring a recursively deleted directory would require the entire
+	// directory tree to have been preserved, which it was not.
+	return ErrRollbackImpossible{
+		Path:   op.Path.String(),
+		Reason: "directory contents were not preserved before recursive deletion",
+	}
 }
 
 func (op DirRemoveAll) String() string {
@@ -587,7 +679,23 @@ func (op FileBackup) Execute(ctx context.Context, fs FS) error {
 }
 
 func (op FileBackup) Rollback(ctx context.Context, fs FS) error {
-	return fs.Remove(ctx, op.Backup.String())
+	source := op.Source.String()
+	backup := op.Backup.String()
+
+	// Never delete the backup while the original is missing: the backup may
+	// be the only remaining copy of the file.
+	info, err := fs.Lstat(ctx, source)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("preserving backup %s: original %s no longer exists", backup, source)
+		}
+		return fmt.Errorf("lstat %s during backup rollback: %w", source, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("preserving backup %s: original %s is not a regular file", backup, source)
+	}
+
+	return fs.Remove(ctx, backup)
 }
 
 func (op FileBackup) String() string {
@@ -609,6 +717,10 @@ func (op FileBackup) Equals(other Operation) bool {
 type FileDelete struct {
 	OpID OperationID
 	Path FilePath
+
+	// Backup is the path of a backup copy taken before deletion. When set,
+	// Rollback restores the file from it. When empty, rollback is impossible.
+	Backup FilePath
 }
 
 // NewFileDelete creates a new file delete operation.
@@ -616,6 +728,16 @@ func NewFileDelete(id OperationID, path FilePath) FileDelete {
 	return FileDelete{
 		OpID: id,
 		Path: path,
+	}
+}
+
+// NewFileDeleteWithBackup creates a file delete operation that records the
+// path of a backup copy so rollback can restore the deleted file.
+func NewFileDeleteWithBackup(id OperationID, path, backup FilePath) FileDelete {
+	return FileDelete{
+		OpID:   id,
+		Path:   path,
+		Backup: backup,
 	}
 }
 
@@ -643,7 +765,34 @@ func (op FileDelete) Execute(ctx context.Context, fs FS) error {
 }
 
 func (op FileDelete) Rollback(ctx context.Context, fs FS) error {
-	// Cannot restore deleted file without backup
+	path := op.Path.String()
+	backup := op.Backup.String()
+
+	if backup == "" {
+		return ErrRollbackImpossible{
+			Path:   path,
+			Reason: "no backup was recorded for the deleted file",
+		}
+	}
+
+	// Refuse to overwrite anything that now occupies the path (for example a
+	// symlink whose own rollback failed): writing through it could corrupt
+	// package contents.
+	if _, err := fs.Lstat(ctx, path); err == nil {
+		return fmt.Errorf("cannot restore %s from backup %s: path already exists", path, backup)
+	}
+
+	info, err := fs.Stat(ctx, backup)
+	if err != nil {
+		return fmt.Errorf("stat backup %s: %w", backup, err)
+	}
+	data, err := fs.ReadFile(ctx, backup)
+	if err != nil {
+		return fmt.Errorf("read backup %s: %w", backup, err)
+	}
+	if err := fs.WriteFile(ctx, path, data, info.Mode().Perm()); err != nil {
+		return fmt.Errorf("restore %s from backup %s: %w", path, backup, err)
+	}
 	return nil
 }
 

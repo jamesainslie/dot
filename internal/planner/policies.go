@@ -105,9 +105,10 @@ func applyBackupPolicy(
 	backupOpID := domain.OperationID(fmt.Sprintf("backup-%s-%s", conflict.Path.String(), timestamp))
 	backupOp := domain.NewFileBackup(backupOpID, conflict.Path, backupFilePath)
 
-	// 2. FileDelete: removes the original file
+	// 2. FileDelete: removes the original file, recording the backup path so
+	//    rollback can restore the file from the backup
 	deleteOpID := domain.OperationID(fmt.Sprintf("delete-%s", conflict.Path.String()))
-	deleteOp := domain.NewFileDelete(deleteOpID, conflict.Path)
+	deleteOp := domain.NewFileDeleteWithBackup(deleteOpID, conflict.Path, backupFilePath)
 
 	// 3. LinkCreate: creates the symlink (original operation)
 

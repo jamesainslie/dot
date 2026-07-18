@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/yaklabco/dot/internal/domain"
@@ -103,8 +104,9 @@ func (e *Executor) Execute(ctx context.Context, plan domain.Plan) domain.Result[
 				"executed", len(result.Executed),
 				"failed_count", len(result.Failed),
 				"cancelled", isCancelled)
-			rolledBack := e.rollback(ctx, result.Executed, checkpoint)
+			rolledBack, rollbackFailed := e.rollback(ctx, result.Executed, checkpoint)
 			result.RolledBack = rolledBack
+			result.RollbackFailed = rollbackFailed
 		}
 
 		// Return appropriate error
@@ -120,10 +122,11 @@ func (e *Executor) Execute(ctx context.Context, plan domain.Plan) domain.Result[
 
 		// Return execution failure
 		err := domain.ErrExecutionFailed{
-			Executed:   len(result.Executed),
-			Failed:     len(result.Failed),
-			RolledBack: len(result.RolledBack),
-			Errors:     result.Errors,
+			Executed:       len(result.Executed),
+			Failed:         len(result.Failed),
+			RolledBack:     len(result.RolledBack),
+			RollbackFailed: len(result.RollbackFailed),
+			Errors:         result.Errors,
 		}
 		return domain.Err[ExecutionResult](err)
 	}
@@ -191,6 +194,8 @@ func (e *Executor) checkPreconditionsWithPending(ctx context.Context, op domain.
 	switch operation := op.(type) {
 	case domain.LinkCreate:
 		return e.checkLinkCreatePreconditionsWithPending(ctx, operation, pendingDirs, pendingFiles)
+	case domain.LinkDelete:
+		return e.checkLinkDeletePreconditions(ctx, operation)
 	case domain.DirCreate:
 		return e.checkDirCreatePreconditionsWithPending(ctx, operation, pendingDirs)
 	case domain.FileMove:
@@ -198,6 +203,43 @@ func (e *Executor) checkPreconditionsWithPending(ctx context.Context, op domain.
 	default:
 		return nil
 	}
+}
+
+// checkLinkDeletePreconditions verifies that a LinkDelete target is either
+// absent or a symlink still pointing at the destination recorded at plan time.
+func (e *Executor) checkLinkDeletePreconditions(ctx context.Context, op domain.LinkDelete) error {
+	target := op.Target.String()
+
+	info, err := e.fs.Lstat(ctx, target)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Already gone - the operation is an idempotent no-op.
+			return nil
+		}
+		return fmt.Errorf("lstat %s: %w", target, err)
+	}
+
+	if info.Mode()&os.ModeSymlink == 0 {
+		return domain.ErrUnsafeDelete{
+			Path:   target,
+			Reason: "expected a symlink but found a regular file or directory",
+		}
+	}
+
+	if op.Destination != "" {
+		actual, err := e.fs.ReadLink(ctx, target)
+		if err != nil {
+			return fmt.Errorf("readlink %s: %w", target, err)
+		}
+		if actual != op.Destination {
+			return domain.ErrUnsafeDelete{
+				Path:   target,
+				Reason: fmt.Sprintf("symlink points to %q, expected %q", actual, op.Destination),
+			}
+		}
+	}
+
+	return nil
 }
 
 func (e *Executor) checkLinkCreatePreconditions(ctx context.Context, op domain.LinkCreate) error {
@@ -387,13 +429,13 @@ func (e *Executor) executeSequential(ctx context.Context, plan domain.Plan, chec
 }
 
 // rollback reverses executed operations in reverse order.
-func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, checkpoint *Checkpoint) []domain.OperationID {
+// It returns the operations whose rollback actually restored state and the
+// operations whose rollback failed or was impossible.
+func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, checkpoint *Checkpoint) (rolledBack, rollbackFailed []domain.OperationID) {
 	ctx, span := e.tracer.Start(ctx, "executor.Rollback")
 	defer span.End()
 
 	e.log.Warn(ctx, "starting_rollback", "operations", len(executed))
-
-	var rolledBack []domain.OperationID
 
 	// Rollback in reverse order
 	for i := len(executed) - 1; i >= 0; i-- {
@@ -414,6 +456,7 @@ func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, 
 
 		if op == nil {
 			e.log.Error(ctx, "operation_not_in_checkpoint", "op_id", opID)
+			rollbackFailed = append(rollbackFailed, opID)
 			continue
 		}
 
@@ -421,6 +464,7 @@ func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, 
 
 		if err := op.Rollback(ctx, e.fs); err != nil {
 			e.log.Error(ctx, "rollback_failed", "op_id", opID, "error", err)
+			rollbackFailed = append(rollbackFailed, opID)
 			// Continue rolling back other operations
 		} else {
 			rolledBack = append(rolledBack, opID)
@@ -429,9 +473,10 @@ func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, 
 
 	e.log.Info(ctx, "rollback_complete",
 		"attempted", len(executed),
-		"succeeded", len(rolledBack))
+		"succeeded", len(rolledBack),
+		"failed", len(rollbackFailed))
 
-	return rolledBack
+	return rolledBack, rollbackFailed
 }
 
 // executeParallel executes operations in parallel batches based on dependencies.

@@ -7,7 +7,10 @@ type ExecutionResult struct {
 	Executed   []domain.OperationID
 	Failed     []domain.OperationID
 	RolledBack []domain.OperationID
-	Errors     []error
+	// RollbackFailed lists executed operations whose rollback failed or was
+	// impossible, leaving their effects in place.
+	RollbackFailed []domain.OperationID
+	Errors         []error
 }
 
 // Success returns true if all operations executed successfully.

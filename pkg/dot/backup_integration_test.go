@@ -60,8 +60,9 @@ func TestManageService_BackupIntegrityFlow(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := env.Context()
 
+	// The backup directory is deliberately NOT pre-created: FileBackup.Execute
+	// must create it on demand.
 	backupDir := filepath.Join(t.TempDir(), "backup")
-	require.NoError(t, os.MkdirAll(backupDir, 0755))
 
 	testCases := []struct {
 		name              string
@@ -199,9 +200,9 @@ func TestManageService_BackupIntegrityFlow(t *testing.T) {
 				fullPath := filepath.Join(env.TargetDir, name)
 				os.Remove(fullPath) // Ignore errors, might be symlink already removed
 			}
-			// Clean backup files
+			// Clean backup files; the next iteration must again prove the
+			// backup directory is created on demand.
 			require.NoError(t, os.RemoveAll(backupDir))
-			require.NoError(t, os.MkdirAll(backupDir, 0755))
 		})
 	}
 }
@@ -211,8 +212,8 @@ func TestManageService_MultipleBackupsIntegrity(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := env.Context()
 
+	// Not pre-created: FileBackup.Execute must create it on demand.
 	backupDir := filepath.Join(t.TempDir(), "backup")
-	require.NoError(t, os.MkdirAll(backupDir, 0755))
 
 	// Create 7 packages with unique random content
 	numPackages := 7
@@ -315,7 +316,6 @@ func TestManageService_BackupWithOverwrite(t *testing.T) {
 	ctx := env.Context()
 
 	backupDir := filepath.Join(t.TempDir(), "backup")
-	require.NoError(t, os.MkdirAll(backupDir, 0755))
 
 	// Create package with helper
 	env.CreatePackage("vim", map[string]string{
@@ -376,8 +376,8 @@ func TestBackupIntegrity_PermissionPreservation(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := env.Context()
 
+	// Not pre-created: FileBackup.Execute must create it on demand.
 	backupDir := filepath.Join(t.TempDir(), "backup")
-	require.NoError(t, os.MkdirAll(backupDir, 0755))
 
 	// Create package with helper
 	env.CreatePackage("secure", map[string]string{

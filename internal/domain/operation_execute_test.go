@@ -230,6 +230,30 @@ func TestFileBackup_Execute(t *testing.T) {
 	assert.Equal(t, []byte("original"), data)
 }
 
+// TestFileBackup_Execute_CreatesBackupDirectory verifies that Execute creates
+// the backup destination directory when it does not exist yet, so a backup
+// never fails just because nothing pre-created the backup directory.
+func TestFileBackup_Execute_CreatesBackupDirectory(t *testing.T) {
+	fs := adapters.NewMemFS()
+	ctx := context.Background()
+
+	require.NoError(t, fs.MkdirAll(ctx, "/home/user", 0755))
+	require.NoError(t, fs.WriteFile(ctx, "/home/user/.bashrc", []byte("original"), 0644))
+
+	source := domain.MustParsePath("/home/user/.bashrc")
+	backup := domain.MustParsePath("/home/user/.dot-backup/.bashrc.20260101-000000")
+
+	op := domain.NewFileBackup("bak1", source, backup)
+
+	// The backup directory /home/user/.dot-backup does not exist yet.
+	err := op.Execute(ctx, fs)
+	require.NoError(t, err, "Execute must create the backup directory itself")
+
+	data, err := fs.ReadFile(ctx, backup.String())
+	require.NoError(t, err)
+	assert.Equal(t, []byte("original"), data)
+}
+
 func TestFileBackup_Rollback(t *testing.T) {
 	fs := adapters.NewMemFS()
 	ctx := context.Background()

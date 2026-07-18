@@ -155,9 +155,11 @@ func TestApplyBackupPolicy(t *testing.T) {
 		backupOp := outcome.Operations[0].(domain.FileBackup)
 		backupPath := backupOp.Backup.String()
 
-		// Timestamp format is YYYYMMDD-HHMMSS
-		// Should have format like: /backup/.bashrc.20060102-150405
-		assert.Regexp(t, `/backup/.bashrc\.\d{8}-\d{6}$`, backupPath, "backup path should have timestamp suffix")
+		// Format is <filename>.<pathTag>.<timestamp> where pathTag is a short
+		// hash of the conflict path and the timestamp format is YYYYMMDD-HHMMSS.
+		// Should look like: /backup/.bashrc.1a2b3c4d.20060102-150405
+		assert.Regexp(t, `/backup/.bashrc\.[0-9a-f]{8}\.\d{8}-\d{6}$`, backupPath,
+			"backup path should have path-hash and timestamp suffix")
 	})
 
 	t.Run("delete operation targets conflict path", func(t *testing.T) {

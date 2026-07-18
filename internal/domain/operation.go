@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -672,6 +673,13 @@ func (op FileBackup) Execute(ctx context.Context, fs FS) error {
 	data, err := fs.ReadFile(ctx, op.Source.String())
 	if err != nil {
 		return err
+	}
+
+	// Ensure the backup directory exists; nothing earlier in the plan is
+	// guaranteed to have created it.
+	backupDir := filepath.Dir(op.Backup.String())
+	if err := fs.MkdirAll(ctx, backupDir, DefaultDirPerms); err != nil {
+		return fmt.Errorf("creating backup directory %s: %w", backupDir, err)
 	}
 
 	// Write backup with same permissions as source

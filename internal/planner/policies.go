@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -91,8 +92,13 @@ func applyBackupPolicy(
 	// Extract filename from conflict path
 	filename := filepath.Base(conflict.Path.String())
 
-	// Generate backup path: <backupDir>/<filename>.<timestamp>
-	backupPath := filepath.Join(backupDir, fmt.Sprintf("%s.%s", filename, timestamp))
+	// Derive a short hash from the full conflict path so files sharing a
+	// basename in different directories never collide on the same backup name.
+	pathSum := sha256.Sum256([]byte(conflict.Path.String()))
+	pathTag := fmt.Sprintf("%x", pathSum[:4])
+
+	// Generate backup path: <backupDir>/<filename>.<pathTag>.<timestamp>
+	backupPath := filepath.Join(backupDir, fmt.Sprintf("%s.%s.%s", filename, pathTag, timestamp))
 	backupFilePathResult := domain.NewFilePath(backupPath)
 	if backupFilePathResult.IsErr() {
 		// If backup path is invalid, fall back to fail policy

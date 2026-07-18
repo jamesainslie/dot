@@ -151,6 +151,11 @@ func setupProfilingWithFlags(flags *CLIFlags) func() {
 
 // setupSignalHandler creates a context that is canceled on interrupt signals.
 // It supports graceful shutdown on first signal and forced exit on second signal.
+// The first signal cancels the context, which stops plan execution; the
+// executor then rolls back already-executed operations on a context detached
+// from this cancellation (context.WithoutCancel), so a single Ctrl-C mid-plan
+// still restores the filesystem. Only a second signal forces an exit that can
+// interrupt rollback.
 func setupSignalHandler() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigChan := make(chan os.Signal, 1)

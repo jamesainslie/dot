@@ -2,6 +2,8 @@ package executor
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -183,51 +185,72 @@ func TestExecute_ImmediateCancellation_NoOperationsExecuted(t *testing.T) {
 	require.False(t, exists, "directory should not have been created")
 }
 
-func TestExecute_RollbackWithCancelledContext_ContinuesRollback(t *testing.T) {
-	// Test that rollback continues even if context is cancelled
-	// This ensures system consistency
+// cancelAfterExecute wraps an operation and cancels the given context once
+// the wrapped operation has executed successfully. It simulates Ctrl-C
+// arriving mid-plan, immediately after an operation completes.
+type cancelAfterExecute struct {
+	domain.Operation
+	cancel context.CancelFunc
+}
+
+func (c cancelAfterExecute) Execute(ctx context.Context, fs domain.FS) error {
+	if err := c.Operation.Execute(ctx, fs); err != nil {
+		return err
+	}
+	c.cancel()
+	return nil
+}
+
+func TestExecute_CancelledMidPlan_RollsBackExecutedOperations(t *testing.T) {
+	// Cancellation mid-plan must still roll back the operations that already
+	// executed. The rollback runs on a context detached from cancellation,
+	// so a real filesystem (whose every call checks ctx.Err()) must observe
+	// the reverted state.
 	ctx, cancel := context.WithCancel(context.Background())
-	fs := adapters.NewMemFS()
+	defer cancel()
+
+	root := t.TempDir()
+	fs := adapters.NewOSFilesystem()
 	exec := New(Opts{
 		FS:     fs,
 		Logger: adapters.NewNoopLogger(),
 		Tracer: adapters.NewNoopTracer(),
 	})
 
-	// Create parent directories
-	require.NoError(t, fs.MkdirAll(ctx, "/test", 0755))
-
-	// Create operations where second will fail
-	dir1 := domain.MustParsePath("/test/dir1")
-	dir2 := domain.MustParsePath("/nonexistent/dir2") // Parent doesn't exist
+	dir1 := domain.MustParsePath(filepath.Join(root, "dir1"))
+	dir2 := domain.MustParsePath(filepath.Join(root, "dir2"))
+	dir3 := domain.MustParsePath(filepath.Join(root, "dir3"))
+	dir4 := domain.MustParsePath(filepath.Join(root, "dir4"))
 
 	ops := []domain.Operation{
 		domain.NewDirCreate("dir1", dir1),
 		domain.NewDirCreate("dir2", dir2),
+		cancelAfterExecute{
+			Operation: domain.NewDirCreate("dir3", dir3),
+			cancel:    cancel,
+		},
+		domain.NewDirCreate("dir4", dir4),
 	}
 
-	plan := domain.Plan{Operations: ops}
+	result := exec.Execute(ctx, domain.Plan{Operations: ops})
 
-	// Cancel context before execute - but execution should still attempt
-	// and rollback should complete
-	cancel()
+	require.True(t, result.IsErr(), "execution should fail due to cancellation")
 
-	result := exec.Execute(ctx, plan)
+	var cancelErr domain.ErrExecutionCancelled
+	require.ErrorAs(t, result.UnwrapErr(), &cancelErr,
+		"cancellation error should be returned")
+	require.Equal(t, 3, cancelErr.Executed, "three operations should have executed")
+	require.Equal(t, 1, cancelErr.Skipped, "the fourth operation should have been skipped")
 
-	require.True(t, result.IsErr(), "execution should fail")
-
-	// Either prepare cancelled, or execution failed and rolled back
-	err := result.UnwrapErr()
-	t.Logf("Result error: %v", err)
-
-	// If execution proceeded despite cancelled context, verify rollback occurred
-	if execFailed, ok := err.(domain.ErrExecutionFailed); ok {
-		require.Equal(t, 1, execFailed.Executed, "first operation should have executed")
-		require.Equal(t, 1, execFailed.Failed, "second operation should have failed")
-		require.Equal(t, 1, execFailed.RolledBack, "first operation should have been rolled back")
-
-		// Verify dir1 was rolled back
-		exists := fs.Exists(ctx, dir1.String())
-		require.False(t, exists, "dir1 should have been rolled back")
+	// Operations 1..3 executed before cancellation and must be reverted on
+	// the filesystem despite the cancelled context.
+	for _, dir := range []domain.FilePath{dir1, dir2, dir3} {
+		_, err := os.Lstat(dir.String())
+		require.True(t, os.IsNotExist(err),
+			"%s should have been rolled back after cancellation", dir.String())
 	}
+
+	// Operation 4 was skipped and must never have been created.
+	_, err := os.Lstat(dir4.String())
+	require.True(t, os.IsNotExist(err), "dir4 should never have been created")
 }

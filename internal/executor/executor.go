@@ -98,7 +98,9 @@ func (e *Executor) Execute(ctx context.Context, plan domain.Plan) domain.Result[
 			}
 		}
 
-		// Perform rollback if operations were executed
+		// Perform rollback if operations were executed. rollback detaches
+		// from cancellation internally, so executed operations are reverted
+		// even when execution stopped because ctx was cancelled.
 		if len(result.Executed) > 0 {
 			e.log.Warn(ctx, "execution_failed_rolling_back",
 				"executed", len(result.Executed),
@@ -431,7 +433,15 @@ func (e *Executor) executeSequential(ctx context.Context, plan domain.Plan, chec
 // rollback reverses executed operations in reverse order.
 // It returns the operations whose rollback actually restored state and the
 // operations whose rollback failed or was impossible.
+//
+// Rollback runs on a context detached from cancellation: when execution
+// stops because the caller's context was cancelled (e.g. Ctrl-C mid-plan),
+// the rollback must still complete, and filesystem adapters check ctx.Err()
+// on every call. context.WithoutCancel preserves context values (tracing,
+// logging) while ignoring the parent's cancellation.
 func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, checkpoint *Checkpoint) (rolledBack, rollbackFailed []domain.OperationID) {
+	ctx = context.WithoutCancel(ctx)
+
 	ctx, span := e.tracer.Start(ctx, "executor.Rollback")
 	defer span.End()
 
@@ -439,18 +449,6 @@ func (e *Executor) rollback(ctx context.Context, executed []domain.OperationID, 
 
 	// Rollback in reverse order
 	for i := len(executed) - 1; i >= 0; i-- {
-		// Check for context cancellation during rollback
-		// Continue rollback even if cancelled to maintain consistency
-		if err := ctx.Err(); err != nil {
-			e.log.Warn(ctx, "rollback_cancelled_continuing",
-				"rolled_back", len(rolledBack),
-				"remaining", i+1,
-				"context_error", err)
-			// Note: We continue rollback despite cancellation to maintain
-			// system consistency. Partial rollback could leave the system
-			// in an inconsistent state.
-		}
-
 		opID := executed[i]
 		op := checkpoint.Lookup(opID)
 

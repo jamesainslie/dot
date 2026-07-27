@@ -38,7 +38,8 @@ defaults: {}             # Optional: Default settings
 **Required:** Yes  
 **Values:** `"1.0"`
 
-Specifies the bootstrap configuration schema version. Currently, only version `1.0` is supported.
+Specifies the bootstrap configuration schema version. The generated configuration uses `"1.0"`.
+Validation only requires the field to be non-empty; other values are accepted but not interpreted.
 
 ```yaml
 version: "1.0"
@@ -47,8 +48,7 @@ version: "1.0"
 ### Packages
 
 **Type:** Array of PackageSpec  
-**Required:** Yes  
-**Minimum:** 1 package
+**Required:** The key is expected, but an empty list passes validation.
 
 Defines all packages available in the repository.
 
@@ -56,11 +56,12 @@ Defines all packages available in the repository.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Package directory name (must exist in repository) |
+| `name` | string | Yes | Package directory name |
 | `required` | boolean | No | Whether package is mandatory (default: false) |
-| `platform` | string[] | No | Target platforms (empty = all platforms) |
-| `depends` | string[] | No | Package dependencies (not yet implemented) |
+| `platform` | string[] | No | Target platforms (omit for all platforms) |
 | `on_conflict` | string | No | Conflict resolution policy for this package |
+
+Unknown keys are ignored without error. There is no dependency field.
 
 #### Platform Values
 
@@ -79,6 +80,12 @@ Packages without `platform` specified are available on all platforms.
 - `backup` - Backup existing files before linking
 - `overwrite` - Replace existing files
 - `skip` - Skip conflicting files
+
+**`on_conflict` is currently inert.** The value is validated on load and is written into the file
+by `dot clone bootstrap`, but the clone service does not apply it at install time; it reads only
+`defaults.profile` from this file. Conflict behaviour comes from `symlinks.overwrite` and
+`symlinks.backup` in the dot configuration instead. See
+[Configuration Reference](04-configuration.md).
 
 ### Profiles
 
@@ -177,23 +184,19 @@ defaults:
 
 ## Validation Rules
 
-### Package Validation
+Validation is performed on load and covers:
 
-1. **Unique Names:** Package names must be unique within the `packages` array
-2. **Directory Existence:** Package names must correspond to directories in the repository
-3. **Platform Values:** Platform identifiers must be from the supported list
-4. **Conflict Policies:** Must be one of: `fail`, `backup`, `overwrite`, `skip`
+1. **Version present:** `version` must be non-empty. Any non-empty string is accepted.
+2. **Package names:** must be non-empty and unique within `packages`.
+3. **Platform values:** each entry must be one of `linux`, `darwin`, `windows`, `freebsd`.
+4. **Conflict policies:** each `on_conflict`, per package or in `defaults`, must be one of `fail`,
+   `backup`, `overwrite`, `skip`.
+5. **Profile package references:** every name in a profile's `packages` must be a defined package.
+6. **Default profile:** if `defaults.profile` is set, it must exist in `profiles`.
 
-### Profile Validation
-
-1. **Package References:** Profile packages must reference defined package names
-2. **Non-Empty:** Profiles must contain at least one package
-3. **Description Required:** Each profile must have a description
-
-### Defaults Validation
-
-1. **Profile Existence:** Default profile must exist in `profiles` map
-2. **Valid Conflict Policy:** Default conflict policy must be valid value
+Not validated: whether a package name corresponds to a directory in the repository, whether a
+profile is non-empty, and whether a profile has a description. A profile with no description or no
+packages loads without complaint.
 
 ## Usage Examples
 
@@ -207,12 +210,26 @@ dot clone https://github.com/user/dotfiles --profile minimal
 dot clone https://github.com/user/dotfiles
 ```
 
+Like `git clone`, `dot clone` creates a directory named after the repository under the current
+working directory unless `--dir` is given.
+
 ### Interactive Selection
 
 ```bash
-# Force interactive selection (ignores profiles)
+# Force interactive selection (overrides defaults.profile)
 dot clone https://github.com/user/dotfiles --interactive
 ```
+
+Package selection resolves in this order:
+
+1. `--profile`, if given
+2. `--interactive`, if given
+3. `defaults.profile` from the bootstrap config, if set
+4. An interactive prompt, if attached to a terminal
+5. All platform-compatible packages
+
+`--interactive` does not override an explicit `--profile`. Packages whose names are reserved by dot
+are skipped with a warning at every step.
 
 ### Platform Filtering
 
@@ -242,26 +259,27 @@ If `.dotbootstrap.yaml` is not present:
 ### Invalid YAML Syntax
 
 ```
-Error: invalid bootstrap config: failed to parse bootstrap configuration
+Error: invalid bootstrap configuration: parse YAML: ...
+
 Check the .dotbootstrap.yaml syntax and validation rules
 ```
 
 ### Missing Required Fields
 
 ```
-Error: invalid bootstrap config: version field is required
+Error: invalid bootstrap configuration: version is required
 ```
 
 ### Invalid Package Reference
 
 ```
-Error: invalid bootstrap config: profile "development" references unknown package "dot-invalid"
+Error: invalid bootstrap configuration: profile "development" references unknown package: dot-invalid
 ```
 
 ### Platform Not Supported
 
 ```
-Error: invalid bootstrap config: package "dot-custom" has invalid platform "solaris"
+Error: invalid bootstrap configuration: invalid platform "solaris" for package dot-custom
 ```
 
 ## Migration Guide
@@ -317,6 +335,33 @@ defaults:
   profile: default
 ```
 
+### Generating the File
+
+Alternatively, generate the file from an existing installation:
+
+```bash
+# Write .dotbootstrap.yaml into the package directory
+dot clone bootstrap
+
+# Preview without writing
+dot clone bootstrap --dry-run
+
+# Write elsewhere
+dot clone bootstrap --output ~/dotfiles/.dotbootstrap.yaml
+
+# Restrict to packages recorded in the manifest
+dot clone bootstrap --from-manifest
+
+# Set the default conflict policy in the generated file
+dot clone bootstrap --conflict-policy backup
+
+# Overwrite an existing file
+dot clone bootstrap --force
+```
+
+All discovered packages are emitted with `required: false`, alongside a default conflict policy and
+example profile structures. Review and customise the result before committing it.
+
 ## Best Practices
 
 ### Package Organization
@@ -334,6 +379,10 @@ defaults:
 - Document profile purposes in descriptions
 
 ### Conflict Management
+
+`on_conflict` is not applied at install time (see Conflict Policy Values above), so record intent
+here but control actual behaviour through `symlinks.overwrite` and `symlinks.backup` in the dot
+configuration.
 
 - Use `fail` for sensitive files (SSH, GPG keys)
 - Use `backup` for user configuration

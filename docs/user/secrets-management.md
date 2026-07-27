@@ -28,37 +28,50 @@ dot intentionally does not implement encryption or secrets management for severa
 
 ## What dot Does Automatically
 
-dot protects against accidental secrets management through:
-
 ### Default Ignore Patterns
 
-The following are automatically ignored when managing packages:
+Two security-related default patterns are effective:
 
 - `.gnupg` - GPG keyring directory
-- `.ssh/id_*` - SSH identity files (private and public keys)
-- `.ssh/*.pem` - PEM format keys
-- `.ssh/*_rsa` - RSA keys
-- `.ssh/*_ecdsa` - ECDSA keys
-- `.ssh/*_ed25519` - Ed25519 keys
 - `.password-store` - pass password store
 
-These patterns prevent accidentally managing sensitive files. SSH configuration files like `.ssh/config`, `.ssh/known_hosts`, and `.ssh/authorized_keys` are not ignored and can be safely managed.
+The default list also contains `.ssh/*.pem`, `.ssh/id_*`, `.ssh/*_rsa`, `.ssh/*_ecdsa`, and
+`.ssh/*_ed25519`. These patterns contain a path separator, and patterns containing a path separator
+do not match during a scan (see [Ignore System](ignore-system.md)). **SSH keys inside a package are
+not excluded and will be symlinked.**
+
+Add basename patterns to exclude them:
+
+```yaml
+# ~/.config/dot/config.yaml
+ignore:
+  patterns:
+    - "id_*"
+    - "*_rsa"
+    - "*_ecdsa"
+    - "*_ed25519"
+    - "*.pem"
+```
+
+SSH configuration files such as `.ssh/config`, `.ssh/known_hosts`, and `.ssh/authorized_keys` are
+not ignored and can be managed safely.
 
 ### Secrets Detection
 
-dot warns when you attempt to manage or adopt files that match sensitive patterns:
+`dot manage` and `dot adopt` scan the files involved and print a warning when a path matches a
+sensitive pattern. Detected categories are SSH keys, GPG keyrings, credential files
+(`.aws/credentials`, `.docker/config.json`, `secrets.*`), and environment files (`.env`, `.env.*`).
 
 ```bash
 $ dot manage ssh
 
 Warning: Potential secrets detected:
-  - /home/user/.ssh/id_rsa (SSH private and public keys)
-  - /home/user/.ssh/id_ed25519 (SSH private and public keys)
-
-These files are ignored by default. See 'dot help secrets' for details.
+  - /home/user/dotfiles/ssh/id_rsa (SSH private and public keys)
 ```
 
-The warning is informational only. The files are automatically ignored during management.
+The warning is advisory. It does not stop the operation and it does not exclude the file; unless
+you have added an effective ignore pattern, the file will be linked or adopted. Review the warning
+and abort manually if it is not what you intended.
 
 ## Recommended Approaches
 
@@ -131,12 +144,16 @@ git commit -m "Add encrypted secrets"
 
 #### Add to .dotignore
 
-Create a `.dotignore` file in your package:
+Create a `.dotignore` file at the root of your package:
 
 ```
 # .dotfiles/myapp/.dotignore
-secrets.env       # Ignore decrypted version
+# Ignore the decrypted version
+secrets.env
 ```
+
+Only whole-line comments are recognised. A trailing comment on a pattern line becomes part of the
+pattern and stops it matching.
 
 #### Shell Initialization
 
@@ -278,7 +295,7 @@ The SSH configuration file (`.ssh/config`) is safe to manage with dot.
 - Use dedicated secrets management tools (pass, gpg, age)
 - Keep GPG and SSH keys outside version control
 - Encrypt before committing sensitive files
-- Use `.dotignore` to exclude secrets from packages
+- Use `.dotignore` or `ignore.patterns` with basename patterns to exclude secrets from packages
 - Generate per-machine keys when possible
 - Use strong passphrases for encryption keys
 - Test decryption scripts to avoid lockout
@@ -287,7 +304,7 @@ The SSH configuration file (`.ssh/config`) is safe to manage with dot.
 ### Do Not
 
 - Commit unencrypted secrets to version control
-- Manage `.gnupg` or `.ssh/id_*` with dot
+- Place private keys inside a package and rely on the defaults to exclude them
 - Disable default ignore patterns for security files
 - Share private keys between machines unnecessarily
 - Store encryption keys in the same repository
@@ -295,16 +312,27 @@ The SSH configuration file (`.ssh/config`) is safe to manage with dot.
 
 ## Configuration Integration
 
-Configure per-package ignore patterns if needed:
+Because the built-in SSH patterns are inert, define your own basename patterns:
 
 ```yaml
 # ~/.config/dot/config.yaml
 ignore:
   use_defaults: true
   patterns:
+    - "id_*"
+    - "*_rsa"
+    - "*_ecdsa"
+    - "*_ed25519"
+    - "*.pem"
     - "*.secret"
     - "credentials.*"
     - ".env.local"
+```
+
+Verify the result before applying changes:
+
+```bash
+dot manage mypackage --dry-run
 ```
 
 ## Troubleshooting

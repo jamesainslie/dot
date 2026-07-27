@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -91,8 +92,13 @@ func applyBackupPolicy(
 	// Extract filename from conflict path
 	filename := filepath.Base(conflict.Path.String())
 
-	// Generate backup path: <backupDir>/<filename>.<timestamp>
-	backupPath := filepath.Join(backupDir, fmt.Sprintf("%s.%s", filename, timestamp))
+	// Derive a short hash from the full conflict path so files sharing a
+	// basename in different directories never collide on the same backup name.
+	pathSum := sha256.Sum256([]byte(conflict.Path.String()))
+	pathTag := fmt.Sprintf("%x", pathSum[:4])
+
+	// Generate backup path: <backupDir>/<filename>.<pathTag>.<timestamp>
+	backupPath := filepath.Join(backupDir, fmt.Sprintf("%s.%s.%s", filename, pathTag, timestamp))
 	backupFilePathResult := domain.NewFilePath(backupPath)
 	if backupFilePathResult.IsErr() {
 		// If backup path is invalid, fall back to fail policy
@@ -105,9 +111,10 @@ func applyBackupPolicy(
 	backupOpID := domain.OperationID(fmt.Sprintf("backup-%s-%s", conflict.Path.String(), timestamp))
 	backupOp := domain.NewFileBackup(backupOpID, conflict.Path, backupFilePath)
 
-	// 2. FileDelete: removes the original file
+	// 2. FileDelete: removes the original file, recording the backup path so
+	//    rollback can restore the file from the backup
 	deleteOpID := domain.OperationID(fmt.Sprintf("delete-%s", conflict.Path.String()))
-	deleteOp := domain.NewFileDelete(deleteOpID, conflict.Path)
+	deleteOp := domain.NewFileDeleteWithBackup(deleteOpID, conflict.Path, backupFilePath)
 
 	// 3. LinkCreate: creates the symlink (original operation)
 

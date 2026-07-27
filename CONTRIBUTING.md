@@ -10,7 +10,7 @@ Be respectful, professional, and collaborative. Harassment and unprofessional be
 
 ### Prerequisites
 
-- Go 1.25 or later
+- Go 1.26.1 or later
 - Git
 - Make
 - golangci-lint v2
@@ -19,20 +19,31 @@ Be respectful, professional, and collaborative. Harassment and unprofessional be
 
 1. **Fork and clone**:
 ```bash
-git fork https://github.com/yaklabco/dot.git
+gh repo fork yaklabco/dot --clone
 cd dot
 ```
+Or fork through the GitHub web UI, then `git clone git@github.com:<you>/dot.git`.
 
 2. **Verify environment**:
 ```bash
-go version  # Should be 1.25+
-make check  # Runs tests, linting, build
+go version  # Should be 1.26.1+
+make check  # Runs tests, coverage gate, linters, vet, and vulnerability check
 ```
 
 3. **Create feature branch**:
 ```bash
 git checkout -b feature-description
 ```
+
+4. **Install the pre-commit hook**:
+```bash
+cp .githooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The hook runs the test suite without race detection (roughly 55 seconds), enforces
+the 60% coverage floor, and runs `make lint`. It rejects the commit on any failure.
+Never bypass it with `--no-verify`.
 
 ## Development Workflow
 
@@ -75,7 +86,10 @@ git commit -m "feat(scanner): add package scanning functionality"
 
 ### Testing Requirements
 
-- **Minimum 75% coverage** for new code
+- **Coverage gates**: 60% locally (`make check-coverage` and the pre-commit hook),
+  75% in CI. Both exclude `internal/cli/adopt/{selector,scanner,interactive,discovery}.go`.
+  Passing the local gate does not guarantee CI will pass; check the CI margin before
+  opening a pull request.
 - **Unit tests** for all functions
 - **Integration tests** for complete workflows
 - **Property-based tests** for core algorithms
@@ -83,10 +97,10 @@ git commit -m "feat(scanner): add package scanning functionality"
 
 Run tests:
 ```bash
-make test              # All tests
-make test-unit         # Unit tests only
-make test-integration  # Integration tests only
-make test-coverage     # With coverage report
+make test           # All tests with race detection and coverage profile
+make test-tparse    # Same, with formatted tparse output
+make check-coverage # Verify the coverage profile meets the 60% gate
+make coverage       # Generate and open an HTML coverage report
 ```
 
 ### Linting and Formatting
@@ -95,9 +109,10 @@ All code must pass linting without warnings.
 
 **Run linters**:
 ```bash
-make lint       # All linters
-make lint-go    # Go linters only
-make fmt        # Format code
+make lint     # golangci-lint
+make vet      # go vet
+make fmt      # Verify formatting
+make fmt-fix  # Apply gofmt and goimports
 ```
 
 **Configured linters**:
@@ -121,15 +136,19 @@ make fmt        # Format code
 
 **Quality gates** (all must pass):
 ```bash
-make check  # Runs tests, linting, build
+make check
 ```
 
-This command:
-1. Runs all tests with coverage check
-2. Runs all linters
-3. Builds the binary
+This command runs, in order:
+1. All tests with race detection, producing `coverage.out`
+2. The 60% coverage gate (UI and interactive files excluded)
+3. golangci-lint
+4. go vet
+5. govulncheck, with accepted advisories excluded per SECURITY.md
 
-Do not submit pull requests until `make check` passes.
+It does not build the binary. Run `make build` separately before submitting.
+
+Do not submit pull requests until `make check` and `make build` both pass.
 
 ## Commit Standards
 
@@ -290,7 +309,7 @@ make check  # All tests and linters pass
 
 3. **Write tests**:
 - New functionality has tests
-- Tests achieve ≥75% coverage
+- Coverage clears the 75% CI gate, not only the 60% local gate
 - All tests pass
 
 ### Submitting

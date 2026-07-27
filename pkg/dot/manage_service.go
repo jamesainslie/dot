@@ -533,7 +533,11 @@ func (s *ManageService) planAdoptedPackageRemanage(ctx context.Context, pkg stri
 		targetPathResult := NewTargetPath(targetPath)
 		if targetPathResult.IsOk() {
 			delID := OperationID(fmt.Sprintf("remanage-del-%s", link))
-			ops = append(ops, NewLinkDelete(delID, targetPathResult.Unwrap()))
+			if dest, err := s.fs.ReadLink(ctx, targetPath); err == nil {
+				ops = append(ops, NewLinkDeleteWithDestination(delID, targetPathResult.Unwrap(), dest))
+			} else {
+				ops = append(ops, NewLinkDelete(delID, targetPathResult.Unwrap()))
+			}
 			opIDs = append(opIDs, delID)
 		}
 	}

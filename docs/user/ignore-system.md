@@ -16,23 +16,38 @@ Ignore patterns work similarly to `.gitignore`, allowing you to exclude files fr
 
 ### Glob Patterns
 
-Patterns use glob syntax:
+Patterns use glob syntax and are matched against the full absolute path and, separately, against
+the basename:
 
-- `*` - Matches any sequence of characters
-- `?` - Matches any single character
-- `*.ext` - Matches all files with extension
-- `dirname/` - Matches directory and contents
+- `*` matches any sequence of characters, including `/`
+- `?` matches any single character
+- `*.ext` matches all files with that extension, at any depth, via the basename match
+
+Patterns are anchored: the whole path or the whole basename must match. Bracket expressions and
+regex metacharacters are escaped and matched literally.
+
+**Patterns containing `/` do not work.** Scanned paths are absolute, so a pattern such as
+`.cache/`, `logs/*.log`, or `.ssh/id_*` matches neither the absolute path nor the basename and is
+silently ignored. To exclude a directory, use its bare name (`.cache`, `node_modules`); to exclude
+files by extension anywhere in the tree, use `*.log`. A trailing slash has no special meaning and
+prevents the pattern from matching.
 
 ### Negation Patterns
 
 Patterns starting with `!` un-ignore previously ignored files:
 
 ```
-*.log          # Ignore all .log files
-!important.log # But include important.log
+# Ignore all .log files
+*.log
+# But include important.log
+!important.log
 ```
 
 **Important**: Order matters. Patterns are processed sequentially, and the last matching pattern wins.
+
+In a `.dotignore` file, only whole-line comments are recognised. A trailing comment on a pattern
+line becomes part of the pattern and stops it matching. In the configuration file this does not
+apply, because YAML strips comments before dot sees the value.
 
 ### Examples
 
@@ -45,9 +60,9 @@ Patterns starting with `!` un-ignore previously ignored files:
 # But keep backup files
 !*.bak
 
-# Ignore cache directories
-.cache/
-node_modules/
+# Ignore cache directories (bare names, no trailing slash)
+.cache
+node_modules
 
 # Ignore large files
 *.qcow2
@@ -113,11 +128,11 @@ File sizes support human-readable formats:
 - `GB`, `G`, `g` - Gigabytes (1024 MB)
 - `TB`, `T`, `t` - Terabytes (1024 GB)
 
-Examples: `100MB`, `1.5GB`, `500M`, `1024KB`
+Examples: `100MB`, `1.5GB`, `500M`, `1024KB`. A space between the number and the unit is tolerated.
 
 ## Per-Package .dotignore Files
 
-Create a `.dotignore` file in any package directory:
+Create a `.dotignore` file at the root of a package directory:
 
 ```
 # .dotignore in colima package
@@ -128,41 +143,59 @@ Create a `.dotignore` file in any package directory:
 # But keep configuration backups
 !*.qcow2.backup
 
-# Ignore logs
-logs/*.log
+# Ignore logs by extension, not by directory path
+*.log
 
 # Comments are supported
 # Empty lines are ignored
 ```
 
-### Inheritance
+A line beginning with `!!` is rejected as an invalid pattern.
 
-`.dotignore` files support inheritance from parent directories, similar to `.gitignore`:
+### Scope
+
+Only the `.dotignore` file at the root of the package directory is read. Files in parent
+directories and in subdirectories of the package are not consulted; there is no inheritance.
 
 ```
 packages/
-├── .dotignore           # Applies to all packages
+├── .dotignore           # not read
 ├── vim/
-│   └── .dotignore       # Applies to vim and subdirs
+│   ├── .dotignore       # read for package vim
+│   └── colors/
+│       └── .dotignore   # not read
 └── colima/
-    └── .dotignore       # Applies to colima
+    └── .dotignore       # read for package colima
 ```
 
-Files closer to the root have lower priority. Child `.dotignore` files can override parent patterns using negation.
+Patterns shared across packages belong in `ignore.patterns` in the configuration file.
 
 ## Default Ignore Patterns
 
-When `use_defaults: true`, these patterns are automatically applied:
+When `use_defaults: true`, these patterns are applied:
 
-- `.git` - Git repository metadata
-- `.svn` - Subversion metadata
-- `.hg` - Mercurial metadata
-- `.DS_Store` - macOS metadata
-- `Thumbs.db` - Windows thumbnails
-- `desktop.ini` - Windows folder settings
-- `.Trash` - Trash directory
-- `.Spotlight-V100` - macOS Spotlight index
-- `.TemporaryItems` - macOS temporary items
+- `.git`, `.svn`, `.hg` - version control metadata
+- `.DS_Store`, `.Trash`, `.Spotlight-V100`, `.TemporaryItems` - macOS metadata
+- `Thumbs.db`, `desktop.ini` - Windows metadata
+- `.dotignore`, `.dotbootstrap.yaml` - dot's own metadata files
+- `.gnupg`, `.password-store` - key and password stores
+- `.ssh/*.pem`, `.ssh/id_*`, `.ssh/*_rsa`, `.ssh/*_ecdsa`, `.ssh/*_ed25519` - SSH keys
+
+The five `.ssh/*` entries contain a path separator and, per the pattern rules above, do not match
+anything during a scan. **SSH keys inside a package are not excluded and will be symlinked.** Do
+not rely on these defaults; add basename patterns instead:
+
+```yaml
+ignore:
+  patterns:
+    - "id_*"
+    - "*_rsa"
+    - "*_ecdsa"
+    - "*_ed25519"
+    - "*.pem"
+```
+
+Editor swap and backup files (`*.swp`, `*~`, `.#*`) are not ignored by default.
 
 ## Size-Based Filtering
 
@@ -216,10 +249,10 @@ diffdisk.*
 ```yaml
 ignore:
   patterns:
-    - ".cache/"
-    - "node_modules/"
+    - ".cache"
+    - "node_modules"
     - "*.pyc"
-    - "__pycache__/"
+    - "__pycache__"
     - "*.o"
     - "*.so"
 ```
@@ -245,14 +278,15 @@ ignore:
 
 ## Precedence Order
 
-Configuration sources are applied in this order (later overrides earlier):
+Patterns are concatenated in this order and the last matching pattern decides:
 
-1. Default ignore patterns (if enabled)
-2. Global config file patterns
-3. Per-package `.dotignore` files (parent to child)
-4. Command-line `--ignore` flags
+1. Default ignore patterns, unless `ignore.use_defaults: false` or `--no-defaults`
+2. `ignore.patterns` from the configuration file
+3. Command-line `--ignore` flags
+4. The package's own `.dotignore`, unless `ignore.per_package_ignore: false` or `--no-dotignore`
 
-Within each source, patterns are processed sequentially, with later patterns overriding earlier ones.
+A package `.dotignore` therefore has the highest priority and can un-ignore, with `!`, anything set
+by the configuration file or by `--ignore`.
 
 ## Best Practices
 
@@ -267,21 +301,23 @@ Within each source, patterns are processed sequentially, with later patterns ove
 
 ### Files Not Being Ignored
 
-1. Check pattern syntax - remember `*` matches within directories
-2. Verify pattern order - later patterns override earlier ones
-3. Check if file matches default patterns
-4. Use absolute paths if relative matching fails
+1. Check that the pattern contains no `/`. Patterns with a path separator never match.
+2. Remove any trailing slash: `.cache/` does not match, `.cache` does.
+3. Verify pattern order. Later patterns override earlier ones, and the package `.dotignore` is
+   applied last.
+4. Check whether a package `.dotignore` un-ignores the file with `!`.
 
 ### Files Unexpectedly Ignored
 
 1. Check for overly broad patterns
 2. Look for default patterns that might match
-3. Check parent `.dotignore` files
+3. Check the package's own `.dotignore` (parent directories are not read)
 4. Use negation to explicitly include files
 
 ### Size Filtering Issues
 
-1. Verify size format is correct (e.g., `100MB` not `100 MB`)
+1. Verify the unit is one of B, KB, MB, GB, TB (case-insensitive; `K`, `M`, `G`, `T` also
+   accepted). A space between the number and the unit is tolerated.
 2. Check if `max_file_size` is set to 0 (disabled)
 3. Ensure `interactive_large_files` matches your use case
 4. Use `--batch` for non-interactive environments

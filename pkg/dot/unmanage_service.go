@@ -273,7 +273,8 @@ func (s *UnmanageService) planUnmanageWithOptions(ctx context.Context, m manifes
 			}
 		}
 
-		// Delete symlinks
+		// Delete symlinks, recording the destination each link currently
+		// points at so execution can verify it and rollback can restore it.
 		for _, link := range pkgInfo.Links {
 			targetFilePath := s.targetDir + "/" + link
 			targetPathResult := NewTargetPath(targetFilePath)
@@ -281,7 +282,11 @@ func (s *UnmanageService) planUnmanageWithOptions(ctx context.Context, m manifes
 				continue
 			}
 			id := OperationID(fmt.Sprintf("unmanage-link-%s", link))
-			operations = append(operations, NewLinkDelete(id, targetPathResult.Unwrap()))
+			if dest, err := s.fs.ReadLink(ctx, targetFilePath); err == nil {
+				operations = append(operations, NewLinkDeleteWithDestination(id, targetPathResult.Unwrap(), dest))
+			} else {
+				operations = append(operations, NewLinkDelete(id, targetPathResult.Unwrap()))
+			}
 		}
 
 		// Handle adopted packages

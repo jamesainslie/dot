@@ -24,7 +24,7 @@ The dot project follows strict Test-Driven Development (TDD) principles with a f
 3. **Deterministic Tests**: Tests produce consistent results across environments
 4. **Test Isolation**: Each test runs independently without shared state
 5. **Fast Feedback**: Tests execute quickly to enable rapid iteration
-6. **Comprehensive Coverage**: Minimum 75% code coverage with 100% for critical paths
+6. **Comprehensive Coverage**: Enforced gate is mean per-function coverage, 60% locally and 75% in CI
 
 ### Testing Pyramid
 
@@ -66,7 +66,7 @@ graph TB
 **Example**:
 ```go
 func TestScanPackage_ValidStructure(t *testing.T) {
-    fs := adapters.NewMemFilesystem()
+    fs := adapters.NewMemFS()
     // Setup in-memory filesystem
     // Test scanning logic
 }
@@ -93,8 +93,14 @@ func TestScanPackage_ValidStructure(t *testing.T) {
 - `state_test.go`: Manifest persistence and state management
 - `query_test.go`: Status, doctor, and list commands
 - `cli_test.go`: CLI integration with flags and options
+- `cli_helpers_test.go`: Shared helpers for CLI invocation
+- `clone_client_test.go`: Repository clone workflows
+- `signal_test.go`: Signal handling and interrupt behavior
 - `platform_test.go`: Cross-platform compatibility
 - `scenario_test.go`: Realistic user workflows
+
+`conflict_test.go` and `recovery_test.go` carry a `//go:build !windows`
+constraint and are skipped on Windows.
 
 ### End-to-End Tests
 
@@ -111,13 +117,23 @@ func TestScanPackage_ValidStructure(t *testing.T) {
 
 **Purpose**: Detect performance regressions and measure operation costs.
 
-**Location**: `tests/integration/benchmark_test.go`
+**Location**: `tests/integration/benchmark_test.go`, plus package benchmarks under `internal/planner/`, `internal/scanner/`, and `internal/executor/`. `make bench` and `make bench-compare` run the three internal packages only.
 
 **Benchmarks**:
 - Single package operations
 - Multiple package operations (10, 100, 1000 packages)
 - Large file tree scenarios
 - Query operation performance
+
+### Fuzz Tests
+
+**Purpose**: Exercise parsers and path validators against adversarial input.
+
+**Location**: `internal/config/fuzz_test.go`, `internal/ignore/fuzz_test.go`, `internal/domain/fuzz_test.go`
+
+**Run**: `make fuzz` (30s per target), or `go test -fuzz=FuzzGlobToRegex -run=^$ ./internal/ignore/`
+
+**Targets**: config loading and validation, glob-to-regex translation and pattern matching, and package/target/file path construction.
 
 ## Testing Infrastructure
 
@@ -184,7 +200,7 @@ Declarative test data creation:
 ```go
 env.FixtureBuilder().Package("vim").
     WithFile("dot-vimrc", "set nocompatible").
-    WithDirectory("dot-vim").
+    WithDir("dot-vim").
     WithFile("dot-vim/colors.vim", "colorscheme desert").
     Create()
 ```
@@ -194,12 +210,15 @@ env.FixtureBuilder().Package("vim").
 Specialized assertion functions for filesystem verification:
 
 **Functions**:
-- `AssertSymlinkExists`: Verify symlink presence
-- `AssertSymlinkTarget`: Verify symlink points to correct target
-- `AssertFileExists`: Verify file presence
-- `AssertFileContent`: Verify file contents
-- `AssertDirectoryExists`: Verify directory presence
-- `AssertPathNotExists`: Verify path absence
+- `AssertLink`: Verify a symlink exists and points to the expected target
+- `AssertLinkContains`: Verify a symlink target contains a substring
+- `AssertFile`: Verify a file exists with exact content
+- `AssertFileContains`: Verify file content contains a substring
+- `AssertDir`: Verify a directory exists
+- `AssertNotExists`: Verify a path is absent
+- `AssertFileMode`: Verify file permission bits
+- `AssertDirEmpty` / `AssertDirHasEntries`: Verify directory entry counts
+- `AssertSymlinkChain`: Verify a multi-hop symlink resolution chain
 
 #### StateSnapshot
 
@@ -212,7 +231,7 @@ Filesystem state capture and comparison:
 - Detect deletions
 - Generate diff reports
 
-#### GoldenTest
+#### GoldenTest (testutil, currently unused)
 
 Compare test outputs against golden files:
 
@@ -222,28 +241,32 @@ Compare test outputs against golden files:
 - Update mode for golden file regeneration
 - Diff display on mismatches
 
+Note: the golden tests that actually ship live in `cmd/dot` and use
+`internal/cli/golden` (`Golden.New` / `Assert` / `AssertString`), reading and
+writing `cmd/dot/testdata/golden/<fixture>/<name>.golden` and updating via the
+`-update` flag. `testutil.GoldenTest` is exercised only by its own unit tests.
+
 ### Test Fixtures
 
-**Location**: `tests/fixtures/`
-
-Pre-built test scenarios and sample packages:
+**Location**: `tests/fixtures/`, `cmd/dot/testdata/`, `internal/adapters/testdata/`
 
 **Structure**:
 ```
 tests/fixtures/
-├── scenarios/       # Complete test scenarios
-│   ├── simple/     # Basic dotfiles setup
-│   ├── complex/    # Multi-package configuration
-│   ├── conflicts/  # Conflict scenarios
-│   └── migration/  # Stow migration tests
-├── packages/       # Sample package templates
-│   ├── dotfiles/   # Common dotfiles
-│   ├── nvim/       # Neovim configuration
-│   └── shell/      # Shell configuration
-└── golden/         # Expected outputs
-    ├── status/     # Status command outputs
-    ├── list/       # List command outputs
-    └── doctor/     # Doctor command outputs
+└── bootstrap-configs/          # Bootstrap config YAML samples
+    ├── minimal.yaml
+    ├── with-profiles.yaml
+    ├── platform-specific.yaml
+    ├── invalid-syntax.yaml
+    └── invalid-missing-version.yaml
+
+cmd/dot/testdata/golden/        # Golden outputs for CLI commands
+├── adopt/
+├── errors/
+└── manage/
+
+internal/adapters/testdata/     # Git adapter fixtures
+└── test-repo/
 ```
 
 ## Layer-Specific Testing
@@ -591,7 +614,7 @@ sequenceDiagram
     
     Test->>Golden: CompareWithGolden(output)
     
-    alt Update Mode (TEST_UPDATE=true)
+    alt Update Mode (-update flag)
         Golden->>FS: Write output to golden file
         FS-->>Golden: Written
         Golden-->>Test: Updated golden file
@@ -633,10 +656,12 @@ sequenceDiagram
     
     Test->>Test: Setup shared client
     
-    par Parallel Execution
+    par Goroutine 1
         Test->>Goroutine1: Start
-        and Test->>Goroutine2: Start
-        and Test->>Goroutine3: Start
+    and Goroutine 2
+        Test->>Goroutine2: Start
+    and Goroutine 3
+        Test->>Goroutine3: Start
     end
     
     Goroutine1->>Client: Manage("package1")
@@ -710,7 +735,7 @@ stateDiagram-v2
 
 ```mermaid
 graph TB
-    Start([make test])
+    Start([make check])
     
     UnitTests[Run Unit Tests<br/>Pure Functions]
     CoreTests[Run Core Layer Tests<br/>Scanner, Planner, Ignore]
@@ -722,7 +747,7 @@ graph TB
     
     RaceDetector{Race Detector<br/>Enabled?}
     CoverageCalc[Calculate Coverage]
-    CoverageCheck{Coverage >= 75%?}
+    CoverageCheck{Mean func coverage >= 60%?}
     
     AllPass{All Tests<br/>Pass?}
     
@@ -799,9 +824,27 @@ sequenceDiagram
 
 ## Coverage Requirements
 
-### Minimum Coverage Thresholds
+### Enforced Coverage Gate
 
-- **Overall Project**: 75% minimum
+The gate is not total statement coverage. Both `make check-coverage` and CI
+compute the unweighted mean of the per-function percentages emitted by
+`go tool cover -func=coverage.out`, after excluding the Bubble Tea UI and
+interactive adoption files:
+
+- `internal/cli/adopt/selector.go`
+- `internal/cli/adopt/scanner.go`
+- `internal/cli/adopt/interactive.go`
+- `internal/cli/adopt/discovery.go`
+
+Thresholds:
+
+- Local (`make check-coverage`, `make cs`, and therefore `make check`): 60.0%
+- CI (`.github/workflows/ci.yml`, `test` job): 75.0%
+
+### Per-Layer Targets
+
+The per-layer targets below are aspirational; no tooling enforces them.
+
 - **Domain Layer**: 100% (critical path)
 - **Core Layer**: 95% minimum
 - **Pipeline Layer**: 90% minimum
@@ -818,8 +861,8 @@ make coverage
 # View coverage in browser
 go tool cover -html=coverage.out
 
-# Check coverage threshold
-go test -cover ./... | grep -E "coverage: [0-9]+\.[0-9]+%"
+# Enforce the local coverage gate (requires coverage.out from `make test`)
+make check-coverage
 ```
 
 ### Critical Paths Requiring 100% Coverage
@@ -841,8 +884,11 @@ make test
 # With race detection
 go test -race ./...
 
-# With coverage
-make test-coverage
+# With coverage profile and HTML report
+make coverage
+
+# Enforce the local coverage gate (requires coverage.out from `make test`)
+make check-coverage
 
 # Verbose output
 go test -v ./...
@@ -858,10 +904,10 @@ go test ./internal/...
 go test ./tests/integration/...
 
 # Specific test function
-go test -run TestManage_SinglePackage ./tests/integration/
+go test -run TestE2E_Manage_SinglePackage ./tests/integration/
 
-# Specific test file
-go test ./internal/scanner/scanner_test.go
+# Specific package with a run filter
+go test -run TestScanPackage ./internal/scanner/
 ```
 
 ### Test Options
@@ -876,8 +922,8 @@ go test -parallel 4 ./...
 # With timeout
 go test -timeout 30s ./...
 
-# Benchmarks
-go test -bench=. ./tests/integration/
+# Benchmarks (`make bench` targets the same packages)
+go test -bench=. -benchmem -run=^$ ./internal/planner/ ./internal/scanner/ ./internal/executor/
 
 # CPU profiling
 go test -cpuprofile=cpu.prof ./...
@@ -937,11 +983,14 @@ Example<Function>_<UseCase>
 ### Updating Golden Files
 
 ```bash
-# Update all golden files
-TEST_UPDATE=1 go test ./tests/integration/
+# Update golden files for the CLI command tests
+go test ./cmd/dot/ -update
 
-# Update specific test golden files
-TEST_UPDATE=1 go test -run TestStatus ./tests/integration/
+# Update a single command's golden files
+go test ./cmd/dot/ -run TestManageGolden -update
+
+# The tests/integration/testutil helper uses a separate flag
+go test ./tests/integration/ -update-golden
 ```
 
 ## Test Architecture Best Practices

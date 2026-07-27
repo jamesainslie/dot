@@ -121,10 +121,12 @@
 //
 // ## Testing Helpers
 //
-// In test code, MustUnwrap variants are acceptable:
+// In test code, the Must* path constructors are acceptable:
 //
-//	got := domain.MustOk(ComputeValue())        // Panics on error (fine in tests)
-//	err := domain.MustErr(ExpectFailure())      // Panics on Ok (fine in tests)
+//	path := domain.MustParsePath("/home/user/.vimrc")       // Panics on invalid path
+//	target := domain.MustParseTargetPath("/home/user")      // Panics on invalid path
 //
-// These are defined in internal/domain/testing.go and should NEVER be used in production code.
+// These are defined in internal/domain/testing.go and should NEVER be used in
+// production code. There is no MustOk/MustErr helper; guard Unwrap() with an
+// explicit IsOk()/IsErr() check instead.
 package domain

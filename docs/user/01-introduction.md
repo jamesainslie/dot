@@ -68,7 +68,7 @@ vim/                     # Package name
 │   │   └── theme.vim
 │   └── autoload/
 │       └── plugin.vim
-└── .dotmeta            # Optional package metadata
+└── .dot-metadata.json   # Optional package metadata (platform requirements)
 ```
 
 ### Symlink
@@ -110,36 +110,37 @@ Note: The package name determines the target subdirectory. Use a `dot-`
 prefixed package name when the target directory should be hidden (e.g.,
 `dot-ssh` for `~/.ssh/`).
 
-### Directory Folding
+### Directory Structure
 
-**Directory folding** optimizes symlink count by creating directory-level links when all contents belong to a single package.
+`manage` reproduces the package's directory structure in the target directory and
+creates one symlink per file. Managing a package containing nested directories
+produces real directories in the target, each holding per-file symlinks:
 
-Without folding (per-file links):
 ```
-~/.vim/colors/theme.vim -> ~/dotfiles/vim/dot-vim/colors/theme.vim
-~/.vim/autoload/plugin.vim -> ~/dotfiles/vim/dot-vim/autoload/plugin.vim
-~/.vim/ftplugin/go.vim -> ~/dotfiles/vim/dot-vim/ftplugin/go.vim
-```
-
-With folding (directory link):
-```
-~/.vim/ -> ~/dotfiles/vim/dot-vim/
+~/.vim/                            (real directory)
+~/.vim/colors/theme.vim -> ~/dotfiles/dot-vim/colors/theme.vim
+~/.vim/autoload/plugin.vim -> ~/dotfiles/dot-vim/autoload/plugin.vim
 ```
 
-Folding rules:
-- Applied when directory exclusively contains files from one package
-- Disabled if multiple packages contribute files to the same directory
-- Automatically unfolds when package conflicts arise
-- Can be disabled with `--no-folding` flag
+`adopt` behaves differently. Adopting an existing directory moves it into the
+package and replaces it with a single directory symlink:
 
-Benefits:
-- Reduced symlink count
-- Improved filesystem performance
-- Simplified link management
+```
+~/.ssh -> ~/dotfiles/dot-ssh
+```
+
+Directory folding, meaning collapsing a fully owned directory into one
+directory-level symlink during `manage`, is not implemented. The
+`symlinks.folding` configuration key is accepted and displayed by
+`dot config list`, but it has no effect on planning or execution.
 
 ### Manifest
 
-The **manifest** is a state file (`.dot-manifest.json`) created in the target directory that tracks installed packages, their files, and content hashes.
+The **manifest** is a state file named `.dot-manifest.json` that tracks installed
+packages, their links, and content hashes. By default it is written to the XDG
+data directory, `~/.local/share/dot/manifest/.dot-manifest.json`. The location is
+set by the `directories.manifest` configuration key; the manifest falls back to
+`<target>/.dot-manifest.json` only when that key is empty.
 
 Manifest contents:
 ```json
@@ -183,7 +184,7 @@ Process:
 Benefits:
 - Fast updates for large package collections
 - Reduced I/O operations
-- Efficient restow operations
+- Efficient remanage operations
 
 Example:
 ```bash
@@ -346,7 +347,7 @@ dot provides feature parity with GNU Stow plus modern enhancements:
 |---------|-----|----------|
 | Basic install/remove | Yes | Yes |
 | Conflict detection | Yes | Yes |
-| Directory folding | Yes | Yes |
+| Directory folding | No | Yes |
 | Dotfile translation | Yes | No |
 | Transactional operations | Yes | No |
 | Rollback on failure | Yes | No |

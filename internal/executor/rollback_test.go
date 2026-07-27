@@ -32,7 +32,7 @@ func TestRollback_SingleOperation(t *testing.T) {
 	checkpoint.Record("link1", op)
 
 	// Rollback
-	rolledBack := exec.rollback(ctx, []domain.OperationID{"link1"}, checkpoint)
+	rolledBack, _ := exec.rollback(ctx, []domain.OperationID{"link1"}, checkpoint)
 
 	require.Len(t, rolledBack, 1)
 	require.Contains(t, rolledBack, domain.OperationID("link1"))
@@ -72,7 +72,7 @@ func TestRollback_ReverseOrder(t *testing.T) {
 
 	// Rollback should happen in reverse order: link first, then dir
 	executed := []domain.OperationID{"dir1", "link1"}
-	rolledBack := exec.rollback(ctx, executed, checkpoint)
+	rolledBack, _ := exec.rollback(ctx, executed, checkpoint)
 
 	require.Len(t, rolledBack, 2)
 
@@ -112,11 +112,13 @@ func TestRollback_PartialRollbackOnError(t *testing.T) {
 
 	// Rollback both - first should succeed, second should fail (doesn't exist)
 	executed := []domain.OperationID{"link1", "link2"}
-	rolledBack := exec.rollback(ctx, executed, checkpoint)
+	rolledBack, rollbackFailed := exec.rollback(ctx, executed, checkpoint)
 
 	// Should have rolled back link1 even though link2 failed
 	require.Len(t, rolledBack, 1)
 	require.Contains(t, rolledBack, domain.OperationID("link1"))
+	require.Len(t, rollbackFailed, 1)
+	require.Contains(t, rollbackFailed, domain.OperationID("link2"))
 	require.False(t, fs.Exists(ctx, target1.String()), "link1 should be removed")
 }
 
@@ -154,7 +156,7 @@ func TestExecute_AutomaticRollback(t *testing.T) {
 	require.Len(t, execResult.Failed, 1, "second operation should fail")
 
 	// Now rollback
-	rolledBack := exec.rollback(ctx, execResult.Executed, checkpoint)
+	rolledBack, _ := exec.rollback(ctx, execResult.Executed, checkpoint)
 	require.Len(t, rolledBack, 1, "first operation should be rolled back")
 
 	// Verify first operation was rolled back

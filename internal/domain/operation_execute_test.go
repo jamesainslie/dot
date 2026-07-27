@@ -93,13 +93,14 @@ func TestLinkDelete_Rollback(t *testing.T) {
 	require.True(t, targetResult.IsOk())
 	target := targetResult.Unwrap()
 
-	// LinkDelete rollback needs the original source to recreate the link
-	// Since we don't store that, rollback returns ErrNotImplemented
+	// LinkDelete rollback needs the recorded destination to recreate the link.
+	// Without one, rollback must report that it cannot restore the link.
 	op := domain.NewLinkDelete("del1", target)
 
 	err := op.Rollback(ctx, fs)
-	// LinkDelete rollback returns nil (cannot restore without knowing source)
-	assert.NoError(t, err)
+	require.Error(t, err)
+	var impossibleErr domain.ErrRollbackImpossible
+	assert.ErrorAs(t, err, &impossibleErr)
 }
 
 func TestDirCreate_Execute(t *testing.T) {
@@ -200,8 +201,10 @@ func TestDirRemoveAll_Rollback(t *testing.T) {
 	op := domain.NewDirRemoveAll("del1", path)
 
 	err := op.Rollback(ctx, fs)
-	// DirRemoveAll rollback returns nil (cannot restore without backup)
-	assert.NoError(t, err)
+	// DirRemoveAll rollback must report that it cannot restore the directory
+	require.Error(t, err)
+	var impossibleErr domain.ErrRollbackImpossible
+	assert.ErrorAs(t, err, &impossibleErr)
 }
 
 func TestFileBackup_Execute(t *testing.T) {
@@ -227,11 +230,36 @@ func TestFileBackup_Execute(t *testing.T) {
 	assert.Equal(t, []byte("original"), data)
 }
 
+// TestFileBackup_Execute_CreatesBackupDirectory verifies that Execute creates
+// the backup destination directory when it does not exist yet, so a backup
+// never fails just because nothing pre-created the backup directory.
+func TestFileBackup_Execute_CreatesBackupDirectory(t *testing.T) {
+	fs := adapters.NewMemFS()
+	ctx := context.Background()
+
+	require.NoError(t, fs.MkdirAll(ctx, "/home/user", 0755))
+	require.NoError(t, fs.WriteFile(ctx, "/home/user/.bashrc", []byte("original"), 0644))
+
+	source := domain.MustParsePath("/home/user/.bashrc")
+	backup := domain.MustParsePath("/home/user/.dot-backup/.bashrc.20260101-000000")
+
+	op := domain.NewFileBackup("bak1", source, backup)
+
+	// The backup directory /home/user/.dot-backup does not exist yet.
+	err := op.Execute(ctx, fs)
+	require.NoError(t, err, "Execute must create the backup directory itself")
+
+	data, err := fs.ReadFile(ctx, backup.String())
+	require.NoError(t, err)
+	assert.Equal(t, []byte("original"), data)
+}
+
 func TestFileBackup_Rollback(t *testing.T) {
 	fs := adapters.NewMemFS()
 	ctx := context.Background()
 
 	require.NoError(t, fs.MkdirAll(ctx, "/test", 0755))
+	require.NoError(t, fs.WriteFile(ctx, "/test/file", []byte("backup"), 0644))
 	require.NoError(t, fs.WriteFile(ctx, "/test/file.bak", []byte("backup"), 0644))
 
 	source := domain.MustParsePath("/test/file")
@@ -242,8 +270,9 @@ func TestFileBackup_Rollback(t *testing.T) {
 	err := op.Rollback(ctx, fs)
 	require.NoError(t, err)
 
-	// Verify backup was deleted
+	// Verify backup was deleted while the original remains
 	assert.False(t, fs.Exists(ctx, "/test/file.bak"))
+	assert.True(t, fs.Exists(ctx, "/test/file"))
 }
 
 func TestFileDelete_Execute(t *testing.T) {
@@ -273,12 +302,14 @@ func TestFileDelete_Rollback(t *testing.T) {
 	path := domain.MustParsePath("/test/file.txt")
 	op := domain.NewFileDelete("del1", path)
 
-	// Rollback cannot restore deleted file without backup
-	// It should succeed but not restore the file
+	// Rollback cannot restore a deleted file without a recorded backup
+	// and must report that instead of silently succeeding
 	err := op.Rollback(ctx, fs)
-	require.NoError(t, err, "rollback should succeed even though it cannot restore")
+	require.Error(t, err, "rollback without a backup must report failure")
+	var impossibleErr domain.ErrRollbackImpossible
+	assert.ErrorAs(t, err, &impossibleErr)
 
-	// File should still not exist (rollback is a no-op)
+	// File should still not exist
 	assert.False(t, fs.Exists(ctx, "/test/file.txt"))
 }
 

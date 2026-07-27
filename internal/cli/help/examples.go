@@ -24,8 +24,8 @@ var (
 			Command:     "dot manage --dry-run vim",
 		},
 		{
-			Description: "Install with absolute symlinks",
-			Command:     "dot manage --absolute vim",
+			Description: "Install into a specific target directory",
+			Command:     "dot manage --target /opt/config vim",
 		},
 		{
 			Description: "Install from specific package directory",
@@ -56,12 +56,12 @@ var (
 			Command:     "dot remanage vim",
 		},
 		{
-			Description: "Reinstall with absolute symlinks",
-			Command:     "dot remanage --absolute vim",
+			Description: "Preview an update before applying",
+			Command:     "dot remanage --dry-run vim",
 		},
 		{
-			Description: "Reinstall all managed packages",
-			Command:     "dot remanage --all",
+			Description: "Reinstall multiple packages",
+			Command:     "dot remanage vim tmux zsh",
 		},
 	}
 
@@ -72,8 +72,8 @@ var (
 			Command:     "dot adopt vim ~/.vimrc",
 		},
 		{
-			Description: "Adopt with custom filename in package",
-			Command:     "dot adopt vim ~/.vimrc --as vimrc.backup",
+			Description: "Adopt several files into one package",
+			Command:     "dot adopt vim ~/.vimrc ~/.vim",
 		},
 	}
 

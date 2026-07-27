@@ -1,5 +1,15 @@
 # Security Policy
 
+## Supported Versions
+
+Only the latest release receives security fixes. There are no maintenance branches;
+fixes ship from `main` in the next release.
+
+| Version | Supported |
+|---------|-----------|
+| 0.6.x   | Yes       |
+| < 0.6   | No        |
+
 ## Reporting Security Vulnerabilities
 
 If you discover a security vulnerability in `dot`, please report it by emailing the maintainers or opening a private security advisory on GitHub. Please do not open public issues for security vulnerabilities.
@@ -14,10 +24,10 @@ If you discover a security vulnerability in `dot`, please report it by emailing 
 **Description**: Violation of GitHub host security boundary when sourcing authentication token within a codespace.
 
 **Impact Assessment**:
-- ✅ **Low Risk**: This vulnerability specifically affects GitHub Codespaces environments
-- ✅ **Limited Scope**: `dot` is a CLI tool primarily used in local development environments
-- ✅ **Fallback Available**: The tool has multiple authentication fallback methods (environment variables, SSH keys, no auth)
-- ✅ **Optional Feature**: GitHub CLI authentication is only one of several authentication options
+- **Low Risk**: This vulnerability specifically affects GitHub Codespaces environments
+- **Limited Scope**: `dot` is a CLI tool primarily used in local development environments
+- **Fallback Available**: The tool has multiple authentication fallback methods (environment variables, SSH keys, no auth)
+- **Optional Feature**: GitHub CLI authentication is only one of several authentication options
 
 **Usage in `dot`**:
 The affected code is in `internal/adapters/git_auth.go:92` where `auth.TokenForHost("github.com")` is called as a convenience feature to automatically detect GitHub CLI credentials for HTTPS clones. This is:
@@ -57,6 +67,18 @@ Users concerned about this vulnerability in codespace environments can:
 
 **References**:
 - https://pkg.go.dev/vuln/GO-2026-5932
+
+## Enforcement
+
+The accepted advisory list is GO-2024-3295 and GO-2026-5932. It is enforced
+identically in two places:
+
+- `.github/workflows/ci.yml`, in the `vulnerability-check` job
+- `Makefile`, in the `vuln` target, which `make check` runs
+
+Any change to the accepted set must be applied in all three locations: this file,
+`.github/workflows/ci.yml`, and `Makefile`. A finding outside the accepted set
+fails both CI and `make check`.
 
 ## Security Best Practices
 

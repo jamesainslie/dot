@@ -1,6 +1,10 @@
 package dot
 
-import "github.com/yaklabco/dot/internal/domain"
+import (
+	"os"
+
+	"github.com/yaklabco/dot/internal/domain"
+)
 
 // Operation type re-exports from internal/domain
 
@@ -68,6 +72,12 @@ func NewLinkDelete(id OperationID, target TargetPath) LinkDelete {
 	return domain.NewLinkDelete(id, target)
 }
 
+// NewLinkDeleteWithDestination creates a LinkDelete operation that records the
+// symlink destination observed at plan time.
+func NewLinkDeleteWithDestination(id OperationID, target TargetPath, destination string) LinkDelete {
+	return domain.NewLinkDeleteWithDestination(id, target, destination)
+}
+
 // NewDirCreate creates a new DirCreate operation.
 func NewDirCreate(id OperationID, path FilePath) DirCreate {
 	return domain.NewDirCreate(id, path)
@@ -76,6 +86,12 @@ func NewDirCreate(id OperationID, path FilePath) DirCreate {
 // NewDirDelete creates a new DirDelete operation.
 func NewDirDelete(id OperationID, path FilePath) DirDelete {
 	return domain.NewDirDelete(id, path)
+}
+
+// NewDirDeleteWithMode creates a DirDelete operation that records the
+// directory permissions observed at plan time so rollback can restore them.
+func NewDirDeleteWithMode(id OperationID, path FilePath, mode os.FileMode) DirDelete {
+	return domain.NewDirDeleteWithMode(id, path, mode)
 }
 
 // NewDirRemoveAll creates a new DirRemoveAll operation.
@@ -91,6 +107,12 @@ func NewFileBackup(id OperationID, source, backup FilePath) FileBackup {
 // NewFileDelete creates a new FileDelete operation.
 func NewFileDelete(id OperationID, path FilePath) FileDelete {
 	return domain.NewFileDelete(id, path)
+}
+
+// NewFileDeleteWithBackup creates a FileDelete operation that records the path
+// of a backup copy so rollback can restore the deleted file.
+func NewFileDeleteWithBackup(id OperationID, path, backup FilePath) FileDelete {
+	return domain.NewFileDeleteWithBackup(id, path, backup)
 }
 
 // NewDirCopy creates a new DirCopy operation.

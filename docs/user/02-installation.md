@@ -27,7 +27,8 @@ dot requires filesystem support for symbolic links:
 
 ### Hardware Requirements
 
-- Architecture: amd64 (x86-64), arm64 (aarch64), 386 (x86), arm (32-bit)
+- Architecture: amd64 (x86-64) and arm64 (aarch64) release binaries; Windows
+  release binaries are amd64 only. Other architectures can be built from source.
 - Memory: 50 MB minimum
 - Disk: 10 MB for binary, additional space for packages
 
@@ -39,9 +40,15 @@ Pre-compiled binaries are available for all supported platforms.
 
 #### Linux and macOS
 
+Release archives are named `dot_<version>_<os>_<arch>.tar.gz`, so the version must
+be resolved before downloading.
+
 ```bash
-# Download and extract
-curl -L https://github.com/yaklabco/dot/releases/latest/download/dot-$(uname -s)-$(uname -m).tar.gz | tar xz
+# Resolve the latest version, then download the matching archive
+VERSION=$(curl -fsSL https://api.github.com/repos/yaklabco/dot/releases/latest | grep -m1 '"tag_name"' | cut -d'"' -f4 | tr -d v)
+OS=$(uname -s)
+ARCH=$(uname -m)
+curl -fsSL "https://github.com/yaklabco/dot/releases/latest/download/dot_${VERSION}_${OS}_${ARCH}.tar.gz" | tar xz
 
 # Move to system path
 sudo mv dot /usr/local/bin/
@@ -54,7 +61,7 @@ dot --version
 
 Download the Windows binary from [releases page](https://github.com/yaklabco/dot/releases):
 
-1. Download `dot-Windows-x86_64.zip`
+1. Download `dot_<version>_Windows_x86_64.zip`
 2. Extract to desired location
 3. Add directory to PATH environment variable
 4. Open new terminal and run `dot --version`
@@ -67,7 +74,7 @@ Download the Windows binary from [releases page](https://github.com/yaklabco/dot
 
 ```bash
 # Add tap
-brew tap jamesainslie/tap
+brew tap yaklabco/dot
 
 # Install
 brew install dot
@@ -76,35 +83,12 @@ brew install dot
 dot --version
 ```
 
-#### Scoop (Windows)
-
-```bash
-# Add bucket
-scoop bucket add jamesainslie https://github.com/jamesainslie/scoop-bucket
-
-# Install
-scoop install dot
-
-# Verify
-dot --version
-```
-
-#### AUR (Arch Linux)
-
-```bash
-# Using yay
-yay -S dot-cli
-
-# Using paru
-paru -S dot-cli
-
-# Verify
-dot --version
-```
+Homebrew is the only package manager currently supported. On Windows, Arch Linux,
+and BSD, use the binary release or `go install` as described below.
 
 ### From Source
 
-Requires Go 1.26 or later.
+Requires Go 1.26.1 or later.
 
 #### Quick Install
 
@@ -137,13 +121,10 @@ dot --version
 # Build for specific platform
 GOOS=linux GOARCH=amd64 make build
 
-# Build with debug symbols
-make build-debug
+# Build for all supported platforms
+make build-all
 
-# Build optimized release
-make build-release
-
-# Run tests before building
+# Run tests, coverage, lint, vet and vulnerability scan
 make check
 ```
 
@@ -189,21 +170,14 @@ dot completion fish > ~/.config/fish/completions/dot.fish
 source ~/.config/fish/config.fish
 ```
 
-### Man Pages
+### Built-in Help
 
-Install manual pages for offline documentation.
+dot does not install man pages. Use the built-in help:
 
 ```bash
-# System-wide installation (requires sudo)
-sudo dot man install
-
-# User installation
-dot man install --user
-
-# View manual
-man dot
-man dot-manage
-man dot-status
+dot --help
+dot manage --help
+dot status --help
 ```
 
 ### Configuration
@@ -217,8 +191,8 @@ dot config init
 # Edit configuration
 $EDITOR ~/.config/dot/config.yaml
 
-# Verify configuration
-dot config validate
+# Show the effective configuration
+dot config list
 ```
 
 ## Platform-Specific Notes
@@ -304,14 +278,7 @@ For Windows Subsystem for Linux, install Linux version inside WSL environment ra
 
 ### BSD
 
-#### Package Installation
-
-FreeBSD:
-```bash
-pkg install dot
-```
-
-OpenBSD and NetBSD: Build from source using method above.
+No BSD packages are published. Build from source using the method above.
 
 ## Verification
 
@@ -328,11 +295,14 @@ dot --help
 dot status
 ```
 
-Expected output:
+Expected output from a release build:
 ```
-dot version v0.1.0
-Built with Go 1.26
-Platform: linux/amd64
+dot version 0.6.5 (commit: a1b2c3d, built: 2026-03-18T00:00:00Z)
+```
+
+A binary built from a source checkout without release metadata prints:
+```
+dot version unknown (built from source)
 ```
 
 ## Upgrading
@@ -341,7 +311,8 @@ Platform: linux/amd64
 
 ```bash
 # Download latest release
-curl -L https://github.com/yaklabco/dot/releases/latest/download/dot-$(uname -s)-$(uname -m).tar.gz | tar xz
+VERSION=$(curl -fsSL https://api.github.com/repos/yaklabco/dot/releases/latest | grep -m1 '"tag_name"' | cut -d'"' -f4 | tr -d v)
+curl -fsSL "https://github.com/yaklabco/dot/releases/latest/download/dot_${VERSION}_$(uname -s)_$(uname -m).tar.gz" | tar xz
 
 # Replace existing binary
 sudo mv dot /usr/local/bin/
@@ -355,12 +326,13 @@ dot --version
 ```bash
 # Homebrew
 brew upgrade dot
+```
 
-# Scoop
-scoop update dot
+dot can also update itself; see [Updates and Version Management](10-updates.md).
 
-# AUR
-yay -Syu dot-cli
+```bash
+dot upgrade --check-only
+dot upgrade --yes
 ```
 
 ### From Source
@@ -383,8 +355,8 @@ sudo rm /usr/local/bin/dot
 # Remove configuration (optional)
 rm -rf ~/.config/dot
 
-# Remove manifest files (optional, per target directory)
-rm ~/.dot-manifest.json
+# Remove manifest and other state (optional, default XDG location)
+rm -rf ~/.local/share/dot
 ```
 
 ### Package Managers
@@ -392,12 +364,6 @@ rm ~/.dot-manifest.json
 ```bash
 # Homebrew
 brew uninstall dot
-
-# Scoop
-scoop uninstall dot
-
-# AUR
-yay -R dot-cli
 ```
 
 ### Clean Removal
@@ -406,7 +372,7 @@ To remove all dot data:
 
 ```bash
 # Remove installed symlinks first
-dot unmanage $(dot list --format json | jq -r '.[].name')
+dot unmanage --all --yes
 
 # Remove binary
 sudo rm /usr/local/bin/dot
@@ -414,17 +380,14 @@ sudo rm /usr/local/bin/dot
 # Remove user configuration
 rm -rf ~/.config/dot
 
-# Remove manifests (check each target directory)
-rm ~/.dot-manifest.json
+# Remove manifest and other state (default XDG location)
+rm -rf ~/.local/share/dot
 
 # Remove shell completion
 rm /etc/bash_completion.d/dot  # bash
 rm ~/.local/share/bash-completion/completions/dot
 rm "${fpath[1]}/_dot"  # zsh
 rm ~/.config/fish/completions/dot.fish  # fish
-
-# Remove man pages
-sudo rm /usr/local/share/man/man1/dot*.1
 ```
 
 ## Troubleshooting

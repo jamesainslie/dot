@@ -21,22 +21,28 @@ mkdir ~/dotfiles
 cd ~/dotfiles
 git init
 
-# Create vim package
-mkdir vim
-cat > vim/dot-vimrc << 'EOF'
+# Create vim package. The package name maps to a target subdirectory, so
+# dot-vim places files under ~/.vim/.
+mkdir dot-vim
+cat > dot-vim/dot-vimrc << 'EOF'
 set number
 syntax on
 EOF
 
-# Install
-dot manage vim
+# Install: creates ~/.vim/.vimrc -> ~/dotfiles/dot-vim/dot-vimrc
+dot manage dot-vim
 
 # Commit
-git add vim/
+git add dot-vim/
 git commit -m "feat(vim): add initial configuration"
 git remote add origin https://github.com/username/dotfiles.git
 git push -u origin main
 ```
+
+**Package naming**: the package name becomes a subdirectory of the target. A
+name beginning with `dot-` is translated to a leading dot, so `dot-vim`
+targets `~/.vim/` and a plain `vim` targets `~/vim/`. See
+[Command Reference](05-commands.md) for the full mapping table.
 
 ## Multi-Machine Synchronization
 
@@ -48,7 +54,7 @@ git clone https://github.com/username/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # Install packages
-dot manage vim zsh tmux
+dot manage dot-vim dot-zsh dot-tmux
 
 # Verify
 dot status
@@ -59,9 +65,9 @@ dot status
 On machine with changes:
 ```bash
 cd ~/dotfiles
-vim vim/dot-vimrc
-dot remanage vim
-git add vim/
+vim dot-vim/dot-vimrc
+dot remanage dot-vim
+git add dot-vim/
 git commit -m "feat(vim): update configuration"
 git push
 ```
@@ -70,27 +76,34 @@ On other machines:
 ```bash
 cd ~/dotfiles
 git pull
-dot remanage vim zsh tmux
+dot remanage dot-vim dot-zsh dot-tmux
 ```
 
 ## Conflict Resolution
 
 ### Backup and Compare
 
+Conflict policy is set in the configuration file, not on the command line.
+
 ```bash
 # Conflicts detected
-dot manage vim
-# Error: conflict at ~/.vimrc
+dot manage dot-vim
+# Error: conflict at ~/.vim/.vimrc
 
-# Backup existing
-dot --on-conflict backup manage vim
+# Enable the backup policy
+dot config set symlinks.backup true
 
-# Compare versions
-diff ~/.vimrc.bak ~/dotfiles/vim/dot-vimrc
+# Retry: the conflicting file is moved into the backup directory
+dot manage dot-vim
+
+# Compare versions. Backups are named
+# <filename>.<hash>.<timestamp> under <target>/.dot-backup.
+ls ~/.dot-backup
+diff ~/.dot-backup/.vimrc.3f9a1c07.20260727-121603 ~/dotfiles/dot-vim/dot-vimrc
 
 # Merge if needed
-vim ~/dotfiles/vim/dot-vimrc
-dot remanage vim
+vim ~/dotfiles/dot-vim/dot-vimrc
+dot remanage dot-vim
 ```
 
 ### Adopt Existing Files
@@ -99,15 +112,15 @@ dot remanage vim
 
 ```bash
 # Conflict exists
-dot manage vim
-# Error: conflict at ~/.vimrc
+dot manage dot-vim
+# Error: conflict at ~/.vim/.vimrc
 
 # Adopt instead (explicit package name)
-dot adopt vim ~/.vimrc
+dot adopt dot-vim ~/.vimrc
 
 # Edit in package
-vim ~/dotfiles/vim/dot-vimrc
-git add vim/
+vim ~/dotfiles/dot-vim/dot-vimrc
+git add dot-vim/
 git commit -m "feat(vim): adopt existing configuration"
 ```
 
@@ -123,26 +136,29 @@ dot adopt ~/.ssh
 # Creates package: dot-ssh
 ```
 
-**Glob Expansion (Multiple Related Files)**:
+**Multiple Related Files**:
+
+Shell globs expand before dot runs. With two or more arguments the first is
+taken as the package name, so a glob must be preceded by an explicit package
+name.
 
 ```bash
-# Adopt all git-related config files into single package
-dot adopt .git*
-# Shell expands to: .gitconfig .gitignore .git-credentials
-# Creates package: dot-git
-# All files adopted into one package
+# Adopt all git-related config files into a single package
+dot adopt dot-git .git*
+# Shell expands to: dot adopt dot-git .gitconfig .gitignore .git-credentials
 
 # Or with zsh configs
-dot adopt .zsh*
-# Adopts: .zshrc .zshenv .zprofile
-# Creates package: dot-zsh
+dot adopt dot-zsh .zsh*
+# Adopts .zshrc .zshenv .zprofile into package dot-zsh
 
 # Commit
 git add dot-git/ dot-zsh/
 git commit -m "feat(git,zsh): adopt existing configurations"
 ```
 
-The glob workflow is useful for adopting multiple related configuration files that share a common prefix, keeping them organized in a single package.
+Omitting the package name is a mistake: `dot adopt .git*` treats the first
+expanded filename as the package name and adopts the remaining files into it.
+There is no common-prefix derivation.
 
 ## Testing New Packages
 
@@ -170,19 +186,19 @@ rm -rf ~/dotfiles/test-package
 
 ```bash
 # Edit configuration
-vim ~/dotfiles/vim/dot-vimrc
+vim ~/dotfiles/dot-vim/dot-vimrc
 
 # Preview changes
-dot --dry-run remanage vim
+dot --dry-run remanage dot-vim
 
 # Apply
-dot remanage vim
+dot remanage dot-vim
 
 # Verify
-dot status vim
+dot status dot-vim
 
 # Commit
-git add vim/
+git add dot-vim/
 git commit -m "feat(vim): add plugins"
 git push
 ```
@@ -195,7 +211,7 @@ cd ~/dotfiles
 git pull
 
 # Update all packages (incremental)
-dot remanage vim zsh tmux git
+dot remanage dot-vim dot-zsh dot-tmux dot-git
 
 # Verify
 dot doctor
@@ -205,23 +221,28 @@ dot doctor
 
 ### Create Backup
 
+The manifest lives in the manifest directory, by default
+`~/.local/share/dot/manifest/`, alongside a `.dot-manifest.lock` file.
+
 ```bash
 # Backup before changes
-tar -czf ~/dotfiles-backup-$(date +%Y%m%d).tar.gz ~/dotfiles ~/.dot-manifest.json
+tar -czf ~/dotfiles-backup-$(date +%Y%m%d).tar.gz \
+    ~/dotfiles ~/.local/share/dot/manifest
 
 # Make changes
 # ...
 
 # Restore if needed
 tar -xzf ~/dotfiles-backup-20251007.tar.gz
-dot remanage vim zsh
+dot remanage dot-vim dot-zsh
 ```
 
 ### Disaster Recovery
 
 ```bash
 # Reinstall dot
-curl -L https://github.com/yaklabco/dot/releases/latest/download/dot-Linux-x86_64.tar.gz | tar xz
+VERSION=$(curl -fsSL https://api.github.com/repos/yaklabco/dot/releases/latest | jq -r .tag_name)
+curl -fsSL "https://github.com/yaklabco/dot/releases/download/${VERSION}/dot_${VERSION#v}_$(uname -s)_$(uname -m).tar.gz" | tar xz
 sudo mv dot /usr/local/bin/
 
 # Clone dotfiles
@@ -237,6 +258,12 @@ dot doctor
 ```
 
 ## Migration from GNU Stow
+
+Package names map to target subdirectories in dot but not in Stow. A Stow
+package `vim` whose contents land in `~/` corresponds to a dot package named
+`dot-vim` only if the contents belong under `~/.vim/`. Review the mapping
+table in [Command Reference](05-commands.md) before migrating, or set
+`dotfile.package_name_mapping: false` to preserve the Stow layout.
 
 ### Gradual Migration
 
@@ -271,13 +298,19 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install dot
         run: |
-          curl -L https://github.com/yaklabco/dot/releases/latest/download/dot-Linux-x86_64.tar.gz | tar xz
+          VERSION=$(curl -fsSL https://api.github.com/repos/yaklabco/dot/releases/latest | jq -r .tag_name)
+          curl -fsSL "https://github.com/yaklabco/dot/releases/download/${VERSION}/dot_${VERSION#v}_Linux_x86_64.tar.gz" | tar xz
           sudo mv dot /usr/local/bin/
       - name: Deploy
-        run: dot --quiet manage vim zsh tmux
+        run: dot --batch manage dot-vim dot-zsh dot-tmux
       - name: Verify
         run: dot doctor
 ```
+
+`dot doctor` exits 1 on warnings and 2 on errors, so the verify step fails the
+job when the installation is unhealthy. Disable the startup update check in CI
+with `check_on_startup: false`; it is enabled by default and adds up to three
+seconds per invocation.
 
 ## Next Steps
 

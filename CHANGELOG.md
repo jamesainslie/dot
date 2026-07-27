@@ -1,4 +1,3 @@
-<a name="unreleased"></a>
 ## [0.6.5](https://github.com/yaklabco/dot/compare/v0.6.4...v0.6.5) (2026-03-18)
 
 

@@ -47,12 +47,14 @@ The package manager is auto-detected by default, but can be explicitly configure
 
 Upgrade behavior is configured in `~/.config/dot/config.yaml`:
 
+Values shown are the defaults.
+
 ```yaml
 update:
-  # Enable automatic version checking at startup
-  check_on_startup: false
+  # Automatic version checking at startup (default: true)
+  check_on_startup: true
 
-  # Frequency of version checks in hours (0 = always check)
+  # Frequency of version checks in hours (0 = always check, -1 = never)
   check_frequency: 24
 
   # Package manager to use: auto, brew, apt, yum, pacman, dnf, zypper, manual
@@ -65,6 +67,9 @@ update:
   include_prerelease: false
 ```
 
+None of the `update` keys are bound to environment variables; they can only be
+set in the configuration file.
+
 ### Package Manager Configuration
 
 #### Automatic Detection
@@ -76,7 +81,7 @@ update:
   package_manager: auto
 ```
 
-On macOS, Homebrew is preferred if available. On Linux, dot checks for package managers in this order: dnf, yum, apt, pacman, zypper.
+On macOS, Homebrew is preferred if available. Otherwise dot returns the first available manager in this order: brew, apt, dnf, yum, pacman, zypper. If none is found, the manual fallback is used.
 
 #### Explicit Configuration
 
@@ -100,11 +105,12 @@ When set to manual, `dot upgrade` will display the GitHub releases URL and instr
 
 ## Startup Version Checking
 
-dot can automatically check for new versions at startup and display a notification if an update is available.
+dot checks for a new version at startup and prints a notification when one is
+available. This is enabled by default (`check_on_startup: true`,
+`check_frequency: 24`) for release builds. Builds reporting version `dev` never
+check.
 
-### Enabling Startup Checks
-
-Enable automatic version checking in your configuration:
+### Configuring Startup Checks
 
 ```yaml
 update:
@@ -123,24 +129,18 @@ The `check_frequency` setting controls how often dot checks for updates:
 
 ### Notification Display
 
-When an update is available, dot displays a notification box:
+When an update is available, dot prints two plain lines:
 
 ```
-╭─────────────────────────────────────────────────────────────╮
-│  A new version of dot is available!                        │
-│                                                             │
-│  Current: v0.3.0                                            │
-│  Latest:  v0.4.0                                            │
-│                                                             │
-│  Run 'dot upgrade' to update                                │
-╰─────────────────────────────────────────────────────────────╯
+New version available: v0.6.4 -> v0.6.5
+Run dot upgrade to update
 ```
 
 The notification:
 - Appears before command execution
-- Never blocks or delays your command
-- Only shows once per check frequency period
-- Silently fails if network is unavailable
+- Blocks the command for up to 3 seconds while the GitHub API is queried, then gives up silently
+- Only runs once per `check_frequency` period
+- Fails silently when the network is unavailable
 
 ### Disabling Startup Checks
 
@@ -289,19 +289,26 @@ Version checking:
 # See if update is available
 $ dot upgrade --check-only
 
-A new version is available!
+Checking for updates...
 
-  Current version:  v0.3.0
-  Latest version:   v0.4.0
-  Release URL:      https://github.com/yaklabco/dot/releases/tag/v0.4.0
+ⓘ A new version is available!
+
+  Current version:  v0.6.4
+  Latest version:   v0.6.5
+  Release URL:      https://github.com/yaklabco/dot/releases/tag/v0.6.5
 
 Release Notes:
-  - Add upgrade command
-  - Improve performance
+  - Collision-free backup names
+  - Rollback detached from cancellation
   ...
 
 Run dot upgrade to upgrade.
 ```
+
+`Checking for updates...` is printed unconditionally, including with
+`--check-only`. Release notes are truncated after ten lines. When no update is
+available the command prints
+`✓ You are already running the latest version (v0.6.5)` and exits 0.
 
 ### Interactive Upgrade
 
@@ -312,13 +319,13 @@ Checking for updates...
 
 ⓘ A new version is available!
 
-  Current version:  v0.3.0
-  Latest version:   v0.4.0
-  Release URL:      https://github.com/yaklabco/dot/releases/tag/v0.4.0
+  Current version:  v0.6.4
+  Latest version:   v0.6.5
+  Release URL:      https://github.com/yaklabco/dot/releases/tag/v0.6.5
 
 Release Notes:
-  - Add upgrade command
-  - Improve performance
+  - Collision-free backup names
+  - Rollback detached from cancellation
 
 Package manager: brew
 Upgrade command: brew upgrade dot
@@ -327,9 +334,9 @@ Do you want to upgrade now? [y/N]: y
 
 → Upgrading...
 
-==> Downloading https://homebrew.bintray.com/bottles/dot-0.4.0.bottle.tar.gz
+==> Fetching dot
 ...
-✓ Upgrade completed successfully!
+✓ Upgrade completed
 Run dot --version to verify the new version.
 ```
 

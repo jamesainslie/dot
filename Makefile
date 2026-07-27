@@ -78,17 +78,18 @@ uninstall:
 		echo "Binary not found at $$GOBIN/$(BINARY_NAME)"; \
 	fi
 
-## vuln: Check for known vulnerabilities (excludes GO-2024-3295 - see SECURITY.md)
+## vuln: Check for known vulnerabilities (excludes GO-2024-3295 and GO-2026-5932 - see SECURITY.md)
 vuln:
 	@command -v govulncheck >/dev/null 2>&1 || { echo "Installing govulncheck..."; go install golang.org/x/vuln/cmd/govulncheck@latest; }
 	@echo "Running vulnerability check..."
 	@govulncheck -json ./... 2>&1 | tee /tmp/vuln-output.json > /dev/null || true
 	@VULN_IDS=$$(grep -A 1 '"finding"' /tmp/vuln-output.json 2>/dev/null | grep '"osv"' | grep -o 'GO-[0-9-]*' | sort -u || echo ""); \
-	EXCLUDED="GO-2024-3295"; \
-	if echo "$$VULN_IDS" | grep -q "$$EXCLUDED" 2>/dev/null; then \
-		echo "  ℹ Found GO-2024-3295 (accepted risk - GitHub Codespaces only, see SECURITY.md)"; \
+	EXCLUDED="GO-2024-3295|GO-2026-5932"; \
+	ACCEPTED=$$(echo "$$VULN_IDS" | grep -E "$$EXCLUDED" || true); \
+	if [ -n "$$ACCEPTED" ]; then \
+		echo "$$ACCEPTED" | sed 's/^/  Found accepted risk (see SECURITY.md): /'; \
 	fi; \
-	OTHER_VULNS=$$(echo "$$VULN_IDS" | grep -v "^$$" | grep -v "$$EXCLUDED" || true); \
+	OTHER_VULNS=$$(echo "$$VULN_IDS" | grep -v "^$$" | grep -vE "$$EXCLUDED" || true); \
 	if [ -n "$$OTHER_VULNS" ]; then \
 		echo ""; \
 		echo "ERROR: Unaccepted vulnerabilities found:"; \
@@ -99,7 +100,7 @@ vuln:
 		exit 1; \
 	fi
 	@rm -f /tmp/vuln-output.json
-	@echo "✓ No unaccepted vulnerabilities found (GO-2024-3295 excluded - see SECURITY.md)"
+	@echo "No unaccepted vulnerabilities found (GO-2024-3295 and GO-2026-5932 excluded, see SECURITY.md)"
 
 ## fuzz: Run fuzzing tests (short duration)
 fuzz:

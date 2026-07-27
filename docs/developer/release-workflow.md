@@ -46,10 +46,23 @@ When changes are pushed to `main`, the Release Please workflow runs.
 
 Once the Release PR is merged:
 
-1. Release Please automatically creates a git tag (e.g., `v1.2.3`).
-2. This tag push triggers the **Release** workflow (`.github/workflows/release.yml`).
-3. GoReleaser builds the binaries and publishes the GitHub Release.
+1. Release Please automatically creates a git tag (e.g., `v1.2.3`) and a GitHub Release entry.
+2. A tag push triggers the **Release** workflow (`.github/workflows/release.yml`).
+3. GoReleaser builds the binaries and attaches them to the GitHub Release.
 4. Homebrew taps are updated automatically.
+
+Caveat: Release Please pushes the tag with the workflow `GITHUB_TOKEN`, and
+events created by that token never trigger other workflows. The Release
+workflow therefore does not start on its own after the release PR merges.
+Start it manually with `workflow_dispatch`, passing the tag Release Please
+created:
+
+```bash
+gh workflow run release.yml -f tag=v1.2.3
+```
+
+Deleting and re-pushing the tag from a user account also works. A release
+entry without binaries means this step was skipped.
 
 ## Local Verification
 
@@ -76,6 +89,9 @@ make changelog-next
 
 - Check the `Release` workflow in GitHub Actions.
 - Ensure the tag was created successfully by Release Please.
+- If the tag exists and the release entry has no binaries, the Release
+  workflow never ran (see the `GITHUB_TOKEN` caveat above). Run
+  `gh workflow run release.yml -f tag=<tag>`.
 
 ## Manual Hotfixes
 

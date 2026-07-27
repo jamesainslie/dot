@@ -1,9 +1,11 @@
 version: 2
 
+# Lint runs in the release workflow via golangci/golangci-lint-action (pinned),
+# not here: the hook required golangci-lint on PATH inside goreleaser's
+# environment, which made releases fail on installer flakes.
 before:
   hooks:
     - go test ./...
-    - golangci-lint run
     - go mod tidy
 
 builds:

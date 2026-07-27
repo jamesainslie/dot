@@ -60,14 +60,14 @@ Version 0.3 introduces consistent "dot-" prefix handling across all commands.
 dot list > ~/dot-packages-backup.txt
 
 # 2. Unmanage all packages (restores files to target)
-for pkg in $(dot list --format=json | jq -r '.[].name'); do
+for pkg in $(dot list --format=json | jq -r '.packages[].name'); do
   dot unmanage "$pkg"
 done
 
 # 3. Update dot binary
-cd /path/to/dot
-git pull origin refactor-dotprefix
-make install
+brew upgrade dot
+# or, from a source checkout:
+#   git pull origin main && make install
 
 # 4. Verify new version
 dot --version
@@ -117,7 +117,9 @@ ls -la ~/dotfiles/
 
 # Verify symlinks work
 ls -la ~/.ssh
-# Should point to: ~/dotfiles/dot-ssh/
+# After 'dot adopt': ~/.ssh is a symlink to ~/dotfiles/dot-ssh/
+# After 'dot manage': ~/.ssh is a directory whose entries link into
+#                     ~/dotfiles/dot-ssh/
 ```
 
 ## New Features in v0.3
@@ -158,7 +160,7 @@ If migration leaves orphaned entries:
 
 ```bash
 # Clean up orphaned packages
-for pkg in $(dot list --format=json | jq -r '.[].name'); do
+for pkg in $(dot list --format=json | jq -r '.packages[].name'); do
   dot unmanage "$pkg" --cleanup
 done
 ```

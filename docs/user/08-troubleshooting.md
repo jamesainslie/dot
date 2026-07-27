@@ -31,8 +31,10 @@ source ~/.bashrc
 # Verify installation location
 ls -la /usr/local/bin/dot
 
-# Reinstall if missing
-curl -L https://github.com/yaklabco/dot/releases/latest/download/dot-$(uname -s)-$(uname -m).tar.gz | tar xz
+# Reinstall if missing. Release archives are named
+# dot_<version>_<os>_<arch>.tar.gz, so the version must be resolved first.
+VERSION=$(curl -fsSL https://api.github.com/repos/yaklabco/dot/releases/latest | jq -r .tag_name)
+curl -fsSL "https://github.com/yaklabco/dot/releases/download/${VERSION}/dot_${VERSION#v}_$(uname -s)_$(uname -m).tar.gz" | tar xz
 sudo mv dot /usr/local/bin/
 ```
 
@@ -95,49 +97,57 @@ chmod u+w ~/
 
 ### File Conflicts
 
-**Problem**: `Error: conflict at ~/.vimrc`
+**Problem**: `Error: conflict at ~/.vim/.vimrc`
 
 **Diagnosis**:
 ```bash
 # Check what exists
-ls -la ~/.vimrc
+ls -la ~/.vim/.vimrc
 
 # If symlink, check target
-readlink ~/.vimrc
+readlink ~/.vim/.vimrc
 ```
 
 **Solutions**:
 
-1. **Backup existing file**:
+1. **Backup existing file**. There is no conflict flag; the policy comes from
+   the configuration file.
 ```bash
-dot --on-conflict backup manage vim
-diff ~/.vimrc.bak ~/dotfiles/vim/dot-vimrc
+dot config set symlinks.backup true
+dot manage dot-vim
+
+# Backups are <filename>.<hash>.<timestamp> under <target>/.dot-backup
+ls ~/.dot-backup
+diff ~/.dot-backup/.vimrc.3f9a1c07.20260727-121603 ~/dotfiles/dot-vim/dot-vimrc
 ```
 
 2. **Adopt existing file**:
 ```bash
-dot adopt vim ~/.vimrc
+dot adopt dot-vim ~/.vimrc
 ```
 
 3. **Remove conflicting file**:
 ```bash
-rm ~/.vimrc
-dot manage vim
+rm ~/.vim/.vimrc
+dot manage dot-vim
 ```
 
-4. **Skip conflicts**:
+4. **Overwrite conflicts**:
 ```bash
-dot --on-conflict skip manage vim
+dot config set symlinks.overwrite true
+dot manage dot-vim
 ```
+
+There is no skip policy reachable from the CLI or the configuration file.
 
 ### Package Not Found
 
-**Problem**: `Error: package not found: vim`
+**Problem**: `Error: package not found: dot-vim`
 
 **Diagnosis**:
 ```bash
 # Check package directory exists
-ls -la ~/dotfiles/vim
+ls -la ~/dotfiles/dot-vim
 
 # Check current directory
 pwd
@@ -148,18 +158,18 @@ pwd
 1. **Wrong directory**:
 ```bash
 cd ~/dotfiles
-dot manage vim
+dot manage dot-vim
 ```
 
 2. **Specify directory**:
 ```bash
-dot --dir ~/dotfiles manage vim
+dot --dir ~/dotfiles manage dot-vim
 ```
 
 3. **Package doesn't exist**:
 ```bash
 # Create package
-mkdir ~/dotfiles/vim
+mkdir ~/dotfiles/dot-vim
 ```
 
 ### Broken Symlinks
@@ -175,39 +185,41 @@ dot doctor
 find ~ -xtype l
 
 # Check specific link
-ls -la ~/.vimrc
-readlink ~/.vimrc
+ls -la ~/.vim/.vimrc
+readlink ~/.vim/.vimrc
 ```
 
 **Solutions**:
 
 1. **Recreate missing links** (Recommended):
 ```bash
-# Check what's broken
-dot doctor
+# Check what's broken. Use --detailed for the path and suggested fix.
+dot doctor --detailed
 
 # Remanage automatically detects and recreates missing links
-dot remanage vim
+dot remanage dot-vim
 
 # For multiple packages
-dot remanage vim zsh tmux
+dot remanage dot-vim dot-zsh dot-tmux
 ```
 
-The `remanage` command now automatically detects missing symlinks and recreates them, even if the package content hasn't changed.
+The `remanage` command detects missing symlinks and recreates them even if the
+package content has not changed.
 
-2. **Fix target path if package moved**:
+2. **Fix target path if package moved**. All symlinks are absolute, so moving
+   the package directory breaks every link:
 ```bash
 # Update package location in config
 dot config set directories.package /new/path
 
 # Recreate links
-dot remanage vim
+dot remanage dot-vim
 ```
 
 3. **Remove and recreate** (if remanage doesn't fix it):
 ```bash
-dot unmanage vim
-dot manage vim
+dot unmanage dot-vim
+dot manage dot-vim
 ```
 
 ## Manifest Issues
@@ -216,33 +228,33 @@ dot manage vim
 
 **Problem**: `Error: cannot parse manifest`
 
+The manifest lives in the manifest directory, by default
+`~/.local/share/dot/manifest/.dot-manifest.json`, alongside a
+`.dot-manifest.lock` file. Confirm the location with `dot config get
+directories.manifest`.
+
 **Diagnosis**:
 ```bash
 # Check manifest
-cat ~/.dot-manifest.json
+cat ~/.local/share/dot/manifest/.dot-manifest.json
 
 # Validate JSON
-jq . ~/.dot-manifest.json
+jq . ~/.local/share/dot/manifest/.dot-manifest.json
 ```
 
-**Solutions**:
+**Solution**:
 
-1. **Repair from filesystem**:
-```bash
-# Rebuild manifest
-dot doctor --repair
-```
+There is no repair command. Delete the manifest and reinstall:
 
-2. **Delete and recreate**:
 ```bash
 # Backup first
-cp ~/.dot-manifest.json ~/.dot-manifest.json.bak
+cp ~/.local/share/dot/manifest/.dot-manifest.json /tmp/dot-manifest.bak
 
 # Remove
-rm ~/.dot-manifest.json
+rm ~/.local/share/dot/manifest/.dot-manifest.json
 
 # Reinstall packages
-dot manage vim zsh tmux
+dot manage dot-vim dot-zsh dot-tmux
 ```
 
 ### Manifest Out of Sync
@@ -251,16 +263,13 @@ dot manage vim zsh tmux
 
 **Diagnosis**:
 ```bash
-dot doctor
+dot doctor --detailed
 ```
 
 **Solution**:
 ```bash
-# Sync manifest with filesystem
-dot doctor --repair
-
-# Or remanage all packages
-dot remanage $(dot list --format json | jq -r '.[].name')
+# Remanage all packages. list emits an object, so address .packages[].
+dot remanage $(dot list --format json | jq -r '.packages[].name')
 ```
 
 ## Configuration Issues
@@ -283,20 +292,27 @@ ls -la $(dot config path)
 
 **Solutions**:
 
+There is no validation subcommand. `dot config list` fails to load an invalid
+file and reports the parse error, so it doubles as a syntax check.
+
 1. **Check syntax**:
 ```bash
-dot config validate
+dot config list
 ```
 
 2. **Check precedence**:
 ```bash
-# Environment variables override config file
-unset DOT_VERBOSITY
+# Environment variables are DOT_ plus the key path with dots as underscores
+unset DOT_OUTPUT_VERBOSITY
 
 # Command-line flags override everything
-dot manage vim  # Uses config file
-dot -v manage vim  # -v overrides config
+dot manage dot-vim     # Uses config file
+dot -v manage dot-vim  # -v overrides config
 ```
+
+Not every key is bound to an environment variable. `symlinks.backup_dir`,
+`dotfile.package_name_mapping`, `output.table_style`, and the whole `update`
+and `network` sections have no environment binding.
 
 ### Invalid Configuration
 
@@ -304,38 +320,35 @@ dot -v manage vim  # -v overrides config
 
 **Diagnosis**:
 ```bash
-# Validate syntax
-dot config validate
+dot config list
 ```
 
 **Common Errors**:
 
-1. **Invalid YAML**:
+1. **Wrong key nesting**. Settings live under a section:
 ```yaml
-# Wrong: missing colon
-packageDir ~/dotfiles
+# Wrong
+packageDir: ~/dotfiles
 
 # Correct
-packageDir: ~/dotfiles
+directories:
+  package: ~/dotfiles
 ```
 
 2. **Invalid paths**:
 ```yaml
-# Wrong: relative path
-packageDir: dotfiles
-
-# Correct: absolute or tilde-expanded
-packageDir: ~/dotfiles
+directories:
+  package: ~/dotfiles   # absolute or tilde-expanded, not "dotfiles"
 ```
 
 3. **Invalid values**:
 ```yaml
-# Wrong: invalid option
-linkMode: mixed
-
-# Correct: valid values only
-linkMode: relative  # or absolute
+symlinks:
+  mode: relative        # relative or absolute
 ```
+
+Run `dot config list` to see the merged result and `dot config path` to see
+which file was read.
 
 ## Performance Issues
 
@@ -346,34 +359,42 @@ linkMode: relative  # or absolute
 **Diagnosis**:
 ```bash
 # Profile operation
-time dot -vv manage vim
+time dot -vv manage dot-vim
+
+# Or capture a CPU profile
+dot --cpu-profile cpu.pprof manage dot-vim
 ```
 
 **Solutions**:
 
-1. **Enable incremental**:
-```yaml
-enableIncremental: true
+1. **Use remanage instead of manage**. Remanage skips packages whose content
+   hash and links are unchanged:
+```bash
+dot remanage dot-vim dot-zsh dot-tmux
 ```
 
-2. **Increase concurrency**:
-```yaml
-concurrency: 8
+2. **Limit doctor scanning**:
+```bash
+dot doctor --scan-mode=off
 ```
 
-3. **Optimize ignore patterns**:
+3. **Optimize ignore patterns**. Patterns are globs; regular expressions are
+   not supported and are matched literally:
 ```yaml
-# Remove overly complex regex patterns
 ignore:
-  - ".git"
-  - "node_modules"
-  # Avoid: "/^test.*complex.*regex$/"
+  patterns:
+    - ".git"
+    - "node_modules"
 ```
 
-4. **Enable folding**:
+4. **Disable the startup update check**, which adds up to three seconds per
+   invocation and is enabled by default:
 ```yaml
-folding: true
+update:
+  check_on_startup: false
 ```
+
+Parallelism is fixed at the CPU count and is not configurable.
 
 ### High Memory Usage
 
@@ -383,13 +404,16 @@ folding: true
 ```bash
 # Monitor memory during operation
 /usr/bin/time -v dot manage large-package
+
+# Or capture a heap profile
+dot --mem-profile mem.pprof manage large-package
 ```
 
 **Solutions**:
 
-1. **Reduce concurrency**:
-```yaml
-concurrency: 2
+1. **Exclude large files**:
+```bash
+dot --max-file-size 10MB manage large-package
 ```
 
 2. **Process packages in batches**:
@@ -419,7 +443,7 @@ xattr -d com.apple.quarantine /usr/local/bin/dot
 ```bash
 # Remanage all packages
 cd ~/dotfiles
-dot remanage $(dot list --format json | jq -r '.[].name')
+dot remanage $(dot list --format json | jq -r '.packages[].name')
 ```
 
 ### Windows Issues
@@ -472,7 +496,7 @@ mount | grep nfs
 **Cause**: File exists at target location
 
 **Solutions**:
-- Use `--on-conflict backup` to preserve existing file
+- Set `symlinks.backup: true` to preserve the existing file in the backup directory
 - Use `dot adopt` to move file into package
 - Remove conflicting file manually
 
@@ -499,8 +523,8 @@ mount | grep nfs
 **Cause**: Invalid JSON in manifest file
 
 **Solutions**:
-- Repair: `dot doctor --repair`
-- Delete and recreate: `rm ~/.dot-manifest.json && dot manage ...`
+- There is no repair command. Delete and recreate:
+  `rm ~/.local/share/dot/manifest/.dot-manifest.json && dot manage ...`
 
 #### "broken symlink"
 
@@ -511,16 +535,38 @@ mount | grep nfs
 - Fix target location
 - Remove and reinstall: `dot unmanage PACKAGE && dot manage PACKAGE`
 
+#### "refusing to delete PATH: REASON"
+
+**Cause**: Deletion is verified against the plan before it happens. dot refuses
+to remove a regular file, or a symlink that now points somewhere other than
+where the plan recorded.
+
+**Solutions**:
+- Inspect the path with `ls -la` and `readlink`
+- Remove it manually if it is genuinely unwanted, then rerun the command
+
+#### "cannot roll back operation on PATH"
+
+**Cause**: A plan failed and one of the already-executed operations cannot be
+reversed. Removing a directory tree is the common case.
+
+**Solutions**:
+- Read the accompanying summary, which reports how many operations could not be
+  rolled back
+- Run `dot doctor --detailed` to see the resulting state, then remanage the
+  affected packages
+
 ## Diagnostic Procedures
 
 ### Health Check Procedure
 
 ```bash
-# 1. Run doctor
-dot doctor
+# 1. Run doctor. Exits 0 healthy, 1 warnings, 2 errors.
+dot doctor --detailed
 
 # 2. Check configuration
-dot config validate
+dot config list
+dot config path
 
 # 3. Verify installation
 dot --version
@@ -539,33 +585,35 @@ dot --dry-run manage test-package
 
 ```bash
 # 1. Enable maximum verbosity
-dot -vvv manage vim 2>&1 | tee debug.log
+dot -vvv manage dot-vim 2>&1 | tee debug.log
 
 # 2. Check system state
 ls -la ~/dotfiles/
 ls -la ~/
 
 # 3. Check manifest
-cat ~/.dot-manifest.json | jq .
+jq . ~/.local/share/dot/manifest/.dot-manifest.json
 
 # 4. Verify symlinks
 find ~ -type l -ls
 
-# 5. Check configuration
-dot config show --with-sources
+# 5. Check configuration and which file it came from
+dot config list
+dot config path
 ```
 
 ### Recovery Procedure
 
 ```bash
 # 1. Backup current state
-tar -czf ~/dot-backup-$(date +%Y%m%d).tar.gz ~/dotfiles ~/.dot-manifest.json
+tar -czf ~/dot-backup-$(date +%Y%m%d).tar.gz \
+    ~/dotfiles ~/.local/share/dot/manifest
 
 # 2. Unmanage all packages
-dot unmanage $(dot list --format json | jq -r '.[].name')
+dot unmanage --all --yes
 
 # 3. Clean manifest
-rm ~/.dot-manifest.json
+rm -f ~/.local/share/dot/manifest/.dot-manifest.json
 
 # 4. Reinstall
 cd ~/dotfiles
@@ -588,7 +636,7 @@ dot --version
 
 2. **Configuration**:
 ```bash
-dot config show
+dot config list
 ```
 
 3. **Error output**:
@@ -626,11 +674,19 @@ A: Limited support. Requires Developer Mode or administrator privileges. Symlink
 
 **Q: Can I use absolute and relative links together?**
 
-A: Yes, configure per-package in `.dotmeta` files.
+A: No. All symlinks are absolute. There is no per-package link-mode setting and
+no `.dotmeta` file; the only per-package file dot reads is `.dotignore`. The
+`symlinks.mode` configuration key is accepted but has no effect.
 
 **Q: What happens if I move my dotfiles directory?**
 
-A: Relative links break. Remanage all packages: `dot remanage $(dot list --format json | jq -r '.[].name')`
+A: Every link breaks, because links are absolute. Update the configured
+location and remanage all packages:
+
+```bash
+dot config set directories.package /new/path
+dot remanage $(dot list --format json | jq -r '.packages[].name')
+```
 
 **Q: Can I nest packages?**
 
@@ -638,7 +694,15 @@ A: No, packages must be top-level directories in package directory.
 
 **Q: Does dot follow symlinks in packages?**
 
-A: No, symlinks in packages are copied as symlinks to target.
+A: No. Symlinks inside a package are skipped entirely; no corresponding link is
+created in the target.
+
+**Q: Why did `dot manage vim` put files in `~/vim/` instead of `~/`?**
+
+A: The package name becomes a subdirectory of the target. Name the package
+`dot-vim` to target `~/.vim/`, or set
+`dotfile.package_name_mapping: false` to place package contents directly in the
+target root. See [Command Reference](05-commands.md) for the mapping table.
 
 ## Next Steps
 

@@ -6,16 +6,18 @@
 //
 // # Architecture
 //
-// The library uses an interface-based Client pattern to provide a clean
-// public API while keeping internal implementation details hidden:
+// The library exposes a Client facade over per-verb services. Domain types are
+// re-exported from internal/domain through pkg/dot so callers depend only on
+// the public package:
 //
-//   - Client interface in pkg/dot (stable public API)
-//   - Implementation in internal/api (can evolve freely)
-//   - Domain types in pkg/dot (shared between public and internal)
+//   - Client interface and Config in pkg/dot (stable public API)
+//   - Per-verb services in pkg/dot (ManageService, UnmanageService, StatusService,
+//     DoctorService, AdoptService, ManifestService, BootstrapService, CloneService)
+//   - Internal implementation in internal/{pipeline,executor,planner,scanner,manifest}
+//   - Domain types aliased into pkg/dot from internal/domain
 //
-// This pattern avoids import cycles between pkg/dot (which contains domain
-// types like Operation, Plan, Result) and internal packages (which depend on
-// those domain types).
+// Type aliases in pkg/dot keep the public surface stable while internal
+// packages evolve, and prevent an import cycle between pkg/dot and internal.
 //
 // # Basic Usage
 //
@@ -112,6 +114,17 @@
 //   - Verbosity: Logging level (default: 0)
 //   - BackupDir: Location for backup files (default: <TargetDir>/.dot-backup)
 //   - Concurrency: Parallel operation limit (default: NumCPU)
+//   - Backup: Back up conflicting files before replacing (default: false)
+//   - Overwrite: Delete conflicting files before linking; takes precedence over Backup
+//   - ManifestDir: Manifest location (default: TargetDir)
+//   - Translate: Enable dot- prefix translation (*bool, default: true)
+//   - PackageNameMapping: Map package name to target subdirectory (default: true)
+//   - IgnorePatterns / UseDefaultIgnorePatterns / PerPackageIgnore: Ignore configuration
+//   - MaxFileSize: Maximum file size to include, 0 for no limit
+//   - InteractiveLargeFiles, Stdin, Stdout: Interactive prompt configuration
+//
+// Validate() requires only PackageDir, TargetDir, FS, and Logger; all other
+// fields have usable zero values or defaults.
 //
 // Configuration must be validated before use:
 //
@@ -181,16 +194,19 @@
 //   - ErrCyclicDependency: Circular dependency in operations
 //   - ErrMultiple: Multiple errors occurred
 //
-// Errors include user-facing messages via UserFacingErrorMessage().
+// Error types implement error with descriptive messages. CLI-facing formatting
+// and remediation suggestions are produced by internal/cli/errors, not by the
+// error types themselves.
 //
 // # Safety Guarantees
 //
 // The library provides strong safety guarantees:
 //
 //   - Type safety: Phantom types prevent path mixing at compile time
-//   - Transaction safety: Two-phase commit with automatic rollback on failure
+//   - Transaction safety: Two-phase commit with rollback of executed operations on failure
 //   - Conflict detection: All conflicts reported before modification
-//   - Atomic operations: All-or-nothing semantics
+//   - Rollback accounting: Operations that cannot be reverted are reported in
+//     ErrExecutionFailed.RollbackFailed rather than silently dropped
 //   - Thread safety: All Client operations safe for concurrent use
 //
 // # Implementation Status
@@ -207,7 +223,6 @@
 //   - ConfigBuilder for fluent configuration
 //   - Performance optimizations for large package sets
 //
-// For detailed examples, see examples_test.go.
-// For architecture details, see docs/Architecture.md.
-// For implementation roadmap, see docs/Phase-12-Plan.md.
+// For architecture details, see docs/developer/architecture.md.
+// For the CLI layering contract, see docs/developer/cli-architecture.md.
 package dot

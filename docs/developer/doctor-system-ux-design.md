@@ -1,5 +1,18 @@
 # Doctor System UX Design Specification
 
+> **Status: design proposal, not shipped behavior. Last verified against code 2026-07-27.**
+>
+> This document specifies a proposed doctor redesign. As of v0.6.5 the only
+> parts implemented are the `ignore`, `unignore`, and `ignores` subcommands, the
+> 0/1/2 exit codes, and text-output pagination. Every other command, flag,
+> config key, JSON schema, and output sample below is unbuilt: the sample
+> terminal output throughout this document was written by hand and does not
+> match what the shipped binary prints. Run `dot doctor --help` for actual
+> behavior, and see `docs/user/` for shipped usage.
+>
+> Positional arguments after `dot doctor` are accepted by cobra and discarded,
+> so `dot doctor fix` runs a read-only health check and repairs nothing.
+
 ## Executive Summary
 
 This document provides detailed UX specifications for the redesigned dot doctor system, based on the Customer Usage Journeys identified in `doctor-system-cujs.md`. Each CUJ includes concrete command examples, expected outputs, interactive flows, and user decision points.
@@ -34,54 +47,74 @@ The design prioritizes clarity, safety, and actionability while supporting multi
 ```bash
 # Diagnostic Commands (Read-Only)
 dot doctor                      # Smart health check (all packages, fast)
-dot doctor --deep              # Comprehensive scan with orphan detection
+dot doctor --scan-mode=deep     # Thorough orphan scan of entire target dir
+dot doctor --mode=deep          # Adds platform compatibility check
+
+# Management Commands (implemented)
+dot doctor ignore <path>       # Add to ignore list (or --pattern <glob>, --reason <text>)
+dot doctor ignores             # Show ignored items
+dot doctor unignore <path>     # Remove from ignore list (or --pattern <glob>)
+```
+
+```bash
+# Diagnostic and repair commands (NOT IMPLEMENTED - design proposal)
 dot doctor vim                 # Check specific package
 dot doctor vim zsh git         # Check multiple packages
 dot doctor manifest            # Validate manifest integrity
 dot doctor structure           # Check repository structure compliance
 dot doctor security            # Security audit (secrets, permissions)
 dot doctor platform            # Platform compatibility analysis
-
-# Repair Commands (Write Operations)
 dot doctor fix                 # Interactive repair workflow
 dot doctor fix --auto          # Auto-fix safe issues
 dot doctor fix --dry-run       # Preview changes
 dot doctor clean orphans       # Remove orphaned symlinks
 dot doctor sync manifest       # Sync manifest with filesystem
-
-# Management Commands (implemented)
-dot doctor ignore <path>       # Add to ignore list (or --pattern <glob>, --reason <text>)
-dot doctor ignores             # Show ignored items
-dot doctor unignore <path>     # Remove from ignore list (or --pattern <glob>)
 dot doctor history             # Show doctor operation history
 dot doctor undo                # Undo last doctor operation
 ```
 
+The shipped equivalent of `dot doctor clean orphans` is `dot doctor --triage`,
+an interactive orphan triage workflow, optionally combined with
+`--auto-ignore` to accept high-confidence pattern categories without prompting
+(`cmd/dot/doctor.go:487-488`, `runTriage` at `:357`). Triage confidence comes
+from the pattern categories in `internal/doctor/patterns.go:14-59`: cargo, npm,
+system, vscode, flatpak, nix, and jetbrains. Neither is documented elsewhere in
+this specification.
+
+Secret detection exists as a library capability (`internal/doctor/secrets.go`,
+re-exported as `dot.DefaultSensitivePatterns`, `dot.DetectSecrets`,
+`dot.SensitivePattern`, `dot.SecretDetection`) but has no CLI surface, so
+neither `dot doctor security` nor `dot doctor --security-audit` runs.
+
 ### Global Flags
 
+Shipped flag set (`cmd/dot/doctor.go:483-490`, `cmd/dot/root.go:132-144`):
+
 ```bash
-# Output Format
---format <text|json|table|list|compact>  # Output format
---compact                       # Compact table (fewer columns)
---issues-only                   # Show only packages with issues
---no-color                      # Disable color output
-
-# Verbosity
---quiet, -q                     # Minimal output (summary only)
---verbose, -v                   # Detailed output (-vv, -vvv for more)
-
-# Sorting and Filtering
---sort <status|name|links>      # Sort order
---limit <N>                     # Show only first N packages
-
-# Pagination
---pager <auto|always|never>     # Control pagination (default: auto)
---no-pager                      # Disable pagination (alias for --pager never)
-
-# CI/CD
---exit-zero                     # Always exit 0 (for CI)
---non-interactive               # No prompts (for scripts)
+--scan-mode string   Orphan scan mode: off, scoped, deep (default "scoped")
+--max-depth int      Maximum recursion depth for orphan scanning
+--mode string        Check mode: fast, deep (default "fast")
+--detailed           Show full diagnostic detail
+--triage             Interactively triage detected orphans
+--auto-ignore        Auto-ignore high-confidence orphan patterns
+--color string       Color output: auto, always, never
+--format string      Output format: text, json, yaml, table (persistent)
+--no-color           Disable colored output (persistent)
+-q, --quiet          Suppress non-essential output (persistent)
+-v, --verbose        Increase verbosity (persistent, repeatable)
 ```
+
+The following flags appear in samples throughout this document but do not
+exist: `--deep`, `--compact`, `--issues-only`, `--sort`, `--limit`, `--pager`,
+`--no-pager`, `--exit-zero`, `--non-interactive`, `--on-conflict`, `--profile`,
+`--max-workers`, `--report`. `--format` exists but accepts only
+`text|json|yaml|table` (`internal/cli/renderer/renderer.go:69-85`), so
+`--format=list` and `--format=compact` fail. The shipped batch equivalent of
+`--non-interactive` is the persistent `--batch` flag (`cmd/dot/root.go:146`).
+Profiling uses the persistent `--cpu-profile`, `--mem-profile`, and `--pprof`
+flags (`cmd/dot/root.go:140-144`); worker count is settable only
+programmatically via `ScanConfig.MaxWorkers` (`pkg/dot/diagnostics.go:191-195`),
+defaulting to `NumCPU`.
 
 ---
 
@@ -256,10 +289,15 @@ Conflicts detected: 2
 No changes made (dry-run mode).
 
 To proceed:
-  dot manage vim --on-conflict backup
-  dot manage vim --on-conflict adopt
-  dot manage vim --on-conflict skip
+  dot manage vim --batch
 ```
+
+`--on-conflict` does not exist. Conflict handling is selected through the
+config keys `symlinks.backup` and `symlinks.overwrite`, read at
+`cmd/dot/root.go:285-288` and threaded into `Config.Backup` and
+`Config.Overwrite`. The only conflict-related CLI flag is `--backup-dir`.
+`--batch` (`cmd/dot/root.go:146`) suppresses prompts. The interactive conflict
+menu and adoption prompt described below are unbuilt.
 
 #### After Installation - Verification
 ```bash
@@ -558,7 +596,7 @@ Package Summary (12 packages, 147 links, 0.8s):
 
 All systems healthy.
 
-For comprehensive scan: dot doctor --deep
+For comprehensive scan: dot doctor --scan-mode=deep
 For package details: dot doctor <package>
 ```
 
@@ -707,6 +745,16 @@ $ dot doctor --sort status
 ```
 
 #### Configuration for Default Display
+
+NOT IMPLEMENTED. `DoctorConfig` (`internal/config/extended.go:157-172`) has five
+boolean fields only: `auto_fix`, `check_manifest`, `check_broken_links`,
+`check_orphaned`, `check_permissions`. Every key in this and the following two
+YAML blocks is rejected, and non-boolean values fail with
+`doctor.<key>: value must be bool`. `internal/config/keys.go:59-61` additionally
+declares `KeyDoctorOrphanScanMode`, `KeyDoctorOrphanScanDepth`, and
+`KeyDoctorOrphanSkipPatterns` with no backing struct fields, so those three are
+equally unusable.
+
 ```yaml
 # ~/.config/dot/config.yaml
 doctor:
@@ -773,15 +821,16 @@ Package Summary (30 packages, 412 links, 1.4s):
 :                              (Press SPACE for more, q to quit)
 ```
 
-**Pagination behavior:**
-- Automatically detects terminal height using `LINES` env or ioctl
-- Reserves 2 lines for status/navigation
-- Uses built-in pager (similar to git, systemctl)
-- Standard navigation: SPACE/f (forward), b (back), q (quit), / (search)
-- Respects `PAGER` environment variable (less, more, bat, etc.)
-- Disabled for non-TTY output (pipes, redirects)
+**Pagination behavior (shipped, `internal/cli/pretty/pager.go`):**
+- Terminal height comes from `term.GetSize` only, falling back to 24 when
+  unavailable (`internal/cli/pretty/table.go:209-216`). `LINES` is not read.
+- Reserves 2 lines for status/navigation (`pager.go:40`)
+- Uses the built-in pager; `PAGER` is not consulted
+- Navigation is Space/Enter (page down), up/down arrows (line scroll), q (quit)
+  (`pager.go:134-139`). There is no back-page and no search.
+- Disabled for non-TTY output, pipes and redirects (`pager.go:61-63`)
 
-**Manual control:**
+**Manual control (NOT IMPLEMENTED - design proposal):**
 ```bash
 dot doctor --no-pager        # Disable pagination
 dot doctor --pager always    # Force pagination even for short output
@@ -860,50 +909,29 @@ Packages (12 total):
 $ dot doctor --format json --quiet
 ```
 
+The shipped schema is narrower than this document's proposal. `DiagnosticReport`
+(`pkg/dot/diagnostics.go:4-8`) marshals exactly three keys; `Issue` (`:47-53`)
+has five, with a scalar `suggestion`; `DiagnosticStats` (`:140-145`) has four.
+There is no `timestamp`, `duration_ms`, `total_packages`, `valid_links`,
+`warnings`, `package`, `target`, or `suggestions` array, and no per-package
+breakdown exists anywhere in the type.
+
 ```json
 {
   "overall_health": "errors",
-  "timestamp": "2025-11-16T10:30:00Z",
-  "duration_ms": 847,
   "statistics": {
-    "total_packages": 12,
     "total_links": 147,
-    "valid_links": 145,
     "broken_links": 2,
-    "warnings": 1
+    "orphaned_links": 3,
+    "managed_links": 145
   },
   "issues": [
     {
       "severity": "error",
       "type": "broken_link",
       "path": "~/.config/nvim/init.vim",
-      "package": "nvim",
       "message": "Broken symlink (target does not exist)",
-      "target": "~/dotfiles/nvim/dot-config/nvim/init.vim",
-      "suggestions": [
-        "Run 'dot remanage nvim'",
-        "Check if file was renamed or deleted"
-      ]
-    },
-    {
-      "severity": "error",
-      "type": "broken_link",
-      "path": "~/.tmux.conf",
-      "package": "tmux",
-      "message": "Broken symlink (target does not exist)",
-      "target": "~/dotfiles/tmux/dot-tmux.conf",
-      "suggestions": [
-        "Run 'dot remanage tmux'",
-        "Check if file was renamed or deleted"
-      ]
-    },
-    {
-      "severity": "warning",
-      "type": "wrong_target",
-      "path": "~/.bashrc",
-      "package": "bash",
-      "message": "Points outside package directory",
-      "target": "/usr/local/share/bash/bashrc"
+      "suggestion": "Run 'dot remanage nvim'"
     }
   ]
 }
@@ -2558,7 +2586,7 @@ Performance issues detected:
   Bottleneck: Deep directory traversal
   
   Recommendations:
-    • Use fast mode: dot doctor (skips orphan scan)
+    • Disable orphan scanning: dot doctor --scan-mode=off
     • Use scoped scan: dot doctor --scan-mode scoped (default)
     • Exclude large dirs: Add to skip patterns in config
     • Increase workers: Set --max-workers 8
@@ -2569,12 +2597,13 @@ Suggested skip patterns:
   • ~/.cargo/ (Rust toolchain)
   • ~/.local/share/Steam/ (if present)
 
-Performance optimization:
+Performance optimization (NOT IMPLEMENTED: doctor.skip_patterns is not a
+recognized config key and this command fails):
   dot config set doctor.skip_patterns '["Library", ".cargo", "node_modules"]'
 
 Fast mode (recommended for daily use):
-  dot doctor              # < 3 seconds
-  dot doctor --deep       # Full scan when needed
+  dot doctor                    # < 3 seconds
+  dot doctor --scan-mode=deep   # Full scan when needed
 ```
 
 #### Fast Mode Configuration
@@ -2621,7 +2650,8 @@ dot doctor                              # Quick health check
 dot doctor <package> [package...]       # Check specific package(s)
 
 # Comprehensive analysis
-dot doctor --deep                       # Deep scan
+dot doctor --scan-mode=deep             # Deep orphan scan
+dot doctor --mode=deep                  # Adds platform compatibility check
 dot doctor manifest                     # Validate manifest
 dot doctor structure                    # Check repo structure
 dot doctor security                     # Security audit
@@ -2667,8 +2697,6 @@ Default for interactive use, with color and formatting.
 ```json
 {
   "overall_health": "errors",
-  "timestamp": "2025-11-16T10:30:00Z",
-  "duration_ms": 847,
   "statistics": {...},
   "issues": [...]
 }
@@ -2692,11 +2720,14 @@ For generating documentation and reports.
 
 ```
 0   - Healthy (no issues)
-1   - Warnings detected (non-critical issues)
+1   - Warnings detected, or any command error (invalid flag, config error, runtime failure)
 2   - Errors detected (critical issues requiring attention)
-3   - Manifest corruption or critical system error
-4   - Invalid command or configuration error
 ```
+
+Only 0, 1, and 2 are reachable. `DoctorExitCode` (`cmd/dot/doctor.go:20-31`)
+returns 0 for any unrecognized status, and `cmd/dot/main.go:53-55` returns 1 for
+every command error, so an invalid flag and a warning are indistinguishable by
+exit code.
 
 ---
 
@@ -2742,6 +2773,8 @@ $ dot doctor -vvv
 - **Version**: 1.0
 - **Date**: 2025-11-16
 - **Based On**: doctor-system-cujs.md v1.0
-- **Status**: Draft for Review
-- **Next Steps**: Implementation planning
+- **Status**: Design proposal, largely unimplemented
+- **Last verified against code**: 2026-07-27 (v0.6.5)
+- **Implemented subset**: `doctor ignore` / `unignore` / `ignores`, exit codes 0/1/2, text pagination
+- **Next Steps**: Implementation planning; supersede or split shipped behavior into user documentation
 

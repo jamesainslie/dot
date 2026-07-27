@@ -4,52 +4,31 @@ Complete reference for configuring dot.
 
 ## Configuration Sources
 
-dot reads configuration from multiple sources with defined precedence order.
-
 ### Precedence Order (Highest to Lowest)
 
-1. **Command-line flags**: `--dir`, `--target`, etc.
-2. **Environment variables**: `DOT_*` prefix
-3. **Project-local config**: `./.dotrc` in current directory
-4. **User global config**: `~/.config/dot/config.yaml` or `~/.dotrc`
-5. **System config**: `/etc/dot/config.yaml`
-6. **Built-in defaults**
+1. Command-line flags: `--dir`, `--target`, `--ignore`, and so on.
+2. Environment variables with the `DOT_` prefix (only the keys listed under Environment Variables).
+3. Repository config: `<packageDir>/.config/dot/config.yaml`.
+4. User config: `$DOT_CONFIG`, else `$XDG_CONFIG_HOME/dot/config.yaml`, else `~/.config/dot/config.yaml`.
+5. Built-in defaults.
 
-Later sources override earlier sources for scalar values. Array merging behavior is configurable.
+Levels 3 and 4 are not layered. If a repository config is found it is used in full and the user
+config is not read at all. See [Repository Configuration](repository-config.md).
 
 ## Configuration File Locations
 
-### XDG Base Directory Specification
+On Linux and macOS the file is `$XDG_CONFIG_HOME/dot/config.yaml`, defaulting to
+`~/.config/dot/config.yaml`. On Windows it is `%AppData%\dot\config.yaml`, resolved through
+`os.UserConfigDir`. Set `DOT_CONFIG` to point at any other path.
 
-dot follows XDG standards on Unix systems:
-
-**Primary location**: `$XDG_CONFIG_HOME/dot/config.yaml`
-- Default: `~/.config/dot/config.yaml`
-
-**Fallback location**: `~/.dotrc`
-
-**System-wide**: `/etc/dot/config.yaml`
-
-**Project-local**: `./.dotrc` in working directory
-
-### macOS Specific
-
-Uses XDG paths by default:
-- `~/.config/dot/config.yaml`
-- Or `~/Library/Application Support/dot/config.yaml`
-
-### Windows Specific
-
-- `%APPDATA%\dot\config.yaml`
-- Typically: `C:\Users\<username>\AppData\Roaming\dot\config.yaml`
+There is no `.dotrc` file and no system-wide `/etc/dot/config.yaml`.
 
 ## Supported Formats
 
-dot accepts configuration in multiple formats (detected by extension):
-
-- **YAML**: `.yaml` or `.yml` (recommended)
-- **JSON**: `.json`
-- **TOML**: `.toml`
+dot accepts YAML, JSON, and TOML, detected by file extension. The default lookup path is always
+`config.yaml`; to use JSON or TOML, set `DOT_CONFIG` to the file explicitly. `dot config init
+--format json` writes `config.json` next to the default path, which is not read unless `DOT_CONFIG`
+points at it.
 
 All examples below use YAML format.
 
@@ -66,12 +45,18 @@ dot config init
 This creates `~/.config/dot/config.yaml` with default values and documentation comments.
 
 Options:
-- `--force`: Overwrite existing configuration
-- `--format`: Specify format (yaml, json, toml)
+- `--force`, `-f`: Overwrite existing configuration
+- `--yes`, `-y`: Alias for `--force`
+- `--format`: Specify format (yaml, json, toml; default yaml)
+
+The generated file covers the commonly edited keys. It omits `ignore.per_package_ignore`,
+`ignore.max_file_size`, `ignore.interactive_large_files`, `dotfile.package_name_mapping`,
+`output.table_style`, and the `update` and `network` sections; add them by hand if needed.
 
 ### Upgrading Configuration
 
-When upgrading dot to a new version, configuration files may need updating to include new fields or migrate deprecated options.
+When upgrading dot to a new version, configuration files may need updating to include new fields or
+migrate deprecated options.
 
 #### Automatic Upgrade
 
@@ -89,12 +74,11 @@ The upgrade process:
 4. **Validates result**: Ensures upgraded config is valid before saving
 5. **Cleans old backups**: Keeps last 5 backups automatically
 
-#### Force Upgrade
-
-Skip the confirmation prompt:
+#### Skipping the Prompt
 
 ```bash
 dot config upgrade --force
+dot config upgrade --yes
 ```
 
 #### What Gets Preserved
@@ -109,17 +93,11 @@ During upgrade, your customizations are preserved:
 
 #### What Gets Added
 
-New configuration fields from the latest version are added with their defaults:
-
-- New feature flags
-- Additional configuration options
-- Performance tuning parameters
+New configuration fields from the latest version are added with their defaults.
 
 #### Deprecated Field Migration
 
-Some fields may be deprecated in favor of better alternatives. The upgrade command automatically migrates these:
-
-**Example**: `ignore.overrides` → `ignore.patterns` with negation (`!`)
+**Example**: `ignore.overrides` becomes a negation entry in `ignore.patterns`.
 
 ```yaml
 # Before upgrade
@@ -134,9 +112,12 @@ ignore:
   patterns:
     - "*.log"
     - "!important.conf"  # Migrated from overrides
-  overrides:  # Preserved for safety but deprecated
+  overrides:  # Left in place, but inert
     - "important.conf"
 ```
+
+The original `overrides` list is not removed by the migration. It has no effect on matching; only
+the negation entry in `patterns` does.
 
 #### Backup Management
 
@@ -148,7 +129,8 @@ YYYYMMDD-HHMMSS-config.bak
 
 Example: `20241110-153045-config.bak`
 
-The last 5 backups are automatically retained. Older backups are cleaned up after each successful upgrade.
+The last 5 backups are automatically retained. Older backups are cleaned up after each successful
+upgrade.
 
 #### Manual Rollback
 
@@ -166,11 +148,7 @@ Upgraded configuration files include a header with upgrade information:
 # Dot Configuration
 # Upgraded on 2024-11-10 15:30:45
 # Backup saved to: /home/user/.config/dot/backups/20241110-153045-config.bak
-# 
-# Deprecated fields migrated:
-#   - ignore.overrides → ignore.patterns (with ! prefix for negation)
 #
-# See https://github.com/yaklabco/dot for documentation
 
 directories:
   package: "."
@@ -207,863 +185,654 @@ dot config set directories.package ~/dotfiles
 
 ## Configuration Options
 
-### Directory Options
+Configuration is organised into sections. Keys are given as `section.field`. There is no flat
+top-level key namespace: a key written outside its section is parsed, discarded without warning,
+and the default silently remains in effect. Confirm every edit with `dot config list`.
 
-#### packageDir
+### directories
 
-Source directory containing packages.
+| Key | Type | Default |
+|-----|------|---------|
+| `directories.package` | string | `.` |
+| `directories.target` | string | the user's home directory |
+| `directories.manifest` | string | `<XDG_DATA_HOME>/dot/manifest`, usually `$HOME/.local/share/dot/manifest` |
 
-**Type**: string  
-**Default**: `.` (current directory)  
-**Example**:
-```yaml
-packageDir: ~/dotfiles
-```
+**Write path values in full; there is no expansion.** A leading `~` and a `$VAR` reference are
+stored literally and then resolved against the working directory, so `target: ~/dotfiles` creates a
+directory named `~` under the current directory rather than under your home directory. Use an
+absolute path such as `/home/alice/dotfiles`. Note that `target: ~` on its own is YAML null, not a
+path; it leaves the key unset and the default applies.
 
-Absolute or relative paths accepted. Relative paths resolved from working directory.
+Relative paths in `directories.package` are resolved from the working directory. The manifest is a
+single JSON file, `.dot-manifest.json`, inside `directories.manifest`; by default that is
+`$HOME/.local/share/dot/manifest/.dot-manifest.json`. It tracks installed packages, their links,
+and content hashes for incremental updates.
 
-#### targetDir
+### logging
 
-Destination directory where symlinks are created.
+| Key | Type | Default | Valid values |
+|-----|------|---------|--------------|
+| `logging.level` | string | `INFO` | `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `logging.format` | string | `text` | `text`, `json` |
+| `logging.destination` | string | `stderr` | `stderr`, `stdout`, `file` |
+| `logging.file` | string | `~/.local/state/dot/dot.log` | any path |
 
-**Type**: string  
-**Default**: `$HOME`  
-**Example**:
-```yaml
-targetDir: ~
-```
+`logging.file` applies only when `logging.destination` is `file`.
 
-Typically set to home directory. Must be absolute path or tilde-expandable.
+### symlinks
 
-#### manifestDir
+| Key | Type | Default | Valid values |
+|-----|------|---------|--------------|
+| `symlinks.mode` | string | `relative` | `relative`, `absolute` |
+| `symlinks.folding` | bool | `true` | |
+| `symlinks.overwrite` | bool | `false` | |
+| `symlinks.backup` | bool | `false` | |
+| `symlinks.backup_suffix` | string | `.bak` | |
+| `symlinks.backup_dir` | string | unset | any path |
 
-Directory where package manifest is stored.
+**`symlinks.mode` currently has no effect.** It is validated, stored, and reported by
+`dot config list`, but the CLI never passes it to the planner; created symlinks always point at an
+absolute path regardless of this setting.
 
-**Type**: string  
-**Default**: `$XDG_DATA_HOME/dot/manifest` or `~/.local/share/dot/manifest`  
-**Example**:
-```yaml
-directories:
-  package: ~/dotfiles
-  target: ~
-  manifest: ~/.local/share/dot/manifest
-```
+**`symlinks.folding` currently has no effect.** It is validated and reported, but nothing in the
+planner or the pipeline reads it; directory folding behaviour does not change when it is set to
+`false`.
 
-The manifest tracks installed packages, their links, and content hashes for incremental updates. 
+Conflict handling is expressed by two booleans, not by a policy name. `symlinks.overwrite: true`
+replaces conflicting files. `symlinks.backup: true` moves them aside first. With both false, a
+conflict is reported and the operation stops. `symlinks.overwrite` wins if both are set. There is
+no `skip` policy.
 
-**Note**: The manifest is a single JSON file stored as `.dot-manifest.json` within this directory.
+When backups are taken, files are written to `symlinks.backup_dir`, defaulting to
+`<target>/.dot-backup`, which is created on demand. Backup filenames have the form
+`<filename>.<8-hex-digest-of-full-source-path>.<YYYYMMDD-HHMMSS>`, which makes them collision-free
+across packages. `symlinks.backup_suffix` is not applied to conflict backups.
 
-### Link Options
+### ignore
 
-#### linkMode
+| Key | Type | Default |
+|-----|------|---------|
+| `ignore.use_defaults` | bool | `true` |
+| `ignore.patterns` | []string | `[]` |
+| `ignore.overrides` | []string | `[]` (deprecated and inert) |
+| `ignore.per_package_ignore` | bool | `true` |
+| `ignore.max_file_size` | int (bytes) | `0` (no limit) |
+| `ignore.interactive_large_files` | bool | `true` |
 
-Symlink type to create.
+Example:
 
-**Type**: string  
-**Default**: `relative`  
-**Values**: `relative` or `absolute`  
-**Example**:
-```yaml
-linkMode: relative
-```
-
-**Relative links**:
-- Portable across different mount points
-- Break if package directory moves relative to target
-- Recommended for most use cases
-
-**Absolute links**:
-- Robust against package directory relocation
-- Less portable across machines
-- Use when target and stow on different filesystems
-
-#### folding
-
-Enable directory-level symlink optimization.
-
-**Type**: boolean  
-**Default**: `true`  
-**Example**:
-```yaml
-folding: true
-```
-
-When enabled, creates directory symlinks when all contents belong to single package. Disable for per-file granularity.
-
-### Package Translation
-
-#### packageNameMapping
-
-Enable package name to target directory mapping.
-
-**Type**: boolean  
-**Default**: `true`  
-**Example**:
-```yaml
-dotfile:
-  package_name_mapping: true
-```
-
-When enabled, package names determine target directories:
-- Package `dot-vim` → files installed to `~/.vim/`
-- Package `dot-gnupg` → files installed to `~/.gnupg/`
-- Package `config` → files installed to `~/config/`
-
-This eliminates redundant directory nesting. Package `dot-gnupg/gpg.conf` links to `~/.gnupg/gpg.conf` instead of `~/gpg.conf`.
-
-**Breaking Change in v0.2.0**: This is now the default behavior. Set to `false` to restore legacy behavior where package names are ignored.
-
-**Legacy behavior** (`false`):
-- Package structure must mirror target structure
-- Package name used only for identification
-- Requires redundant nesting like `dot-vim/dot-vim/`
-
-### Ignore Patterns
-
-#### ignore
-
-Patterns for files to exclude from management.
-
-**Type**: array of strings  
-**Default**: Built-in patterns (see below)  
-**Example**:
 ```yaml
 ignore:
-  - "*.log"
-  - "*.tmp"
-  - ".git"
-  - ".DS_Store"
-  - "node_modules"
-  - "*.swp"
-  - "*.bak"
-  - ".#*"
+  use_defaults: true
+  patterns:
+    - "*.log"
+    - "*.tmp"
+    - "!important.log"
+  per_package_ignore: true
+  max_file_size: 104857600  # 100 MB
+  interactive_large_files: true
 ```
 
 **Pattern Types**:
-- **Glob patterns**: `*.log`, `test_*`
-- **Regex patterns**: `/^test.*\.go$/`
-- **Directory patterns**: `.git`, `node_modules`
+- Glob patterns only: `*` (any sequence of characters, including `/`) and `?` (any single
+  character). Bracket expressions and regex metacharacters are escaped and matched literally, so a
+  regex such as `/^test.*\.go$/` is treated as a literal string and never matches.
+- Negation: a leading `!` un-ignores a previously matched path.
 
-**Built-in Default Patterns**:
+Patterns are anchored and are tested against the full absolute path and, separately, against the
+basename. **Patterns containing `/` never match anything.** A pattern such as `.cache/`,
+`logs/*.log`, or `.ssh/id_*` matches neither the absolute path nor the basename, so it is silently
+inert. Use bare directory names (`.cache`, `node_modules`) and basename patterns (`*.log`).
+
+`ignore.overrides` is deprecated and inert: entries in it are never consulted during matching. Use
+negation entries in `ignore.patterns` instead.
+
 ```yaml
 ignore:
-  - ".git"
-  - ".DS_Store"
-  - "Thumbs.db"
-  - "desktop.ini"
-  - "*.swp"
-  - "*.swo"
-  - "*~"
-  - ".#*"
-  - "#*#"
+  patterns:
+    - ".*"           # Ignore all dotfiles
+    - "!.gitignore"  # Except .gitignore
+    - "!.gitconfig"  # And .gitconfig
 ```
 
-#### override (DEPRECATED)
+`ignore.per_package_ignore` enables reading a `.dotignore` file from the root of each package
+directory. Only that one file is read; there is no inheritance from parent or child directories.
 
-Patterns to force include despite ignore rules.
+`ignore.max_file_size` filters by size in bytes; `0` disables size filtering. Files exceeding the
+limit are prompted for in interactive mode and skipped in batch mode. Command-line flags accept
+human-readable sizes:
 
-**Type**: array of strings  
-**Default**: `[]`  
-**Deprecated**: Use negation patterns (`!pattern`) instead  
-**Example**:
-```yaml
-override:
-  - ".gitignore"
-  - ".gitconfig"
-```
-
-Override patterns have higher priority than ignore patterns.
-
-**Note**: This field is deprecated. Use negation patterns in the `patterns` array instead:
-```yaml
-patterns:
-  - ".*"           # Ignore all dotfiles
-  - "!.gitignore"  # Except .gitignore
-  - "!.gitconfig"  # And .gitconfig
-```
-
-#### per_package_ignore
-
-Enable per-package `.dotignore` files.
-
-**Type**: boolean  
-**Default**: `true`  
-**Example**:
-```yaml
-per_package_ignore: true
-```
-
-When enabled, dot reads `.dotignore` files from package directories. These files use the same syntax as patterns but are scoped to the package.
-
-#### max_file_size
-
-Maximum file size to include when scanning packages (in bytes).
-
-**Type**: integer  
-**Default**: `0` (no limit)  
-**Example**:
-```yaml
-max_file_size: 104857600  # 100 MB
-```
-
-Files exceeding this limit are either prompted for (interactive mode) or skipped automatically (batch mode). Use `0` to disable size filtering.
-
-**Human-readable format**: Use command-line flags with human-readable sizes:
 ```bash
 dot manage mypackage --max-file-size 100MB
 ```
 
-#### interactive_large_files
+`ignore.interactive_large_files` controls prompting. When `true` and running in a TTY, dot asks
+whether to include each oversized file. When `false`, or under `--batch`, or when not attached to a
+TTY, oversized files are skipped silently.
 
-Prompt for large files in interactive mode.
+**Built-in Default Patterns** (`ignore.use_defaults: true`):
 
-**Type**: boolean  
-**Default**: `true`  
-**Example**:
-```yaml
-interactive_large_files: true
+```
+.git
+.svn
+.hg
+.DS_Store
+Thumbs.db
+desktop.ini
+.Trash
+.Spotlight-V100
+.TemporaryItems
+.dotignore
+.dotbootstrap.yaml
+.gnupg
+.ssh/*.pem
+.ssh/id_*
+.ssh/*_rsa
+.ssh/*_ecdsa
+.ssh/*_ed25519
+.password-store
 ```
 
-When `true` and running in a TTY, prompts user whether to include files exceeding `max_file_size`. When `false` or in batch mode, large files are automatically skipped.
+Of these, `.gnupg` and `.password-store` are effective. **The five `.ssh/*` entries contain a path
+separator and therefore do not match; SSH keys inside a package are not excluded and will be
+symlinked.** Add basename patterns to exclude them:
 
-**See also**: [Ignore System Guide](ignore-system.md) for complete documentation on ignore patterns, negation, and size filtering.
-
-### Conflict Resolution
-
-#### onConflict
-
-Default policy when conflicts detected.
-
-**Type**: string  
-**Default**: `fail`  
-**Values**: `fail`, `backup`, `overwrite`, `skip`  
-**Example**:
 ```yaml
-onConflict: fail
-```
-
-**Policies**:
-- `fail`: Stop and report conflict (safe default)
-- `backup`: Move conflicting file to backup location
-- `overwrite`: Replace conflicting file with symlink
-- `skip`: Skip conflicting file and continue
-
-#### backupDir
-
-Directory for storing conflict backups.
-
-**Type**: string  
-**Default**: None (backups stored alongside originals with `.bak` suffix)  
-**Example**:
-```yaml
-backupDir: ~/.dot-backups
-```
-
-When set, all backups stored in specified directory with timestamp.
-
-### Logging and Output
-
-#### verbosity
-
-Logging detail level.
-
-**Type**: integer  
-**Default**: `0`  
-**Range**: `0-3`  
-**Example**:
-```yaml
-verbosity: 1
-```
-
-**Levels**:
-- `0`: Errors and warnings only
-- `1`: Info messages (operations summary)
-- `2`: Debug messages (per-operation details)
-- `3`: Trace messages (internal state)
-
-Command-line `-v` flags increment this value.
-
-#### logFormat
-
-Log output format.
-
-**Type**: string  
-**Default**: `text`  
-**Values**: `text`, `json`  
-**Example**:
-```yaml
-logFormat: text
-```
-
-**Formats**:
-- `text`: Human-readable console output with colors
-- `json`: Structured JSON for log aggregation
-
-#### quiet
-
-Suppress non-error output.
-
-**Type**: boolean  
-**Default**: `false`  
-**Example**:
-```yaml
-quiet: false
-```
-
-When `true`, only errors printed to stderr. Useful for scripting.
-
-### Performance Options
-
-#### concurrency
-
-Maximum concurrent operations.
-
-**Type**: integer  
-**Default**: `0` (auto-detect CPU cores)  
-**Example**:
-```yaml
-concurrency: 4
-```
-
-Set to number of parallel operations. Value of `0` uses number of CPU cores. Higher values may improve performance with many packages.
-
-#### enableIncremental
-
-Enable incremental change detection.
-
-**Type**: boolean  
-**Default**: `true`  
-**Example**:
-```yaml
-enableIncremental: true
-```
-
-When enabled, `remanage` only processes changed packages using content hashing.
-
-## Per-Package Configuration
-
-Package-specific overrides via `.dotmeta` file in package directory.
-
-### Package Metadata Format
-
-`package/.dotmeta`:
-```yaml
-# Package-specific settings
 ignore:
-  - "*.local"
-  - "cache/"
-
-linkMode: absolute
-
-folding: false
-
-# Package metadata
-description: "Vim configuration with plugins"
-version: "1.0.0"
+  patterns:
+    - "id_*"
+    - "*_rsa"
+    - "*_ecdsa"
+    - "*_ed25519"
+    - "*.pem"
 ```
 
-Package settings override global settings for that package only.
+Editor swap and backup files (`*.swp`, `*~`, `.#*`) are not ignored by default; add them to
+`ignore.patterns` if you want them excluded.
+
+**See also**: [Ignore System Guide](ignore-system.md) for complete documentation on ignore patterns,
+negation, and size filtering.
+
+### dotfile
+
+| Key | Type | Default |
+|-----|------|---------|
+| `dotfile.translate` | bool | `true` |
+| `dotfile.prefix` | string | `dot-` |
+| `dotfile.package_name_mapping` | bool | `true` |
+
+With `dotfile.translate` enabled, a leading `dot-` in a source name becomes a leading `.` in the
+target name.
+
+With `dotfile.package_name_mapping` enabled, package names determine target directories:
+
+- Package `dot-vim` installs into `~/.vim/`
+- Package `dot-gnupg` installs into `~/.gnupg/`
+- Package `config` installs into `~/config/`
+
+This eliminates redundant directory nesting: `dot-gnupg/gpg.conf` links to `~/.gnupg/gpg.conf`
+rather than `~/gpg.conf`. Set it to `false` to restore the legacy behaviour, in which the package
+name is used only for identification and the package structure must mirror the target structure.
+
+```yaml
+dotfile:
+  translate: true
+  prefix: "dot-"
+  package_name_mapping: true
+```
+
+### output
+
+| Key | Type | Default | Valid values |
+|-----|------|---------|--------------|
+| `output.format` | string | `text` | `text`, `json`, `yaml`, `table` |
+| `output.color` | string | `auto` | `auto`, `always`, `never` |
+| `output.table_style` | string | `default` | |
+| `output.progress` | bool | `true` | |
+| `output.verbosity` | int | `1` | `0` to `3` |
+| `output.width` | int | `0` (auto-detect) | |
+
+`output.verbosity` is validated and reported by `dot config list`, but it does not affect runtime
+verbosity: commands take the verbosity level from the `-v` flag count alone, and `-v` does not
+increment the configured value. The same applies to `output.format`, `output.progress`, and
+`output.width`, which are superseded by the `--format`, `--quiet`, and terminal-detection paths.
+`output.table_style` is read when rendering plan tables.
+
+### operations
+
+| Key | Type | Default |
+|-----|------|---------|
+| `operations.dry_run` | bool | `false` |
+| `operations.atomic` | bool | `true` |
+| `operations.max_parallel` | int | `0` |
+
+`operations.max_parallel` is accepted and validated but is not consumed by the execution engine; it
+does not change concurrency.
+
+### packages
+
+| Key | Type | Default | Valid values |
+|-----|------|---------|--------------|
+| `packages.sort_by` | string | `name` | `name`, `links`, `date` |
+| `packages.auto_discover` | bool | `true` | |
+| `packages.validate_names` | bool | `true` | |
+
+This section configures package handling globally. It is not a map of per-package overrides; there
+is no per-package configuration mechanism and no `.dotmeta` file.
+
+### doctor
+
+| Key | Type | Default |
+|-----|------|---------|
+| `doctor.auto_fix` | bool | `false` |
+| `doctor.check_manifest` | bool | `true` |
+| `doctor.check_broken_links` | bool | `true` |
+| `doctor.check_orphaned` | bool | `true` |
+| `doctor.check_permissions` | bool | `true` |
+
+Orphan scan breadth is a CLI concern only: `dot doctor --scan-mode` and `dot doctor --max-depth`.
+There is no `doctor.orphan_scan_mode` or `doctor.orphan_scan_depth` configuration key.
+
+### update
+
+| Key | Type | Default | Valid values |
+|-----|------|---------|--------------|
+| `update.check_on_startup` | bool | `true` | |
+| `update.check_frequency` | int (hours) | `24` | |
+| `update.package_manager` | string | `auto` | `auto`, `brew`, `apt`, `yum`, `pacman`, `dnf`, `zypper`, `manual` |
+| `update.repository` | string | `yaklabco/dot` | must be `owner/repo` |
+| `update.include_prerelease` | bool | `false` | |
+
+### network
+
+| Key | Type | Default |
+|-----|------|---------|
+| `network.http_proxy` | string | unset |
+| `network.https_proxy` | string | unset |
+| `network.no_proxy` | string | unset |
+| `network.timeout` | int (seconds) | `10` |
+| `network.connect_timeout` | int (seconds) | `5` |
+| `network.tls_timeout` | int (seconds) | `5` |
+
+### experimental
+
+| Key | Type | Default |
+|-----|------|---------|
+| `experimental.parallel` | bool | `false` |
+| `experimental.profiling` | bool | `false` |
 
 ## Environment Variables
 
-All configuration options available as environment variables with `DOT_` prefix.
+Environment variables use the prefix `DOT_` followed by the section-qualified key with dots replaced
+by single underscores, uppercased. For example `symlinks.mode` becomes `DOT_SYMLINKS_MODE`. There is
+no double-underscore convention.
 
-### Variable Naming Convention
+Only the following keys are bound:
 
-```bash
-# Format: DOT_<OPTION_NAME>
-export DOT_STOW_DIR=~/dotfiles
-export DOT_TARGET_DIR=~
-export DOT_LINK_MODE=relative
-export DOT_FOLDING=true
-export DOT_VERBOSITY=1
+```
+DOT_DIRECTORIES_PACKAGE   DOT_DIRECTORIES_TARGET   DOT_DIRECTORIES_MANIFEST
+DOT_LOGGING_LEVEL         DOT_LOGGING_FORMAT       DOT_LOGGING_DESTINATION   DOT_LOGGING_FILE
+DOT_SYMLINKS_MODE         DOT_SYMLINKS_FOLDING     DOT_SYMLINKS_OVERWRITE
+DOT_SYMLINKS_BACKUP       DOT_SYMLINKS_BACKUP_SUFFIX
+DOT_IGNORE_USE_DEFAULTS   DOT_IGNORE_PATTERNS      DOT_IGNORE_OVERRIDES
+DOT_IGNORE_PER_PACKAGE_IGNORE   DOT_IGNORE_MAX_FILE_SIZE   DOT_IGNORE_INTERACTIVE_LARGE_FILES
+DOT_DOTFILE_TRANSLATE     DOT_DOTFILE_PREFIX
+DOT_OUTPUT_FORMAT         DOT_OUTPUT_COLOR         DOT_OUTPUT_PROGRESS
+DOT_OUTPUT_VERBOSITY      DOT_OUTPUT_WIDTH
+DOT_OPERATIONS_DRY_RUN    DOT_OPERATIONS_ATOMIC    DOT_OPERATIONS_MAX_PARALLEL
+DOT_PACKAGES_SORT_BY      DOT_PACKAGES_AUTO_DISCOVER   DOT_PACKAGES_VALIDATE_NAMES
+DOT_DOCTOR_AUTO_FIX       DOT_DOCTOR_CHECK_MANIFEST    DOT_DOCTOR_CHECK_BROKEN_LINKS
+DOT_DOCTOR_CHECK_ORPHANED DOT_DOCTOR_CHECK_PERMISSIONS
+DOT_EXPERIMENTAL_PARALLEL DOT_EXPERIMENTAL_PROFILING
 ```
 
-**Naming Rules**:
-- Uppercase with underscores
-- Nested options use double underscore: `DOT_ON_CONFLICT`
-- Boolean values: `true`/`false`, `1`/`0`
-- Arrays: comma-separated: `DOT_IGNORE=*.log,*.tmp`
+`symlinks.backup_dir`, `dotfile.package_name_mapping`, `output.table_style`, and every key under
+`update` and `network` have no environment binding; set them in the configuration file.
 
-### Common Environment Variables
+`DOT_CONFIG` is handled separately and overrides the configuration file path.
+
+Booleans accept `true`/`false` and `1`/`0`. List values are comma-separated.
+
+### Examples
 
 ```bash
 # Directories
-export DOT_STOW_DIR=/path/to/dotfiles
-export DOT_TARGET_DIR=$HOME
-
-# Link mode
-export DOT_LINK_MODE=absolute
+export DOT_DIRECTORIES_PACKAGE=/path/to/dotfiles
+export DOT_DIRECTORIES_TARGET=$HOME
 
 # Conflict handling
-export DOT_ON_CONFLICT=backup
-export DOT_BACKUP_DIR=~/.dot-backups
+export DOT_SYMLINKS_OVERWRITE=false
+export DOT_SYMLINKS_BACKUP=true
 
 # Ignore patterns
-export DOT_IGNORE="*.log,*.tmp,.git"
+export DOT_IGNORE_PATTERNS="*.log,*.tmp"
 
-# Output control
-export DOT_VERBOSITY=2
-export DOT_LOG_FORMAT=json
-export DOT_QUIET=false
-
-# Performance
-export DOT_CONCURRENCY=4
+# Logging
+export DOT_LOGGING_LEVEL=DEBUG
+export DOT_LOGGING_FORMAT=json
 ```
 
 ## Complete Configuration Example
 
-### Comprehensive YAML Example
-
 `~/.config/dot/config.yaml`:
+
+Paths are written in full because no expansion is performed. Substitute your own home directory
+for `/home/alice`.
+
 ```yaml
-# Dot configuration file
+directories:
+  package: /home/alice/dotfiles
+  target: /home/alice
+  manifest: /home/alice/.local/share/dot/manifest
 
-# Directories
-packageDir: ~/dotfiles
-targetDir: ~
+logging:
+  level: INFO
+  format: text
+  destination: stderr
+  file: /home/alice/.local/state/dot/dot.log
 
-# Link configuration
-linkMode: relative
-folding: true
+symlinks:
+  mode: relative
+  folding: true
+  overwrite: false
+  backup: true
+  backup_suffix: ".bak"
+  backup_dir: /home/alice/.dot-backups
 
-# Ignore patterns
 ignore:
-  - "*.log"
-  - "*.tmp"
-  - ".git"
-  - ".svn"
-  - ".DS_Store"
-  - "Thumbs.db"
-  - "node_modules"
-  - "*.swp"
-  - "*.swo"
-  - "*.bak"
-  - "*~"
-  - ".#*"
-  - "#*#"
+  use_defaults: true
+  patterns:
+    - "*.log"
+    - "*.tmp"
+    - "*.swp"
+    - "node_modules"
+    - "id_*"
+    - "*_ed25519"
+    - "!.gitignore"
+  per_package_ignore: true
+  max_file_size: 0
+  interactive_large_files: true
 
-# Override patterns (force include despite ignore)
-override:
-  - ".gitignore"
-  - ".gitattributes"
+dotfile:
+  translate: true
+  prefix: "dot-"
+  package_name_mapping: true
 
-# Conflict resolution
-onConflict: fail
-backupDir: ~/.dot-backups
+output:
+  format: text
+  color: auto
+  table_style: default
+  progress: true
+  verbosity: 1
+  width: 0
 
-# Logging
-verbosity: 1
-logFormat: text
-quiet: false
+operations:
+  dry_run: false
+  atomic: true
+  max_parallel: 0
 
-# Performance
-concurrency: 0  # Auto-detect
-enableIncremental: true
-
-# Package-specific overrides
 packages:
-  vim:
-    linkMode: absolute
-    folding: false
-  
-  nvim:
-    ignore:
-      - "*.local"
-      - "shada/"
+  sort_by: name
+  auto_discover: true
+  validate_names: true
+
+doctor:
+  auto_fix: false
+  check_manifest: true
+  check_broken_links: true
+  check_orphaned: true
+  check_permissions: true
+
+update:
+  check_on_startup: true
+  check_frequency: 24
+  package_manager: auto
+  repository: yaklabco/dot
+  include_prerelease: false
+
+network:
+  timeout: 10
+  connect_timeout: 5
+  tls_timeout: 5
+
+experimental:
+  parallel: false
+  profiling: false
 ```
 
 ### JSON Example
 
-`~/.config/dot/config.json`:
+`~/.config/dot/config.json`, used only when `DOT_CONFIG` points at it:
+
 ```json
 {
-  "packageDir": "~/dotfiles",
-  "targetDir": "~",
-  "linkMode": "relative",
-  "folding": true,
-  "ignore": [
-    "*.log",
-    ".git",
-    ".DS_Store"
-  ],
-  "onConflict": "fail",
-  "verbosity": 1
+  "directories": {
+    "package": "~/dotfiles",
+    "target": "~"
+  },
+  "symlinks": {
+    "mode": "relative",
+    "backup": true
+  },
+  "ignore": {
+    "use_defaults": true,
+    "patterns": ["*.log", "*.tmp"]
+  }
 }
 ```
 
 ### TOML Example
 
-`~/.config/dot/config.toml`:
+`~/.config/dot/config.toml`, used only when `DOT_CONFIG` points at it:
+
 ```toml
-packageDir = "~/dotfiles"
-targetDir = "~"
-linkMode = "relative"
-folding = true
+[directories]
+package = "~/dotfiles"
+target = "~"
 
-ignore = [
-    "*.log",
-    ".git",
-    ".DS_Store"
-]
+[symlinks]
+mode = "relative"
+backup = true
 
-onConflict = "fail"
-verbosity = 1
-
-[packages.vim]
-linkMode = "absolute"
-folding = false
+[ignore]
+use_defaults = true
+patterns = ["*.log", "*.tmp"]
 ```
 
 ## Configuration Management Commands
 
-### Initialize Configuration
-
-Create default configuration file:
-
 ```bash
-# Interactive initialization
+# Create the configuration file with defaults
 dot config init
+dot config init --force            # overwrite an existing file (--yes is an alias)
+dot config init --format json      # yaml (default), json, or toml
 
-# Non-interactive with defaults
-dot config init --defaults
+# Display configuration
+dot config list                    # aliases: show, ls
+dot config list --format json      # text (default), json, yaml
 
-# Specify format
-dot config init --format yaml
+# Read or write a single key
+dot config get directories.package
+dot config set directories.package ~/dotfiles
+
+# Show the resolved configuration file path
+dot config path
+
+# Migrate an older file to the current format
+dot config upgrade                 # --force / --yes skip the confirmation prompt
 ```
 
-### View Configuration
+`dot config get` and `dot config set` accept only these keys:
+`directories.package`, `directories.target`, `directories.manifest`, `logging.level`,
+`logging.format`, `logging.destination`, `symlinks.mode`, `symlinks.backup_suffix`,
+`symlinks.backup_dir`, `dotfile.prefix`, `dotfile.translate`, `dotfile.package_name_mapping`,
+`output.format`, `output.color`, `packages.sort_by`. Any other key returns `unknown config key`.
+Edit the file directly for the remaining settings.
 
-Display current configuration:
+`dot config list` renders the Directories, Logging, Symlinks, Ignore, Dotfile, Output, Operations,
+Packages, Doctor, and Experimental sections. The Update and Network sections are not rendered; use
+`dot config list --format yaml` to see them.
 
-```bash
-# Show all configuration
-dot config show
-
-# Show specific key
-dot config get packageDir
-dot config get linkMode
-
-# Show as JSON
-dot config show --format json
-```
-
-### Modify Configuration
-
-Update configuration values:
-
-```bash
-# Set value
-dot config set packageDir ~/dotfiles
-dot config set verbosity 2
-
-# Set array value
-dot config set ignore "*.log,*.tmp"
-
-# Unset value (use default)
-dot config unset backupDir
-```
-
-### Validate Configuration
-
-Check configuration validity:
-
-```bash
-# Validate current configuration
-dot config validate
-
-# Validate specific file
-dot config validate ~/custom-config.yaml
-```
-
-Expected output:
-```
-Configuration valid
-- Package directory exists
-- Target directory exists
-- All paths are absolute
-- No conflicting options
-```
+There is no `dot config validate` and no `dot config unset`. Note that `dot config validate` does
+not fail: the argument is swallowed by the parent command, which prints the configuration listing
+instead, so the output resembles a successful validation. Do not rely on it. Invalid values are
+rejected on load, so running any ordinary command exercises validation.
 
 ### Configuration File Location
-
-Find active configuration file:
 
 ```bash
 dot config path
 ```
 
 Output:
+
 ```
-/home/user/.config/dot/config.yaml
+Configuration file: /home/user/.config/dot/config.yaml ✗ (not created)
+
+XDG directories:
+  XDG_CONFIG_HOME: /home/user/.config
 ```
+
+The XDG lines are printed only for variables that are set. Note that this reports the user config
+path; it does not account for a repository config, which takes priority when present.
 
 ## Configuration Scenarios
 
 ### Scenario 1: Multiple Machine Setup
 
-Use different configurations per machine:
-
 **Laptop** (`~/.config/dot/config.yaml`):
+
 ```yaml
-packageDir: ~/dotfiles
-targetDir: ~
-linkMode: relative
-verbosity: 1
+directories:
+  package: /home/alice/dotfiles
+  target: /home/alice
+logging:
+  level: INFO
 ```
 
 **Server** (`~/.config/dot/config.yaml`):
+
 ```yaml
-packageDir: /opt/dotfiles
-targetDir: /home/admin
-linkMode: absolute  # Different filesystem
-verbosity: 0        # Less output
-quiet: true
+directories:
+  package: /opt/dotfiles
+  target: /home/admin
+logging:
+  level: WARN
 ```
 
-### Scenario 2: Per-Project Configuration
+### Scenario 2: Repository-Local Configuration
 
-Project-specific settings:
-
-`./.dotrc`:
-```yaml
-# Project-specific dot configuration
-packageDir: ./config
-targetDir: ./deployment
-linkMode: absolute
-onConflict: overwrite  # Aggressive for development
-verbosity: 2
-```
+A dotfiles repository can carry its own configuration at `<packageDir>/.config/dot/config.yaml`.
+It replaces the user configuration entirely rather than merging with it. See
+[Repository Configuration](repository-config.md).
 
 ### Scenario 3: CI/CD Environment
 
 Non-interactive, scripted usage:
 
 ```yaml
-# CI configuration
-packageDir: /build/configs
-targetDir: /app
-linkMode: absolute
-onConflict: overwrite
-verbosity: 0
-logFormat: json
-quiet: true
-enableIncremental: false  # Always full deployment
+directories:
+  package: /build/configs
+  target: /app
+logging:
+  level: WARN
+  format: json
+symlinks:
+  overwrite: true
+```
+
+Invoke with `--batch`, which implies `--quiet` and disables interactive prompts:
+
+```bash
+dot manage --batch mypackage
 ```
 
 Environment variables:
+
 ```bash
-export DOT_STOW_DIR=/build/configs
-export DOT_TARGET_DIR=/app
-export DOT_ON_CONFLICT=overwrite
-export DOT_QUIET=true
+export DOT_DIRECTORIES_PACKAGE=/build/configs
+export DOT_DIRECTORIES_TARGET=/app
+export DOT_SYMLINKS_OVERWRITE=true
+export DOT_LOGGING_FORMAT=json
 ```
-
-### Scenario 4: Shared Team Configuration
-
-Team-wide defaults with personal overrides:
-
-**System** (`/etc/dot/config.yaml`):
-```yaml
-# Team defaults
-packageDir: ~/dotfiles
-linkMode: relative
-folding: true
-
-ignore:
-  - "*.log"
-  - "*.local"  # Personal overrides
-  - ".git"
-
-onConflict: fail  # Safe default
-```
-
-**Personal** (`~/.config/dot/config.yaml`):
-```yaml
-# Personal overrides
-verbosity: 2     # I want more detail
-onConflict: backup  # I prefer backups
-
-# Additional ignore patterns
-ignore:
-  - "*.debug"
-```
-
-## Merge Strategies
-
-### Array Merge Behavior
-
-Configure how arrays merge across configuration sources:
-
-```yaml
-# In global config
-ignore:
-  - "*.log"
-  - ".git"
-
-# In local config with replace strategy
-ignoreStrategy: replace
-ignore:
-  - "*.tmp"
-# Result: ["*.tmp"] - local replaces global
-
-# With append strategy (default)
-ignoreStrategy: append
-ignore:
-  - "*.tmp"
-# Result: ["*.log", ".git", "*.tmp"] - local appends to global
-
-# With merge strategy (union)
-ignoreStrategy: merge
-ignore:
-  - "*.tmp"
-# Result: ["*.log", ".git", "*.tmp"] - deduplicated union
-```
-
-**Strategies**:
-- `append`: Add local to global (default)
-- `replace`: Local completely replaces global
-- `merge`: Union of global and local (deduplicated)
 
 ## Configuration Best Practices
 
 ### 1. Use Version Control
 
-Store configuration in repository:
+Store configuration in your dotfiles repository at `.config/dot/config.yaml`, where dot will find
+it automatically. See [Repository Configuration](repository-config.md).
 
-```bash
-cd ~/dotfiles
-cp ~/.config/dot/config.yaml dot-config.yaml
-git add dot-config.yaml
-git commit -m "docs(config): add dot configuration"
-```
+### 2. Minimal Configuration
 
-### 2. Environment-Specific Files
-
-Separate configurations per environment:
-
-```
-dotfiles/
-├── dot-config-laptop.yaml
-├── dot-config-desktop.yaml
-└── dot-config-server.yaml
-```
-
-Symlink appropriate file:
-```bash
-ln -s ~/dotfiles/dot-config-laptop.yaml ~/.config/dot/config.yaml
-```
-
-### 3. Minimal Configuration
-
-Only set values that differ from defaults:
+Only set values that differ from the defaults:
 
 ```yaml
-# Minimal - only what changes
-packageDir: ~/dotfiles
-verbosity: 1
+directories:
+  package: /home/alice/dotfiles
 ```
 
-Better than:
-```yaml
-# Verbose - includes all defaults
-packageDir: ~/dotfiles
-targetDir: ~
-linkMode: relative
-folding: true
-verbosity: 1
-# ... etc
-```
+### 3. Use Absolute Paths
+
+Path values are not expanded. Write `/home/alice/dotfiles`, never `~/dotfiles` or `$HOME/dotfiles`.
 
 ### 4. Document Custom Settings
 
 Add comments explaining non-obvious choices:
 
 ```yaml
-# Use absolute links because stow and target on different filesystems
-linkMode: absolute
-
-# Aggressive conflict resolution for development environment
-onConflict: overwrite
-
-# High verbosity for debugging
-verbosity: 3
+symlinks:
+  # Back up rather than fail, because this host has pre-existing configs
+  backup: true
+  backup_dir: /home/alice/.dot-backups
 ```
 
-### 5. Validate Before Committing
+### 5. Verify After Editing
 
-Always validate configuration changes:
+Unknown keys are discarded silently, so confirm that an edit took effect:
 
 ```bash
-# Edit configuration
-vim ~/.config/dot/config.yaml
+dot config list
 
-# Validate
-dot config validate
-
-# Test with dry-run
-dot --dry-run manage test-package
+# Then preview the effect on a real package
+dot manage --dry-run test-package
 ```
 
 ## Troubleshooting Configuration
 
 ### Configuration Not Loading
 
-Check precedence and file location:
+Check the file location:
 
 ```bash
-# Show active configuration
-dot config show
-
-# Show configuration file path
 dot config path
-
-# Verify file exists
-ls -la $(dot config path)
+dot config list
 ```
+
+If a repository config exists at `<packageDir>/.config/dot/config.yaml`, it is used instead of the
+user config, and neither `dot config path` nor `dot config list` reflects that. Inspect the
+repository file directly.
 
 ### Configuration Errors
 
-Validate syntax:
+Invalid values are rejected when the file is loaded, so any command surfaces them. Common errors:
 
-```bash
-# Check for syntax errors
-dot config validate
+- Invalid YAML, JSON, or TOML syntax
+- Values outside the permitted set, for example `logging.level: TRACE`
+- `output.verbosity` outside `0` to `3`
+- `update.repository` not in `owner/repo` form
+- Negative `operations.max_parallel` or `output.width`
 
-# Show detailed validation errors
-dot config validate -v
-```
-
-Common errors:
-- Invalid YAML/JSON/TOML syntax
-- Unknown configuration keys
-- Invalid values for options
-- Path not existing
-- Permission issues
+Unknown keys are not an error. A misspelled or wrongly nested key is discarded without a message and
+the default remains in effect.
 
 ### Unexpected Values
 
-Debug configuration resolution:
-
-```bash
-# Show all sources and precedence
-dot config show --all-sources
-
-# Show where each value comes from
-dot config show --with-sources
-```
-
-Example output:
-```
-packageDir: ~/dotfiles
-  Source: ~/.config/dot/config.yaml
-
-targetDir: /tmp/test
-  Source: command-line flag
-
-verbosity: 2
-  Source: environment variable (DOT_VERBOSITY)
-```
+There is no source-attribution output. To narrow down where a value comes from, compare
+`dot config list` with the file contents at `dot config path`, then unset any `DOT_*` variables and
+re-run. Remember that a repository config at `<packageDir>/.config/dot/config.yaml` replaces the
+user config entirely, and that several keys are inert (`symlinks.mode`, `symlinks.folding`,
+`operations.max_parallel`, `output.verbosity`, `ignore.overrides`).
 
 ## Next Steps
 
@@ -1073,5 +842,4 @@ verbosity: 2
 
 ## Navigation
 
-**[↑ Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)
-
+**[Back to Main README](../../README.md)** | [User Guide Index](index.md) | [Documentation Index](../README.md)

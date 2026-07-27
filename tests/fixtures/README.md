@@ -4,24 +4,20 @@ Test data and sample configurations for integration tests.
 
 ## Structure
 
-### scenarios/
-Pre-built test scenarios representing common use cases:
-- **simple/**: Basic single package setup
-- **complex/**: Multiple packages with dependencies
-- **conflicts/**: Scenarios with pre-existing conflicts
-- **migration/**: GNU Stow migration scenarios
+### bootstrap-configs/
+Bootstrap configuration YAML samples:
+- **minimal.yaml**: Smallest valid config
+- **with-profiles.yaml**: Profile selection
+- **platform-specific.yaml**: Platform-conditional packages
+- **invalid-syntax.yaml**: Malformed YAML, for parser error tests
+- **invalid-missing-version.yaml**: Schema violation, for validation tests
 
-### packages/
-Sample packages for testing:
-- **dotfiles/**: Basic dotfiles package
-- **nvim/**: Neovim configuration package
-- **shell/**: Shell configuration (zsh, bash)
+## Fixtures Elsewhere
 
-### golden/
-Expected outputs for golden tests:
-- **status/**: Expected status command outputs
-- **doctor/**: Expected doctor command outputs
-- **list/**: Expected list command outputs
+- `cmd/dot/testdata/golden/{adopt,errors,manage}/`: Golden outputs for CLI
+  commands. `internal/cli/golden` resolves golden paths relative to the test
+  package, so these live beside the tests that use them.
+- `internal/adapters/testdata/test-repo/`: Git adapter fixtures.
 
 ## Creating Fixtures
 

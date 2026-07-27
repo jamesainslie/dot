@@ -2,7 +2,7 @@
 
 ## Overview
 
-The CLI layer (`cmd/dot/`) is the top-most layer in the dot architecture. It depends exclusively on the public API (`pkg/dot/`) and does not import any `internal/` packages directly, except for CLI-specific rendering and UI helpers in `internal/cli/`.
+The CLI layer (`cmd/dot/`) is the top-most layer in the dot architecture. Production code depends on the public API (`pkg/dot/`) plus presentation helpers in `internal/cli/`, and imports no other `internal/` package. Test files under `cmd/dot/` are exempt and may reach into internal packages to build fixtures.
 
 ## Layering Rules
 
@@ -25,6 +25,8 @@ The CLI layer (`cmd/dot/`) is the top-most layer in the dot architecture. It dep
 - `internal/scanner` - Use `pkg/dot` helper functions
 - `internal/updater` - Use `pkg/dot.VersionChecker`, `pkg/dot.StartupChecker`
 - Any other `internal/*` package
+
+**Test exemption**: files matching `cmd/dot/*_test.go` may import internal packages directly when constructing fixtures against concrete implementations. `cmd/dot/config_test.go` and `cmd/dot/config_upgrade_test.go` import `internal/config` for this reason. The prohibition applies to non-test files only.
 
 ## Configuration Responsibility
 
@@ -108,9 +110,10 @@ func createLoggerWithFlags(flags *CLIFlags) dot.Logger {
 The doctor command uses a structured mechanism to communicate health status to `main()` for exit code determination, rather than relying on error message string matching.
 
 **Implementation**:
-- Doctor command stores its result via `setDoctorResult(status)` after rendering output
-- `main.run()` checks for doctor result via `GetDoctorResult()` after command execution
-- Exit codes are determined by `DoctorExitCode(status)`:
+- `main.run()` allocates a `DoctorResultHolder` and attaches it to the root context via `WithDoctorResultHolder` (cmd/dot/context.go:50)
+- The doctor command retrieves the holder with `DoctorResultHolderFromContext` (cmd/dot/context.go:56) and records the health status after rendering
+- After `fang.Execute` returns, `main.run()` checks `holder.Executed` and returns `DoctorExitCode(holder.Status)` (cmd/dot/main.go:57-59)
+- Exit codes are determined by `DoctorExitCode(status)` (cmd/dot/doctor.go:20):
   - `HealthOK` returns exit code 0
   - `HealthWarnings` returns exit code 1
   - `HealthErrors` returns exit code 2

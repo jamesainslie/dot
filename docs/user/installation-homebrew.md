@@ -58,7 +58,7 @@ dot --version
 Expected output format:
 
 ```
-dot version v0.x.x
+dot version 0.6.5 (commit: a1b2c3d, built: 2026-03-18T00:00:00Z)
 ```
 
 Test basic functionality:
@@ -164,7 +164,7 @@ Manually remove configuration files if desired:
 
 ```bash
 rm -rf ~/.config/dot
-rm -f ~/.dotrc
+rm -rf ~/.local/share/dot
 ```
 
 ## Troubleshooting
@@ -292,33 +292,45 @@ After installation, configure dot for your environment:
 
 ### Configuration File
 
-Create user configuration file:
+Configuration is grouped into sections. Generate a commented default with
+`dot config init`, or write the file directly:
 
 ```bash
 mkdir -p ~/.config/dot
 cat > ~/.config/dot/config.yaml << 'EOF'
-packageDir: ~/dotfiles
-targetDir: ~
-linkMode: relative
-folding: true
-verbosity: 0
+directories:
+  package: ~/dotfiles
+  target: ~
+
+symlinks:
+  mode: relative
+  folding: true
+
+output:
+  verbosity: 1
 
 ignore:
-  - "*.log"
-  - ".git"
-  - ".DS_Store"
-  - "*.swp"
+  use_defaults: true
+  patterns:
+    - "*.log"
+    - "*.swp"
 EOF
 ```
 
+Note that `ignore` is a section, not a list. A bare list under `ignore` causes
+every dot invocation to fail with a configuration decoding error. The default
+patterns (`.git`, `.DS_Store`, and others) are supplied by `use_defaults` and do
+not need to be repeated.
+
 ### Environment Variables
 
-Set environment variables for per-session configuration:
+Environment variables are named `DOT_` followed by the configuration key with
+dots replaced by underscores:
 
 ```bash
-export DOT_PACKAGE_DIR="$HOME/dotfiles"
-export DOT_TARGET_DIR="$HOME"
-export DOT_VERBOSITY=1
+export DOT_DIRECTORIES_PACKAGE="$HOME/dotfiles"
+export DOT_DIRECTORIES_TARGET="$HOME"
+export DOT_OUTPUT_VERBOSITY=1
 ```
 
 Add to shell configuration file (`.bashrc`, `.zshrc`) for persistence.
@@ -337,10 +349,12 @@ If configured correctly, this displays installation status without errors.
 
 ### Initial Setup
 
-Create dotfiles repository structure:
+Create the dotfiles repository structure. The package name determines the target
+subdirectory: package `dot-vim` targets `~/.vim/`, while package `vim` targets
+`~/vim/`. Name packages accordingly.
 
 ```bash
-mkdir -p ~/dotfiles/{vim,tmux,zsh}
+mkdir -p ~/dotfiles/{dot-vim,dot-tmux,dot-zsh}
 cd ~/dotfiles
 git init
 ```
@@ -351,7 +365,7 @@ Install packages from dotfiles repository:
 
 ```bash
 cd ~/dotfiles
-dot manage vim tmux zsh
+dot manage dot-vim dot-tmux dot-zsh
 ```
 
 ### Status Verification

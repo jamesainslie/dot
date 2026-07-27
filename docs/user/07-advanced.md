@@ -6,90 +6,91 @@ Deep dive into advanced dot features and capabilities.
 
 ### Pattern Types
 
-dot supports multiple pattern types for flexible file exclusion.
-
 #### Glob Patterns
 
-Standard glob syntax:
+Patterns are globs. Regular expressions are not supported.
 
 ```yaml
 ignore:
-  - "*.log"          # All .log files
-  - "*.tmp"          # All .tmp files
-  - "test_*"         # Files starting with test_
-  - "cache/"         # Directory named cache
-  - "**/*.bak"       # .bak files in any directory
+  patterns:
+    - "*.log"          # All .log files
+    - "*.tmp"          # All .tmp files
+    - "test_*"         # Files starting with test_
+    - "cache/"         # Directory named cache
+    - "**/*.bak"       # .bak files in any directory
 ```
 
-#### Regex Patterns
+#### Negation
 
-Regular expressions for complex matching:
+Prefix a pattern with `!` to re-include a file that an earlier pattern
+excluded. Patterns are evaluated in order and the last match wins.
 
 ```yaml
 ignore:
-  - "/^test.*\\.go$/"    # Go test files
-  - "/.*\\.swp$/"         # Vim swap files
-  - "/\\.#.*/"            # Emacs lock files
+  patterns:
+    - "*.log"
+    - "!important.log"
 ```
 
-### Pattern Precedence
+The `ignore.overrides` key is deprecated and has no effect; use `!pattern`.
+The equivalent command-line form is repeated `--ignore` flags.
 
-Patterns evaluated in order with override capability:
+### Path Matching
 
-```yaml
-ignore:
-  - "*.log"           # Ignore all logs
+Each pattern is fully anchored and tested twice: against the whole path, and
+against the basename alone. A bare name such as `.DS_Store` therefore matches
+at any depth.
 
-override:
-  - "important.log"   # But include this one
-```
+Patterns containing a path separator behave differently depending on the
+caller. Package scanning tests absolute paths, so a relative pattern such as
+`.ssh/id_*` matches neither form and does not exclude the file from `manage` or
+`adopt`. Several shipped defaults take this form (`.ssh/*.pem`, `.ssh/id_*`,
+`.ssh/*_rsa`, `.ssh/*_ecdsa`, `.ssh/*_ed25519`) and are consequently inert
+during scanning. Use a basename pattern such as `id_*` to exclude a file
+reliably.
 
-### Performance Optimization
+Doctor orphan detection maintains its own ignore set, built only from patterns
+recorded by `dot doctor ignore --pattern` and matched against target-relative
+paths. Separator patterns work there, and the default ignore patterns are not
+consulted at all.
 
-Pattern compilation and caching:
+### Performance
 
-- Patterns compiled once at startup
-- Cached for repeated evaluations
-- LRU eviction for memory efficiency
+Each pattern is converted to a regular expression and compiled once when the
+ignore set is built, then reused for every path evaluation.
 
 ## Directory Folding
 
-### Folding Algorithm
+Directory folding is not implemented. The planner emits one symlink per file
+in the package; there is no case in which a directory-level symlink is created
+for a managed package.
 
-Directory folding creates directory-level symlinks when all contents belong to single package.
-
-**Without folding**:
 ```
-~/.vim/colors/theme.vim -> ~/dotfiles/vim/dot-vim/colors/theme.vim
-~/.vim/autoload/plugin.vim -> ~/dotfiles/vim/dot-vim/autoload/plugin.vim
-~/.vim/ftplugin/go.vim -> ~/dotfiles/vim/dot-vim/ftplugin/go.vim
-```
-
-**With folding**:
-```
-~/.vim/ -> ~/dotfiles/vim/dot-vim/
+~/.vim/colors/theme.vim -> ~/dotfiles/dot-vim/colors/theme.vim
+~/.vim/autoload/plugin.vim -> ~/dotfiles/dot-vim/autoload/plugin.vim
+~/.vim/ftplugin/go.vim -> ~/dotfiles/dot-vim/ftplugin/go.vim
 ```
 
-### Folding Rules
+The `symlinks.folding` configuration key is accepted and appears in
+`dot config list`, but nothing reads it, so setting it has no effect. There is
+no `--no-folding` flag and no per-package metadata file that controls folding.
 
-1. **Exclusive ownership**: Directory only folded if all files from single package
-2. **Mixed ownership**: Falls back to per-file links if multiple packages
-3. **Automatic unfolding**: Unfolds when new package adds files to directory
-4. **Manual control**: Disable with `--no-folding` flag
+Adopted directories are the one place a single directory-level symlink appears,
+because `dot adopt` on a directory moves its contents to the package root and
+links the original path to that root. That structure is a property of adoption,
+not of folding.
 
-### Controlling Folding
+## Link Mode
 
-```bash
-# Disable folding globally
-dot --no-folding manage vim
+All symlinks are absolute:
 
-# Disable for specific package
-# In package/.dotmeta:
-folding: false
-
-# Force per-file granularity
-dot --no-folding manage all-packages
 ```
+/home/user/.vim/.vimrc -> /home/user/dotfiles/dot-vim/dot-vimrc
+```
+
+The `symlinks.mode` configuration key accepts `relative` and `absolute` but is
+not connected to the planner, so it has no effect. Moving the package directory
+breaks every link; recreate them with `dot remanage`.
 
 ## Dry-Run Mode
 
@@ -99,9 +100,9 @@ Preview operations before applying:
 
 ```bash
 # Preview any command
-dot --dry-run manage vim
-dot --dry-run unmanage zsh
-dot --dry-run remanage tmux
+dot --dry-run manage dot-vim
+dot --dry-run unmanage dot-zsh
+dot --dry-run remanage dot-tmux
 ```
 
 ### Output
@@ -112,137 +113,128 @@ Detailed plan showing operations:
 Dry run mode - no changes will be applied
 
 Plan:
-  + Create directory: ~/.vim
-  + Create symlink: ~/.vimrc -> ~/dotfiles/vim/dot-vimrc
-  - Remove symlink: ~/.old-config
-  ~ Update symlink: ~/.zshrc
-  
+  + Create directory: /home/user/.vim
+  + Create directory: /home/user/.vim/colors
+  + Create symlink: /home/user/.vim/colors/theme.vim -> /home/user/dotfiles/dot-vim/colors/theme.vim
+  + Create symlink: /home/user/.vim/.vimrc -> /home/user/dotfiles/dot-vim/dot-vimrc
+
 Summary:
-  Directories: 1
-  Symlinks created: 1
-  Symlinks removed: 1
-  Symlinks updated: 1
+  Directories: 2
+  Symlinks: 2
   Conflicts: 0
 ```
+
+The only operation verbs are `Create directory`, `Create symlink`,
+`Move file`, `Backup file`, `Delete directory`, and `Delete symlink`. There is
+no update verb; a changed link is expressed as a delete followed by a create.
+Zero-valued summary rows are omitted.
 
 ### Conflict Detection
 
 Dry-run detects conflicts without modification:
 
 ```bash
-dot --dry-run manage vim
+dot --dry-run manage dot-vim
 # Output shows conflicts without creating any symlinks
 ```
 
 ## Resolution Policies
 
-### Available Policies
+Conflict policy is read from the configuration file. There is no
+command-line flag for it.
+
+```yaml
+symlinks:
+  overwrite: false  # replace conflicting files
+  backup: false     # move conflicting files to the backup directory
+```
+
+Precedence is `overwrite`, then `backup`, then fail.
 
 #### Fail Policy (Default)
 
-Stop on first conflict:
-
-```bash
-dot manage vim
-# Stops and reports conflict
-```
-
-Safest option, requires manual resolution.
+Stops on the first conflict and reports it. Safest option; requires manual
+resolution.
 
 #### Backup Policy
 
-Move conflicting files to backup:
+Moves the conflicting file into the backup directory, then creates the symlink.
+Enable with `symlinks.backup: true`.
 
-```bash
-dot --on-conflict backup manage vim
-# ~/.vimrc moved to ~/.vimrc.bak
-```
-
-Preserves existing files for comparison.
+Backups are written to `<target>/.dot-backup` (override with `--backup-dir`) as
+`<filename>.<hash>.<timestamp>`, for example
+`.vimrc.3f9a1c07.20260727-121603`. The hash is derived from the full source
+path, so files sharing a basename across directories never collide. The backup
+directory is created on demand. The `symlinks.backup_suffix` setting is not
+used by this policy.
 
 #### Overwrite Policy
 
-Replace conflicting files:
-
-```bash
-dot --on-conflict overwrite manage vim
-# ~/.vimrc deleted, symlink created
-```
-
-Aggressive, use with caution.
+Deletes the conflicting file and creates the symlink. Enable with
+`symlinks.overwrite: true`. This takes precedence over `symlinks.backup`.
 
 #### Skip Policy
 
-Continue past conflicts:
+The planner implements a skip policy, but it is not reachable from the CLI or
+the configuration file.
 
-```bash
-dot --on-conflict skip manage vim
-# Skips ~/.vimrc, creates other links
-```
-
-Useful for partial installation.
-
-### Per-Package Policies
-
-Configure different policies per package:
-
-```yaml
-# In config.yaml
-packages:
-  vim:
-    onConflict: backup
-  
-  zsh:
-    onConflict: overwrite
-```
+Policies cannot be configured per package. The configuration file has no
+per-package section.
 
 ## State Management
 
 ### Manifest Structure
 
-`.dot-manifest.json` in target directory:
+The manifest is `.dot-manifest.json` in the manifest directory, by default
+`~/.local/share/dot/manifest/`. A `.dot-manifest.lock` file sits beside it. The
+manifest falls back to `<target>/.dot-manifest.json` only when
+`directories.manifest` is empty.
 
 ```json
 {
   "version": "1.0",
-  "updated_at": "2025-10-07T10:30:00Z",
+  "updated_at": "2026-07-27T12:25:00Z",
   "packages": {
-    "vim": {
-      "name": "vim",
-      "installed_at": "2025-10-07T10:30:00Z",
-      "link_count": 3,
-      "links": ["~/.vimrc", "~/.vim/"]
+    "dot-vim": {
+      "name": "dot-vim",
+      "installed_at": "2026-07-27T12:25:00Z",
+      "link_count": 2,
+      "links": [".vim/.vimrc", ".vim/colors/theme.vim"],
+      "source": "managed",
+      "target_dir": "/home/user",
+      "package_dir": "/home/user/dotfiles/dot-vim"
     }
   },
   "hashes": {
-    "vim": "a3f2c8b4d9e1f0..."
+    "dot-vim": "a3f2c8b4d9e1f0..."
   }
 }
 ```
 
 ### Fast Status Queries
 
-Manifest enables instant status without filesystem scanning:
+The manifest allows status queries without walking the filesystem:
 
 ```bash
-# Fast - reads manifest only
 dot status
-
-# Compare to full scan
-dot status --full-scan
 ```
+
+Each listed package is still stat-checked for link health, which is why
+`status` reports an `is_healthy` field. The full orphan scan belongs to
+`doctor`.
 
 ### State Validation
 
 Check manifest consistency:
 
 ```bash
-# Validate manifest
 dot doctor
-
-# Repair if corrupted
-dot doctor --repair
 ```
+
+There is no repair flag. To rebuild state, remanage the affected packages. If
+the manifest itself is unreadable, remove
+`~/.local/share/dot/manifest/.dot-manifest.json` and reinstall the packages
+with `dot manage`.
 
 ## Incremental Operations
 
@@ -261,51 +253,41 @@ Incremental operations skip unchanged packages:
 
 ```bash
 # Only processes changed packages
-dot remanage vim zsh tmux git
-
-# Output shows what was skipped:
-# vim: changed (processed)
-# zsh: unchanged (skipped)
-# tmux: unchanged (skipped)
-# git: changed (processed)
+dot remanage dot-vim dot-zsh dot-tmux dot-git
 ```
+
+The command reports a total only:
+
+```
+✓ Remanaged 4 packages
+```
+
+There are no per-package changed or skipped lines. Use `-vv` to see the
+detection decisions in the debug log.
 
 ### Forcing Full Processing
 
-Disable incremental detection:
+There is no flag to disable incremental detection. To force a full reinstall,
+unmanage and manage the packages:
 
 ```bash
-# Process all packages regardless of changes
-dot remanage --no-incremental vim zsh tmux
+dot unmanage dot-vim dot-zsh dot-tmux
+dot manage dot-vim dot-zsh dot-tmux
 ```
 
 ## Parallel Execution
 
 ### Concurrent Operations
 
-dot executes independent operations concurrently:
+dot executes independent operations concurrently within each dependency batch:
 
 ```bash
-# Processes multiple packages in parallel
-dot manage vim zsh tmux git neovim
+# Operations across these packages are batched and run in parallel
+dot manage dot-vim dot-zsh dot-tmux dot-git dot-nvim
 ```
 
-### Concurrency Control
-
-Configure parallelism:
-
-```yaml
-# Limit concurrent operations
-concurrency: 4
-
-# Auto-detect (uses CPU cores)
-concurrency: 0
-```
-
-Or via environment:
-```bash
-export DOT_CONCURRENCY=4
-```
+Parallelism is fixed at the CPU count. It is not configurable from the command
+line, the configuration file, or the environment.
 
 ### Dependency-Safe Batching
 
@@ -315,42 +297,45 @@ Operations grouped by dependencies:
 - Batch 2: Operations depending on batch 1 (parallel)
 - Batch 3: Operations depending on batch 2 (parallel)
 
+### Rollback and Interruption
+
+When an operation in a plan fails, dot rolls back the operations that already
+succeeded. Rollback runs on a context detached from cancellation, so a single
+interrupt still restores state; a second interrupt forces exit 130 and can
+leave rollback incomplete.
+
+Some operations cannot be reversed. Removing a directory tree is one; these
+report `cannot roll back operation on <path>` and the failure summary counts
+them as "operations could not be rolled back". Deletion is also verified
+before it happens: dot refuses to remove a regular file or a symlink that now
+points elsewhere, reporting `refusing to delete <path>: <reason>`.
+
 ## Performance Tuning
 
 ### Optimization Strategies
 
-#### 1. Enable Folding
-
-Directory folding reduces symlink count:
-
-```yaml
-folding: true
-```
-
-#### 2. Use Incremental Updates
+#### 1. Use Incremental Updates
 
 Remanage skips unchanged packages:
 
 ```bash
-dot remanage vim zsh tmux  # Fast
+dot remanage dot-vim dot-zsh dot-tmux  # Fast
 ```
 
-#### 3. Tune Concurrency
+#### 2. Limit Doctor Scanning
 
-Match hardware capabilities:
+`dot doctor --scan-mode=off` skips orphan detection entirely; `scoped` (the
+default) restricts the scan to directories containing managed links.
 
-```yaml
-concurrency: 8  # For 8-core CPU
-```
+#### 3. Optimize Ignore Patterns
 
-#### 4. Optimize Ignore Patterns
-
-Fewer patterns = faster scanning:
+Fewer patterns mean faster scanning:
 
 ```yaml
 ignore:
-  - ".git"       # Essential only
-  - "node_modules"
+  patterns:
+    - ".git"       # Essential only
+    - "node_modules"
 ```
 
 ### Performance Monitoring
@@ -359,11 +344,14 @@ Profile operations:
 
 ```bash
 # Time operations
-time dot manage vim
+time dot manage dot-vim
 
 # Verbose timing
-dot -vv manage vim
-# Shows timing for each stage
+dot -vv manage dot-vim
+
+# CPU and heap profiles
+dot --cpu-profile cpu.pprof manage dot-vim
+dot --mem-profile mem.pprof manage dot-vim
 ```
 
 ## Logging and Output
@@ -374,16 +362,16 @@ Control detail level:
 
 ```bash
 # Level 0: Errors only
-dot manage vim
+dot manage dot-vim
 
 # Level 1: Info
-dot -v manage vim
+dot -v manage dot-vim
 
 # Level 2: Debug
-dot -vv manage vim
+dot -vv manage dot-vim
 
 # Level 3: Trace
-dot -vvv manage vim
+dot -vvv manage dot-vim
 ```
 
 ### Structured Logging
@@ -392,10 +380,10 @@ JSON output for automation:
 
 ```bash
 # JSON logs
-dot --log-json manage vim
+dot --log-json manage dot-vim
 
 # Parse with jq
-dot --log-json manage vim 2>&1 | jq '.level'
+dot --log-json manage dot-vim 2>&1 | jq '.level'
 ```
 
 ### Quiet Mode
@@ -404,15 +392,18 @@ Suppress all output except errors:
 
 ```bash
 # Script-friendly
-dot --quiet manage vim
+dot --quiet manage dot-vim
 result=$?
+
+# Batch mode additionally disables interactive prompts
+dot --batch manage dot-vim
 ```
 
 ## Output Formats
 
 ### Multiple Format Support
 
-Commands support various output formats:
+`status`, `list`, and `doctor` support several output formats:
 
 ```bash
 # Human-readable text
@@ -426,6 +417,15 @@ dot status --format yaml
 
 # Table for structured data
 dot status --format table
+```
+
+For `doctor`, `--format table` renders identically to `--format text`.
+
+`status` and `list` emit a JSON object with a `packages` array, not a bare
+array. Address it as `.packages[]`:
+
+```bash
+dot list --format json | jq -r '.packages[].name'
 ```
 
 ### Format Selection

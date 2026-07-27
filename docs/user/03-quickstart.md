@@ -152,7 +152,7 @@ dot manage dot-vim
 
 Expected output:
 ```
-Successfully managed 1 package(s)
+✓ Managed 1 package
 ```
 
 Verify installation:
@@ -180,7 +180,7 @@ dot manage dot-vim dot-zsh
 
 Expected output:
 ```
-Successfully managed 2 package(s)
+✓ Managed 2 packages
 ```
 
 ## Step 7: Check Status
@@ -193,16 +193,23 @@ dot status
 
 Expected output:
 ```
-Package: dot-vim
-  Status: installed
+dot-vim
   Links: 2
-  Installed: 2025-10-08 10:30:00
+  Installed: just now
+  Files:
+    .vim/colors/custom.vim
+    .vim/vimrc
 
-Package: dot-zsh
-  Status: installed
+dot-zsh
   Links: 2
-  Installed: 2025-10-08 10:31:00
+  Installed: just now
+  Files:
+    .zsh/zshenv
+    .zsh/zshrc
 ```
+
+Installation times are rendered as intervals relative to now, not absolute
+timestamps.
 
 Status for specific package:
 
@@ -234,12 +241,15 @@ dot adopt ~/.gitconfig
 
 Expected output:
 ```
-Successfully adopted 1 file(s) into package dot-gitconfig
+✓ Adopted /home/user/.gitconfig into dot-gitconfig
 ```
 
 ### Glob Expansion: Multiple Related Files
 
-Adopt multiple files with a common prefix using shell globs:
+Shell globs are expanded by the shell before dot sees them. With two or more
+arguments, the first argument is the package name and the remaining arguments are
+the files to adopt. The package name must therefore be given explicitly whenever
+a glob may match more than one file:
 
 ```bash
 # Create sample git-related files
@@ -253,27 +263,23 @@ cat > ~/.gitignore << 'EOF'
 .DS_Store
 EOF
 
-cat > ~/.git-credentials << 'EOF'
-# Git credentials
-EOF
-
-# Adopt all .git* files into a single package
-dot adopt .git*
+# Adopt all .git* files into a package named dot-git
+dot adopt dot-git .git*
 ```
-
-The shell expands `.git*` to `.gitconfig .gitignore .git-credentials`, and dot:
-1. Detects multiple files with common prefix "git"
-2. Creates a single package named `dot-git`
-3. Adopts all files into that package
 
 Expected output:
 ```
-Successfully adopted 3 file(s) into package dot-git
+✓ Adopted 2 files into dot-git
 ```
+
+**Warning**: Omitting the package name causes the first expanded filename to be
+used as the package name, and that file is then not adopted. `dot adopt .git*`
+creates a package literally named `.git-credentials` and adopts only the
+remaining matches.
 
 ### Explicit Package Name
 
-Specify the package name explicitly:
+The same rule applies when adopting an explicit list of files:
 
 ```bash
 # Adopt with explicit package name
@@ -283,13 +289,13 @@ dot adopt my-git ~/.gitconfig ~/.gitignore
 Verification:
 
 ```bash
-# Check git package was created
+# Check the package was created; names are translated inside the package
 ls ~/dotfiles/dot-git/
-# Output: dot-gitconfig, dot-gitignore, dot-git-credentials (these are the translated filenames within the package)
+# Output: dot-gitconfig  dot-gitignore
 
 # Verify symlink
 ls -la ~/.gitconfig
-# Output: lrwxr-xr-x ... .gitconfig -> /home/user/dotfiles/dot-git/dot-gitconfig
+# Output: lrwxrwxrwx ... .gitconfig -> /home/user/dotfiles/dot-git/dot-gitconfig
 
 # Content preserved
 cat ~/.gitconfig
@@ -314,7 +320,14 @@ dot remanage dot-vim
 
 Expected output:
 ```
-Successfully managed 1 package(s)
+✓ Remanaged 1 package
+```
+
+If no package content changed, dot reports that no changes were detected and
+does nothing:
+
+```
+ℹ No changes detected for 1 package
 ```
 
 Changes are immediately reflected:
@@ -406,11 +419,16 @@ dot list
 
 Expected output:
 ```
-NAME      LINKS  INSTALLED
-dot-vim   2      2025-10-08 10:30:00
-dot-zsh   2      2025-10-08 10:31:00
-dot-git   1      2025-10-08 10:35:00
+Packages: 3 packages in /home/user/dotfiles
+
+✓  dot-git  (2 links)  installed just now
+✓  dot-vim  (2 links)  installed 5 minutes ago
+✓  dot-zsh  (2 links)  installed 5 minutes ago
+
+3 healthy
 ```
+
+A column-oriented table is available with `dot list --format table`.
 
 Sort options:
 
@@ -432,16 +450,37 @@ dot doctor
 
 Expected output (healthy):
 ```
-Running health checks...
-
-✓ All symlinks valid
-✓ No broken links
-✓ No orphaned links
-✓ Manifest consistent
-✓ No permission issues
-
-Health check passed: 0 issues found
+✓ Healthy
+  • 4 total links (4 managed, 0 broken, 0 orphaned)
+  No issues found
 ```
+
+When problems are found, `dot doctor --detailed` reports each one with its path
+and a suggested remedy:
+
+```
+✗ Errors detected
+============================================================
+
+Statistics:
+  Total links: 2
+  Managed links: 2
+  Broken links: 1
+  Orphaned links: 0
+
+✗ Errors (1):
+
+  ✗ [broken_link] Link does not exist
+     Path: .vim/.vimrc
+     Suggestion: Run 'dot remanage dot-vim' to restore link
+
+------------------------------------------------------------
+Summary: 1 total issues
+```
+
+`dot doctor` exits 0 when healthy, 1 when only warnings were found, and 2 when
+errors were found. All other commands exit 0 on success and 1 on failure, or 130
+when interrupted a second time.
 
 ## Step 13: Unmanage Package
 
@@ -457,20 +496,24 @@ dot unmanage dot-git
 
 Expected output:
 ```
-Successfully unmanaged 1 package(s)
+✓ Unmanaged and restored 1 package
 ```
 
 Verification:
 
 ```bash
-# Directory is gone
-ls ~/.git/gitconfig
-# Output: ls: ~/.git/gitconfig: No such file or directory
+# The symlink has been replaced by the restored regular file
+ls -la ~/.gitconfig
+# Output: -rw-r--r-- ... .gitconfig
 
-# Package directory removed
+# The package directory is retained
 ls ~/dotfiles/dot-git
-# Output: ls: ~/dotfiles/dot-git: No such file or directory
+# Output: dot-gitconfig  dot-gitignore
 ```
+
+Adopted packages are restored to their original locations by default. Use
+`--no-restore` to leave the files in the package directory, or `--purge` to
+delete the package directory instead of restoring.
 
 ## Step 14: Clean Up (Tutorial Completion)
 
@@ -575,7 +618,7 @@ cd ~/dotfiles
 git init
 
 # Add packages
-git add vim/ zsh/ git/
+git add dot-vim/ dot-zsh/ dot-git/
 
 # Commit
 git commit -m "feat(dotfiles): add initial configurations"
@@ -595,7 +638,7 @@ git clone https://github.com/username/dotfiles.git ~/dotfiles
 
 # Install packages
 cd ~/dotfiles
-dot manage vim zsh git
+dot manage dot-vim dot-zsh dot-git
 ```
 
 ## Troubleshooting
@@ -606,20 +649,26 @@ If dot reports conflicts:
 
 ```bash
 # Check what conflicts
-dot manage vim
-# Output: Error: conflict at ~/.vimrc: file exists
+dot manage dot-vim
+# Output: Error: conflict at ~/.vim/.vimrc: file exists
 
 # Options:
-# 1. Backup conflicting file
-dot --on-conflict backup manage vim
+# 1. Enable backups in the configuration, then retry. Conflicting files are
+#    moved to <target>/.dot-backup before the symlink is created.
+dot config set symlinks.backup true
+dot manage dot-vim
 
 # 2. Adopt conflicting file
-dot adopt vim ~/.vimrc
+dot adopt dot-vim ~/.vim/.vimrc
 
 # 3. Manually resolve
-rm ~/.vimrc
-dot manage vim
+rm ~/.vim/.vimrc
+dot manage dot-vim
 ```
+
+There is no `--on-conflict` flag. Conflict behaviour is controlled by the
+`symlinks.overwrite` and `symlinks.backup` configuration keys, and the backup
+directory by `--backup-dir` or `symlinks.backup_dir`.
 
 ### Broken Symlinks
 
@@ -627,11 +676,11 @@ If symlinks break after moving dotfiles:
 
 ```bash
 # Unmanage old links
-dot unmanage vim
+dot unmanage dot-vim
 
 # Remanage with new location
 cd /new/path/to/dotfiles
-dot manage vim
+dot manage dot-vim
 ```
 
 ### Permission Errors
@@ -640,10 +689,10 @@ If operations fail with permission errors:
 
 ```bash
 # Check file permissions
-ls -la ~/dotfiles/vim/
+ls -la ~/dotfiles/dot-vim/
 
 # Fix permissions if needed
-chmod -R u+rw ~/dotfiles/vim/
+chmod -R u+rw ~/dotfiles/dot-vim/
 ```
 
 See [Troubleshooting Guide](08-troubleshooting.md) for more issues and solutions.

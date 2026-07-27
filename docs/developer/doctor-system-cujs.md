@@ -186,7 +186,7 @@ Blake runs `dot doctor` as part of morning routine to ensure everything is healt
 **Current Doctor Gaps**:
 - Orphan scanning is slow and noisy
 - No quick health check mode (skip expensive scans)
-- Cannot suppress known non-issues
+- Cannot suppress known non-issues. RESOLVED: implemented end to end in `pkg/dot/doctor_ignore.go:15-123` and `cmd/dot/doctor_ignore.go`, exposed as `dot doctor ignore|unignore|ignores`
 - No trend analysis (new issues vs known issues)
 
 **Diagnostic Needs**:
@@ -407,7 +407,7 @@ System crashed during write operation. Some symlinks partially created or corrup
 4. **Mixed states**: Some packages corrupted, others fine
 
 **Current Doctor Gaps**:
-- Circular symlink detection exists but not highlighted
+- No circular symlink detection (`IssueCircular` is declared at `pkg/dot/diagnostics.go:103-104` and mapped at `pkg/dot/doctor_service.go:222-223`, but no check ever emits it)
 - Cannot detect manifest corruption
 - Cannot recommend manifest rebuild strategy
 - Cannot assess which packages are affected
@@ -749,7 +749,7 @@ Drew deploys dotfiles to 50 developer machines via configuration management.
 
 **Current Doctor Gaps**:
 - No batch health reporting
-- No JSON/structured output for parsing
+- No JSON/structured output for parsing. RESOLVED: `dot doctor --format json|yaml` ships (`cmd/dot/doctor.go:92-98`; marshallers at `pkg/dot/diagnostics.go:37-44,81-89,129-137`)
 - No deployment verification mode
 - Cannot assess fleet health
 
@@ -894,7 +894,7 @@ Casey has 30 packages with 500+ total managed files. Doctor takes minutes to run
 3. **Orphan Scanning**: Slow and generates noise
 4. **Pattern Matching**: Doesn't handle all symlink target patterns
 5. **Error Messages**: Not actionable
-6. **Exit Codes**: Not suitable for scripting
+6. **Exit Codes**: Not suitable for scripting. RESOLVED: 0/1/2 exit codes ship and are tested (`cmd/dot/doctor.go:20-31`, `cmd/dot/doctor_exitcode_test.go`)
 
 ---
 

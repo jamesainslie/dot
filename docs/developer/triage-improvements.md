@@ -1,22 +1,30 @@
 # Triage Improvements
 
-## Current Issues
+> **Status: historical plan record.** This document is a proposal written before
+> the triage work landed, not a description of current behavior. Items below are
+> annotated with their implementing `file:line` where they have since shipped.
+> Last verified against code 2026-07-27.
+
+## Original Issues (as of the plan date)
 
 ### Critical Bugs
-1. **Line 365 bug**: Apply-to-all logic checks `choice == "a" && strings.Contains(choice, "A")` which is always false
-2. **Pattern duplication**: No deduplication when adding patterns
+1. **Line 365 bug**: Apply-to-all logic checks `choice == "a" && strings.Contains(choice, "A")` which is always false. FIXED at `pkg/dot/doctor_triage.go:534-541`, matching the snippet in section 1.1 below
+2. **Pattern duplication**: No deduplication when adding patterns. FIXED: `addIgnorePatternIfNew` at `pkg/dot/doctor_triage.go:132`
 
 ### UX Issues
-1. Uses `fmt.Scanln()` instead of existing `prompt` package
+1. Uses `fmt.Scanln()` instead of existing `prompt` package. STILL OUTSTANDING: `fmt.Scanln` remains at `pkg/dot/doctor_triage.go` lines 170, 323, 403, 448, 530, 605, 696
 2. No color in triage output
-3. No confirmation summary before saving changes
-4. Already-ignored items shown again in triage
-5. No way to review/manage existing ignored items (resolved: `dot doctor ignore`, `dot doctor unignore`, `dot doctor ignores`)
+3. No confirmation summary before saving changes. FIXED: `confirmTriageChanges` at `pkg/dot/doctor_triage.go:153`, gated at `:117`
+4. Already-ignored items shown again in triage. FIXED: `filterAlreadyIgnored` at `pkg/dot/doctor_triage.go:193`, called at `:69`
+5. No way to review/manage existing ignored items. FIXED: `dot doctor ignore`, `dot doctor unignore`, `dot doctor ignores`
 6. Adoption marked but never executed (orphaned feature)
 
 ### Missing Features
-1. No dry-run mode (`--dry-run` flag ignored)
-2. No batch mode support (`--batch`, `--yes` flags)
+1. Dry-run: implemented at the service layer (`TriageOptions.DryRun`, honoured at
+   pkg/dot/doctor_triage.go:112) but not reachable from the CLI. cmd/dot/doctor.go:357
+   never sets it and no `--dry-run` flag is registered at cmd/dot/doctor.go:487.
+2. Batch mode: same status. `TriageOptions.AutoConfirm` exists and is honoured at
+   pkg/dot/doctor_triage.go:117, but no `--yes`/`--batch` flag is wired in.
 3. Doesn't respect `--quiet` or `--verbose`
 4. No undo functionality
 5. No progress indication for large operations
@@ -82,15 +90,19 @@ func (s *DoctorService) confirmTriageChanges(result TriageResult) (bool, error) 
 ### Phase 2: Enhanced Features
 
 #### 2.1 Triage Options Enhancement
+
+Partially shipped. The current struct (`pkg/dot/doctor_triage.go:15-20`) is:
+
 ```go
 type TriageOptions struct {
-    AutoIgnoreHighConfidence bool
-    DryRun                  bool     // Show what would change
-    Batch                   bool     // Auto-confirm
-    ShowIgnored             bool     // Show already-ignored items
-    RemoveIgnored           bool     // Allow removing ignored items
+    AutoIgnoreHighConfidence bool // Automatically ignore high confidence categories
+    DryRun                   bool // Show what would change without modifying
+    AutoConfirm              bool // Skip confirmation prompts (--yes flag)
 }
 ```
+
+`ShowIgnored` and `RemoveIgnored` remain unimplemented, and only
+`AutoIgnoreHighConfidence` is reachable from the CLI (`cmd/dot/doctor.go:357`).
 
 #### 2.2 Manage Existing Ignores
 ```go
@@ -156,12 +168,12 @@ dot doctor --triage --show-diff
 
 ## Implementation Priority
 
-1. **HIGH**: Fix apply-to-all bug (line 365)
-2. **HIGH**: Filter already-ignored items
-3. **HIGH**: Add confirmation summary
+1. **DONE**: Fix apply-to-all bug (`pkg/dot/doctor_triage.go:534`)
+2. **DONE**: Filter already-ignored items (`pkg/dot/doctor_triage.go:193`)
+3. **DONE**: Add confirmation summary (`pkg/dot/doctor_triage.go:153`)
 4. **MEDIUM**: Use prompt package consistently
-5. **MEDIUM**: Add dry-run mode
-6. **MEDIUM**: Deduplicate patterns
+5. **MEDIUM**: Wire the existing `TriageOptions.DryRun` and `AutoConfirm` to CLI flags
+6. **DONE**: Deduplicate patterns (`pkg/dot/doctor_triage.go:132`)
 7. **LOW**: Color output
 8. **DONE**: Manage existing ignores command (shipped as `dot doctor ignore` / `unignore` / `ignores`)
 9. **FUTURE**: TUI interface

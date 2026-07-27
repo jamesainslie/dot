@@ -27,7 +27,7 @@ Specify package directory (source directory containing packages).
 **Default**: Current directory  
 **Example**:
 ```bash
-dot --dir ~/dotfiles manage vim
+dot --dir ~/dotfiles manage dot-vim
 dot -d /opt/configs status
 ```
 
@@ -38,8 +38,8 @@ Specify target directory (destination for symlinks).
 **Default**: `$HOME`  
 **Example**:
 ```bash
-dot --target ~ manage vim
-dot -t /home/user unmanage zsh
+dot --target ~ manage dot-vim
+dot -t /home/user unmanage dot-zsh
 ```
 
 ### Execution Mode Options
@@ -50,19 +50,19 @@ Preview operations without applying changes.
 
 **Example**:
 ```bash
-dot --dry-run manage vim
-dot -n unmanage zsh
+dot --dry-run manage dot-vim
+dot -n unmanage dot-zsh
 ```
 
 Shows planned operations with no filesystem modifications.
 
-#### `--quiet`
+#### `-q, --quiet`
 
 Suppress non-error output.
 
 **Example**:
 ```bash
-dot --quiet manage vim
+dot --quiet manage dot-vim
 ```
 
 Only errors printed. Useful for scripting.
@@ -81,9 +81,9 @@ Increase verbosity (repeatable).
 
 **Example**:
 ```bash
-dot -v manage vim      # Info level
+dot -v manage dot-vim  # Info level
 dot -vv status         # Debug level
-dot -vvv remanage zsh  # Trace level
+dot -vvv remanage dot-zsh  # Trace level
 ```
 
 ### Output Format Options
@@ -94,79 +94,68 @@ Output logs in JSON format.
 
 **Example**:
 ```bash
-dot --log-json manage vim
+dot --log-json manage dot-vim
 ```
 
 JSON output for log aggregation and parsing.
 
-#### `--color WHEN`
+#### `--no-color`
 
-Control color output.
-
-**Values**: `auto`, `always`, `never`  
-**Default**: `auto`  
-**Example**:
-```bash
-dot --color always status
-dot --color never list
-```
-
-### Link Options
-
-#### `--absolute`
-
-Create absolute symlinks instead of relative.
+Disable color output globally.
 
 **Example**:
 ```bash
-dot --absolute manage vim
+dot --no-color manage dot-vim
 ```
 
-#### `--no-folding`
-
-Disable directory folding optimization.
-
-**Example**:
-```bash
-dot --no-folding manage vim
-```
-
-Creates per-file links instead of directory links.
+`status`, `list`, and `doctor` additionally accept a per-command
+`--color WHEN` flag (`auto`, `always`, `never`; default `auto`). `--color` is
+not accepted by other commands.
 
 ### Ignore Options
 
 #### `--ignore PATTERN`
 
-Add ignore pattern (repeatable).
+Add ignore pattern (repeatable). Patterns are globs. Prefix a pattern with `!`
+to re-include a file that an earlier pattern excluded.
 
 **Example**:
 ```bash
-dot --ignore "*.log" manage vim
-dot --ignore "*.log" --ignore "*.tmp" manage zsh
+dot --ignore "*.log" manage dot-vim
+dot --ignore "*.log" --ignore "!important.log" manage dot-zsh
 ```
 
-#### `--override PATTERN`
+### Other Global Options
 
-Force include pattern despite ignore rules (repeatable).
+- `--backup-dir PATH`: Directory for conflict backups; default `<target>/.dot-backup`
+- `--batch`: Non-interactive mode for scripting; implies `--quiet`
+- `--max-file-size SIZE`: Skip files larger than this (e.g. `100MB`); `0` or empty means no limit
+- `--no-defaults`: Disable the built-in ignore patterns
+- `--no-dotignore`: Ignore per-package `.dotignore` files
+- `--cpu-profile FILE`, `--mem-profile FILE`, `--pprof ADDR`: Diagnostics
 
-**Example**:
-```bash
-dot --override ".gitignore" manage git
+### Conflict Resolution
+
+There is no conflict-resolution flag. The policy is read from the
+configuration file:
+
+```yaml
+symlinks:
+  overwrite: false  # replace conflicting files
+  backup: false     # move conflicting files to the backup directory
 ```
 
-### Conflict Resolution Options
+Precedence is `overwrite`, then `backup`, then fail (the default). The `skip`
+policy exists in the planner but is not reachable from the CLI or the
+configuration file.
 
-#### `--on-conflict POLICY`
-
-Set conflict resolution policy.
-
-**Values**: `fail`, `backup`, `overwrite`, `skip`  
-**Default**: `fail`  
-**Example**:
-```bash
-dot --on-conflict backup manage vim
-dot --on-conflict skip manage zsh
-```
+When the backup policy applies, the conflicting file is moved to
+`<target>/.dot-backup` (override with `--backup-dir`) under the name
+`<filename>.<hash>.<timestamp>`, for example
+`.vimrc.3f9a1c07.20260727-121603`. The hash is derived from the full source
+path, so files sharing a basename across directories never collide. The backup
+directory is created on demand. The `symlinks.backup_suffix` setting is not
+used by the backup policy.
 
 ## Package Management Commands
 
@@ -427,21 +416,38 @@ dot manage [options] PACKAGE [PACKAGE...]
 
 **Options**: All global options
 
+**Path Mapping**:
+
+The package name becomes a subdirectory of the target. A name beginning with
+`dot-` is translated to a leading dot; a plain name is kept verbatim.
+
+| Package | Target |
+|---------|--------|
+| `dot-ssh/config` | `~/.ssh/config` |
+| `vim/dot-vimrc` | `~/vim/.vimrc` |
+| `dot-vim/dot-vimrc` | `~/.vim/.vimrc` |
+| `scripts/hello.sh` | `~/scripts/hello.sh` |
+
+To place files directly in the target root (the pre-0.4 layout), set
+`dotfile.package_name_mapping: false` in the configuration file. Package name
+mapping is enabled by default.
+
+Symlinks are always absolute. The `symlinks.mode` configuration key is
+accepted but is not connected to the planner, so it has no effect.
+
 **Examples**:
 ```bash
 # Single package
-dot manage vim
+dot manage dot-vim
 
 # Multiple packages
-dot manage vim zsh tmux git
+dot manage dot-vim dot-zsh dot-tmux dot-git
 
-# With options
-dot --no-folding manage vim
-dot --absolute manage configs
+# Preview
 dot --dry-run manage test-package
 
 # Different directories
-dot --dir ~/dotfiles --target ~ manage vim
+dot --dir ~/dotfiles --target ~ manage dot-vim
 ```
 
 **Behavior**:
@@ -452,12 +458,34 @@ dot --dir ~/dotfiles --target ~ manage vim
 5. Creates symlinks with dependency ordering
 6. Updates manifest
 
+**Example Output**:
+```
+✓ Managed 2 packages
+```
+
+In `--dry-run` mode the plan is rendered instead of executed:
+
+```
+Dry run mode - no changes will be applied
+
+Plan:
+  + Create directory: /home/user/.vim
+  + Create directory: /home/user/.vim/colors
+  + Create symlink: /home/user/.vim/colors/theme.vim -> /home/user/dotfiles/dot-vim/colors/theme.vim
+  + Create symlink: /home/user/.vim/.vimrc -> /home/user/dotfiles/dot-vim/dot-vimrc
+
+Summary:
+  Directories: 2
+  Symlinks: 2
+  Conflicts: 0
+```
+
+When a package is already installed and unchanged, the command reports that
+there is nothing to do and exits successfully.
+
 **Exit Codes**:
 - `0`: Success
 - `1`: Error during operation
-- `2`: Invalid arguments
-- `3`: Conflicts detected (with fail policy)
-- `4`: Permission denied
 
 ### unmanage
 
@@ -483,13 +511,13 @@ dot unmanage --all [options]
 **Examples**:
 ```bash
 # Remove managed package (removes links only)
-dot unmanage vim
+dot unmanage dot-vim
 
 # Remove adopted package (restores files to target, keeps in package)
 dot unmanage dot-ssh
 
 # Remove with purge (deletes package directory)
-dot unmanage --purge vim
+dot unmanage --purge dot-vim
 
 # Remove without restoring (for adopted packages)
 dot unmanage --no-restore dot-ssh
@@ -570,17 +598,25 @@ dot unmanage --cleanup old-package
 
 Only updates manifest, no filesystem operations.
 
+**Example Output**:
+```
+✓ Unmanaged and restored 1 package
+```
+
 **Safety Guarantees**:
 - Only removes links pointing to package directory
 - Preserves non-managed files
-- Validates link targets before deletion
+- Deletion is verified before it happens: dot refuses to remove a regular file
+  or a symlink that now points elsewhere, reporting
+  `refusing to delete <path>: <reason>`
+- If a rollback cannot restore a path, the failure is reported rather than
+  silently ignored
 - Adopted packages restored by default (preserves your data)
 - Confirmation required for `--all` operations
 
 **Exit Codes**:
 - `0`: Success
 - `1`: Error during operation
-- `5`: Package not found/not installed
 
 ### remanage
 
@@ -599,16 +635,16 @@ dot remanage [options] PACKAGE [PACKAGE...]
 **Examples**:
 ```bash
 # Single package
-dot remanage vim
+dot remanage dot-vim
 
 # Multiple packages
-dot remanage vim zsh tmux
+dot remanage dot-vim dot-zsh dot-tmux
 
 # Preview changes
-dot --dry-run remanage vim
+dot --dry-run remanage dot-vim
 
 # Verbose output to see detection details
-dot -vv remanage zsh
+dot -vv remanage dot-zsh
 ```
 
 **Behavior**:
@@ -632,20 +668,23 @@ If symlinks were accidentally deleted, `remanage` automatically recreates them:
 
 ```bash
 # Symlink accidentally deleted
-rm ~/.vimrc
+rm ~/.vim/.vimrc
 
 # Check status
 dot doctor
-# ✗ error: .vimrc link does not exist
+# ✗ Errors detected
 
 # Recreate missing link
-dot remanage vim
-# Successfully remanaged 1 package(s)
+dot remanage dot-vim
+# ✓ Remanaged 1 package
 
 # Link restored
-ls -la ~/.vimrc
-# ~/.vimrc -> ~/dotfiles/vim/dot-vimrc
+ls -la ~/.vim/.vimrc
+# /home/user/.vim/.vimrc -> /home/user/dotfiles/dot-vim/dot-vimrc
 ```
+
+The command reports only a total; there are no per-package changed or skipped
+lines.
 
 **Package Source Preservation**:
 
@@ -665,48 +704,58 @@ Move existing files or directories into a package and create symlinks.
 
 **Synopsis**:
 ```bash
-# Auto-naming mode (single file/directory)
+# Interactive mode (no arguments; requires a terminal)
+dot adopt [options]
+
+# Auto-naming mode (exactly one file or directory)
 dot adopt [options] FILE|DIRECTORY
 
-# Glob expansion mode (multiple files with common prefix)
-dot adopt [options] PATTERN...
-
-# Explicit package mode
+# Explicit package mode (two or more arguments)
 dot adopt [options] PACKAGE FILE|DIRECTORY [FILE|DIRECTORY...]
 ```
 
 **Arguments**:
 - `FILE|DIRECTORY`: Path to file or directory to adopt
-- `PACKAGE`: Explicit package name (optional)
-- `PATTERN`: Shell glob pattern (e.g., `.git*`)
+- `PACKAGE`: Package name, required whenever more than one path is given
 
-**Options**: All global options
+**Options**:
+- `--scan-dirs DIR,...`: Additional directories to scan (interactive mode only)
+- `--exclude-dirs DIR,...`: Directories to skip during discovery (interactive mode only)
+- `--max-size SIZE`: Largest file to offer for adoption (interactive mode only); default `10M`
+- All global options
+
+**Interactive Mode**: run `dot adopt` with no arguments to discover and select
+dotfiles interactively. This requires a terminal; in a pipe or script it exits
+with an error directing you to the argument forms.
 
 **Modes**:
 
 #### Auto-Naming Mode
-Single file or directory - package name derived automatically:
+Exactly one argument; the package name is derived from the path:
 ```bash
 dot adopt .vimrc      # Creates package: dot-vimrc
 dot adopt .ssh        # Creates package: dot-ssh
 dot adopt .config     # Creates package: dot-config
 ```
 
-#### Glob Expansion Mode
-Multiple files with common prefix - package name derived from prefix:
-```bash
-dot adopt .git*       # Expands to .gitconfig, .gitignore, etc.
-                      # Creates package: dot-git
-                      # All files adopted into single package
+#### Multiple Files
 
-dot adopt .vim*       # Expands to .vimrc, .viminfo, etc.
-                      # Creates package: dot-vim
+Two or more arguments means the first is the package name and the rest are
+files. Shell globs expand before dot runs, so a glob must be preceded by an
+explicit package name:
+
+```bash
+dot adopt dot-git .git*     # Package dot-git, all .git* files
+dot adopt dot-zsh .zsh*     # Package dot-zsh, all .zsh* files
 ```
+
+Without a leading package name, `dot adopt .git*` treats the first expanded
+file as the package name. There is no common-prefix derivation.
 
 #### Explicit Package Mode
 Specify package name explicitly:
 ```bash
-dot adopt vim .vimrc .vim/          # Package: vim
+dot adopt dot-vim .vimrc .vim/      # Package: dot-vim
 dot adopt configs .config/ .local/  # Package: configs
 ```
 
@@ -781,7 +830,7 @@ Dotfiles (starting with `.`) have the dot replaced with `dot-` prefix:
 - Nested: `.config/nvim/init.vim` → `dot-config/nvim/init.vim`
 
 **Behavior**:
-1. Determines adoption mode (auto-naming, glob, or explicit)
+1. Determines adoption mode (interactive, auto-naming, or explicit)
 2. Derives or uses provided package name
 3. Creates package directory structure
 4. Moves files/directories to package (applying dotfile translation)
@@ -791,8 +840,6 @@ Dotfiles (starting with `.`) have the dot replaced with `dot-` prefix:
 **Exit Codes**:
 - `0`: Success
 - `1`: Error during operation
-- `2`: Invalid arguments
-- `4`: Permission denied
 
 ## Query Commands
 
@@ -809,7 +856,8 @@ dot status [options] [PACKAGE...]
 - `PACKAGE` (optional): Specific packages to query (default: all)
 
 **Options**:
-- `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`)
+- `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`); default `text`
+- `--color WHEN`: Colorize output (`auto`, `always`, `never`); default `auto`
 - All global options
 
 **Examples**:
@@ -818,7 +866,7 @@ dot status [options] [PACKAGE...]
 dot status
 
 # Specific packages
-dot status vim zsh
+dot status dot-vim dot-zsh
 
 # JSON output
 dot status --format json
@@ -830,54 +878,58 @@ dot status --format yaml
 dot status --format table
 
 # Combine with verbosity
-dot -v status vim
+dot -v status dot-vim
 ```
 
 **Output Fields**:
 - Package name
-- Installation status
 - Link count
-- Installation date
-- List of symlinks
-- Conflicts or issues
+- Installation time, expressed as an interval
+- List of link paths relative to the target directory
 
 **Example Output (text)**:
 ```
-Package: vim
-  Status: installed
-  Links: 3
-  Installed: 2025-10-07 10:30:00
-  
-  Links:
-    ~/.vimrc -> ~/dotfiles/vim/dot-vimrc
-    ~/.vim/colors/ -> ~/dotfiles/vim/dot-vim/colors/
-    ~/.vim/autoload/ -> ~/dotfiles/vim/dot-vim/autoload/
+dot-vim
+  Links: 2
+  Installed: just now
+  Files:
+    .vim/.vimrc
+    .vim/colors/theme.vim
 ```
+
+Text output lists at most five files per package, followed by
+`... and N more`.
 
 **Example Output (JSON)**:
 ```json
 {
   "packages": [
     {
-      "name": "vim",
-      "status": "installed",
-      "link_count": 3,
-      "installed_at": "2025-10-07T10:30:00Z",
+      "name": "dot-vim",
+      "source": "managed",
+      "installed_at": "2026-07-27T12:25:00Z",
+      "link_count": 2,
       "links": [
-        {
-          "target": "~/.vimrc",
-          "source": "~/dotfiles/vim/dot-vimrc",
-          "type": "file"
-        }
-      ]
+        ".vim/.vimrc",
+        ".vim/colors/theme.vim"
+      ],
+      "target_dir": "/home/user",
+      "package_dir": "/home/user/dotfiles/dot-vim",
+      "is_healthy": false,
+      "issue_type": "missing links"
     }
   ]
 }
 ```
 
+JSON output is an object with a `packages` array, not a bare array. Scripts
+must address it as `.packages[]`.
+
+Naming a package that is not installed produces an error.
+
 **Exit Codes**:
 - `0`: Success
-- `1`: Error querying status
+- `1`: Error querying status, or a named package was not found
 
 ### doctor
 
@@ -889,10 +941,29 @@ dot doctor [options]
 ```
 
 **Options**:
-- `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`)
-- `--scan-mode MODE`: Orphaned link detection mode (`off`, `scoped`, `deep`) (default: `scoped`)
-- `--color MODE`: Color output mode (`auto`, `always`, `never`) (default: `auto`)
+- `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`); default `text`
+- `--color WHEN`: Color output (`auto`, `always`, `never`); default `auto`
+- `--scan-mode MODE`: Orphaned link detection (`off`, `scoped`, `deep`); default `scoped`
+- `--max-depth N`: Maximum recursion depth for deep scan; default `10`
+- `--mode MODE`: Diagnostic mode (`fast`, `deep`); default `fast`
+- `--detailed`: Expand each issue with type, path, and suggestion
+- `--triage`: Interactively categorize orphaned symlinks
+- `--auto-ignore`: In triage, auto-ignore high-confidence categories
 - All global options
+
+`--format table` is rendered identically to `--format text`.
+
+**Subcommands**:
+```bash
+dot doctor ignore [PATH] --reason <text>     # suppress one link
+dot doctor ignore --pattern <glob> --reason <text>
+dot doctor unignore [PATH]
+dot doctor unignore --pattern <glob>
+dot doctor ignores                           # list ignored links and patterns
+```
+
+`ignore` and `unignore` accept exactly one of `PATH` or `--pattern`. An invalid
+`--scan-mode` fails with `invalid scan-mode: <value> (must be off, scoped, or deep)`.
 
 **Scan Modes**:
 
@@ -934,17 +1005,21 @@ dot doctor --scan-mode=off
 # Deep scan for comprehensive orphan detection
 dot doctor --scan-mode=deep
 
-# Detailed output with verbose logging
-dot -v doctor
+# Expanded issue detail
+dot doctor --detailed
 
 # JSON output for scripting
 dot doctor --format json
 
-# Table format
-dot doctor --format table
+# Interactive triage of orphaned symlinks
+dot doctor --triage
 
 # Force color output even when piped
 dot doctor --color=always | less -R
+
+# Suppress a known orphan permanently
+dot doctor ignore ~/.bashrc --reason "managed by nix"
+dot doctor ignores
 ```
 
 **Checks Performed**:
@@ -957,35 +1032,35 @@ dot doctor --color=always | less -R
 
 **Example Output (healthy)**:
 ```
-Running health checks...
-
-✓ All symlinks valid
-✓ No broken links
-✓ No orphaned links
-✓ Manifest consistent
-✓ No permission issues
-
-Health check passed: 0 issues found
+✓ Healthy
+  • 4 total links (4 managed, 0 broken, 0 orphaned)
+  No issues found
 ```
 
-**Example Output (issues)**:
+**Example Output (issues, `--detailed`)**:
 ```
-Running health checks...
+✗ Errors detected
+============================================================
 
-✗ Broken links found: 2
-  ~/.vimrc -> ~/dotfiles/vim/dot-vimrc (target missing)
-  ~/.zshrc -> ~/dotfiles/zsh/dot-zshrc (target missing)
+Statistics:
+  Total links: 2
+  Managed links: 2
+  Broken links: 1
+  Orphaned links: 0
 
-✗ Orphaned links found: 1
-  ~/.bashrc -> ~/old-dotfiles/bash/bashrc
+✗ Errors (1):
 
-Suggestions:
-  - Remove broken links: dot doctor --fix-broken
-  - Adopt orphaned links: dot adopt bash ~/.bashrc
-  - Reinstall packages: dot remanage vim zsh
+  ✗ [broken_link] Link does not exist
+     Path: .vim/.vimrc
+     Suggestion: Run 'dot remanage dot-vim' to restore link
 
-Health check failed: 3 issues found
+------------------------------------------------------------
+Summary: 1 total issues
 ```
+
+There is no repair flag. Broken and missing links are fixed by remanaging the
+affected packages; orphaned links are resolved with `dot adopt` or suppressed
+with `dot doctor ignore`.
 
 **Exit Codes**:
 - `0`: Healthy (no issues found)
@@ -1002,9 +1077,13 @@ dot list [options]
 ```
 
 **Options**:
-- `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`)
-- `-s, --sort FIELD`: Sort by field (`name`, `links`, `date`)
+- `-f, --format FORMAT`: Output format (`text`, `json`, `yaml`, `table`); default `text`
+- `--sort FIELD`: Sort by field (`name`, `links`, `date`); default `name`
+- `--color WHEN`: Colorize output (`auto`, `always`, `never`); default `auto`
+- `--show-target`: Include the target directory column
 - All global options
+
+`--sort` has no single-letter shorthand.
 
 **Health Status**:
 
@@ -1038,44 +1117,57 @@ dot list --sort links --format table
 
 **Example Output (text)**:
 ```
-Packages: 3 packages in /home/user/dotfiles
+Packages: 2 packages in /home/user/dotfiles
 
-✓  vim    (3 links)  installed 2 hours ago
-✗  zsh    (2 links)  broken links  installed 1 day ago
-✓  tmux   (1 link)   installed 3 days ago
+✓  dot-vim  (2 links)  installed just now
+✓  dot-zsh  (2 links)  installed just now
 
-2 healthy, 1 unhealthy
+2 healthy
 ```
 
 **Example Output (table)**:
 ```
-Health          Package  Links  Installed
-✓               vim      3      2 hours ago
-✗ broken links  zsh      2      1 day ago
-✓               tmux     1      3 days ago
+Package directory: /home/user/dotfiles
+Target directory:  /home/user
+Manifest:          /home/user/.local/share/dot/manifest
 
-2 healthy, 1 unhealthy
+╭────────────────┬─────────┬───────┬───────────╮
+│     HEALTH     │ PACKAGE │ LINKS │ INSTALLED │
+├────────────────┼─────────┼───────┼───────────┤
+│ ✗ broken links │ dot-vim │ 2     │ just now  │
+│ ✓              │ dot-zsh │ 2     │ just now  │
+╰────────────────┴─────────┴───────┴───────────╯
+1 healthy, 1 unhealthy
 ```
+
+Set `output.table_style: simple` in the configuration file for a borderless
+table.
 
 **Example Output (JSON)**:
 ```json
-[
-  {
-    "name": "vim",
-    "link_count": 3,
-    "installed_at": "2025-10-07T10:30:00Z",
-    "is_healthy": true,
-    "issue_type": ""
-  },
-  {
-    "name": "zsh",
-    "link_count": 2,
-    "installed_at": "2025-10-07T10:31:00Z",
-    "is_healthy": false,
-    "issue_type": "broken links"
-  }
-]
+{
+  "packages": [
+    {
+      "name": "dot-vim",
+      "source": "managed",
+      "installed_at": "2026-07-27T12:25:00Z",
+      "link_count": 2,
+      "links": [
+        ".vim/.vimrc",
+        ".vim/colors/theme.vim"
+      ],
+      "target_dir": "/home/user",
+      "package_dir": "/home/user/dotfiles/dot-vim",
+      "is_healthy": false,
+      "issue_type": "missing links"
+    }
+  ]
+}
 ```
+
+JSON output is an object with a `packages` array, not a bare array. Scripts
+must address it as `.packages[]`, for example
+`dot list --format json | jq -r '.packages[].name'`.
 
 **Issue Types**:
 - `broken links`: Symlinks point to non-existent targets
@@ -1090,37 +1182,21 @@ Health          Package  Links  Installed
 
 ### version
 
-Display version information.
+Version information is available through the root flag only; there is no
+`version` subcommand.
 
 **Synopsis**:
 ```bash
-dot version [options]
-```
-
-**Options**:
-- `--short`: Show version number only
-- All global options
-
-**Examples**:
-```bash
-# Full version info
-dot version
-
-# Short version
-dot version --short
-
-# Alternative using flag
 dot --version
 ```
 
 **Example Output**:
 ```
-dot version v0.1.0
-Built with Go 1.26
-Commit: abc1234
-Build date: 2025-10-07
-Platform: linux/amd64
+dot version 0.6.5 (commit: a1b2c3d4, built: 2026-07-27)
 ```
+
+Source builds without release metadata report
+`dot version unknown (built from source)`.
 
 ### help
 
@@ -1177,34 +1253,32 @@ dot completion powershell > dot.ps1
 
 ## Exit Codes
 
-Standard exit codes across all commands:
-
 | Code | Meaning | Description |
 |------|---------|-------------|
 | 0 | Success | Operation completed successfully |
-| 1 | General error | Unspecified error occurred |
-| 2 | Invalid arguments | Command-line arguments invalid |
-| 3 | Conflicts detected | Conflicts found (with fail policy) |
-| 4 | Permission denied | Insufficient permissions |
-| 5 | Package not found | Specified package does not exist |
+| 1 | Error | Any failure: invalid arguments, conflicts, permissions, missing package |
+| 2 | Doctor errors | `dot doctor` only: errors detected |
+| 130 | Interrupted | A second SIGINT forced exit |
+
+`dot doctor` is the only command with graded exit codes: 0 healthy, 1 warnings,
+2 errors. Every other command returns 0 or 1; the specific failure is reported
+on stderr, not encoded in the exit status.
 
 **Usage in Scripts**:
 ```bash
 #!/bin/bash
 
-# Check if operation succeeded
-if dot manage vim; then
-    echo "vim installed successfully"
-else
-    exit_code=$?
-    case $exit_code in
-        3) echo "Conflicts detected" ;;
-        4) echo "Permission denied" ;;
-        5) echo "Package not found" ;;
-        *) echo "Error: $exit_code" ;;
-    esac
+if ! dot manage dot-vim; then
+    echo "manage failed; see stderr for the reason" >&2
     exit 1
 fi
+
+dot doctor
+case $? in
+    0) echo "healthy" ;;
+    1) echo "warnings" ;;
+    2) echo "errors" ;;
+esac
 ```
 
 ## Command Patterns
@@ -1215,10 +1289,10 @@ Preview before applying:
 
 ```bash
 # Always preview first
-dot --dry-run manage vim
+dot --dry-run manage dot-vim
 
 # Review output, then apply
-dot manage vim
+dot manage dot-vim
 ```
 
 ### Verbose Debugging Pattern
@@ -1227,7 +1301,7 @@ Debug issues with verbose output:
 
 ```bash
 # Increase verbosity to see details
-dot -vvv manage vim
+dot -vvv manage dot-vim
 
 # Or use with doctor
 dot -vv doctor
@@ -1235,13 +1309,13 @@ dot -vv doctor
 
 ### Scripting Pattern
 
-Quiet mode with JSON output:
+Quiet mode with JSON logs:
 
 ```bash
 #!/bin/bash
 
 # Run command quietly
-output=$(dot --quiet --log-json manage vim 2>&1)
+output=$(dot --quiet --log-json manage dot-vim 2>&1)
 
 # Parse JSON output
 if [ $? -eq 0 ]; then
@@ -1260,11 +1334,11 @@ Manage multiple packages from list:
 cat packages.txt | xargs dot manage
 
 # From array
-packages=(vim zsh tmux git)
+packages=(dot-vim dot-zsh dot-tmux dot-git)
 dot manage "${packages[@]}"
 
 # With error checking
-for pkg in vim zsh tmux; do
+for pkg in dot-vim dot-zsh dot-tmux; do
     if ! dot manage "$pkg"; then
         echo "Failed to manage: $pkg"
     fi
@@ -1273,7 +1347,8 @@ done
 
 ## Command Aliases
 
-No built-in aliases, but shell aliases recommended:
+The only built-in aliases are `cfg` for `config` and `show`/`ls` for
+`config list`. Shell aliases are otherwise recommended:
 
 ```bash
 # Common aliases

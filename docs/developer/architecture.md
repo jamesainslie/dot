@@ -147,7 +147,7 @@ graph TB
 
 **Pipeline Composition Example**:
 ```
-ScanInput -> ScanStage -> []Package -> PlanStage -> DesiredState -> ResolveStage -> Plan
+ScanInput -> ScanStage -> []Package -> PlanStage -> DesiredState -> ResolveStage -> SortStage -> Plan
 ```
 
 **Dependencies**: Domain and Core layers
@@ -219,14 +219,15 @@ stateDiagram-v2
     end note
     
     note right of Rollback
-        Automatic rollback ensures
-        no partial state
+        Rollback reverts executed
+        operations; irreversible ones
+        are reported, not silently lost
     end note
 ```
 
 **Characteristics**:
-- All-or-nothing transaction semantics
-- Automatic rollback on any failure
+- Best-effort transactional semantics: executed operations are reverted on failure
+- Irreversible operations (notably `DirRemoveAll`) are counted, not silently dropped
 - Support for parallel execution of independent operations
 - Comprehensive error tracking
 
@@ -248,6 +249,8 @@ stateDiagram-v2
   - `DoctorService`: Health checks
   - `AdoptService`: File adoption
   - `ManifestService`: State persistence
+  - `BootstrapService`: Bootstrap from a config manifest
+  - `CloneService`: Clone a dotfiles repository and manage selected packages
 
 **Service Pattern**:
 
@@ -267,6 +270,8 @@ graph LR
     DoctorService[DoctorService<br/>Health Checks]:::serviceNode
     AdoptService[AdoptService<br/>File Adoption]:::serviceNode
     ManifestService[ManifestService<br/>State Persistence]:::serviceNode
+    BootstrapService[BootstrapService<br/>Config Bootstrap]:::serviceNode
+    CloneService[CloneService<br/>Repository Clone]:::serviceNode
     
     Pipeline[Pipeline Layer]:::layerNode
     Executor[Executor Layer]:::layerNode
@@ -278,6 +283,10 @@ graph LR
     Client --> DoctorService
     Client --> AdoptService
     Client --> ManifestService
+    Client --> BootstrapService
+    Client --> CloneService
+    
+    CloneService --> ManageService
     
     ManageService --> Pipeline
     ManageService --> Executor
@@ -300,6 +309,8 @@ graph LR
     style DoctorService fill:#9B59B6,stroke:#6C3A7C,color:#fff
     style AdoptService fill:#1ABC9C,stroke:#148F77,color:#fff
     style ManifestService fill:#F39C12,stroke:#B97A0F,color:#fff
+    style BootstrapService fill:#7F8C8D,stroke:#5D6D7E,color:#fff
+    style CloneService fill:#C0392B,stroke:#7B241C,color:#fff
     style Pipeline fill:#34495E,stroke:#1C2833,color:#fff
     style Executor fill:#34495E,stroke:#1C2833,color:#fff
     style Manifest fill:#34495E,stroke:#1C2833,color:#fff
@@ -337,7 +348,7 @@ graph LR
 - Multiple output formats
 - Rich error messages with context
 
-**Dependencies**: API layer only (does not import internal packages directly)
+**Dependencies**: API layer, plus presentation-only helpers under `internal/cli/`. No other `internal/*` package is imported by non-test files.
 
 ## Design Principles
 
@@ -355,9 +366,15 @@ Pure functional logic (scanning, planning, resolution) is separated from side-ef
 Phantom types encode path semantics at compile time:
 
 ```go
-type PackagePath struct { path string }
-type TargetPath struct { path string }
-type FilePath struct { path string }
+// Path[K] is a single generic type parameterised by a phantom kind marker.
+type Path[K PathKind] struct {
+    path string
+}
+
+// The three concrete path types are aliases of distinct instantiations.
+type PackagePath = Path[PackageDirKind]
+type TargetPath  = Path[TargetDirKind]
+type FilePath    = Path[FileDirKind]
 ```
 
 This prevents path-related bugs:
@@ -373,8 +390,11 @@ The system uses `Result[T]` types for monadic error handling:
 type Result[T any] struct {
     value T
     err   error
+    isOk  bool
 }
 ```
+
+The `isOk` discriminant distinguishes `Ok(zeroValue)` from `Err(nil)`.
 
 This provides:
 - No silent failures
@@ -390,10 +410,10 @@ All operations use two-phase commit:
 2. **Execute**: Apply changes
 3. **Rollback**: Undo on failure
 
-This ensures:
-- Atomic operation sets
-- Automatic cleanup on failure
-- No partial state on errors
+This provides:
+- Precondition failures detected before any change is applied
+- Automatic cleanup on failure, limited to reversible operations
+- Explicit accounting of operations that could not be reverted
 - Safe concurrent execution
 
 ### Dependency Inversion
@@ -402,10 +422,29 @@ Infrastructure dependencies are abstracted through port interfaces:
 
 ```go
 type FS interface {
-    ReadFile(path string) ([]byte, error)
-    WriteFile(path string, data []byte) error
-    Symlink(oldname, newname string) error
-    // ... other operations
+    FSReader
+    FSWriter
+}
+
+type FSReader interface {
+    Stat(ctx context.Context, path string) (FileInfo, error)
+    Lstat(ctx context.Context, path string) (FileInfo, error)
+    ReadDir(ctx context.Context, path string) ([]DirEntry, error)
+    ReadLink(ctx context.Context, path string) (string, error)
+    ReadFile(ctx context.Context, path string) ([]byte, error)
+    Exists(ctx context.Context, path string) bool
+    IsDir(ctx context.Context, path string) (bool, error)
+    IsSymlink(ctx context.Context, path string) (bool, error)
+}
+
+type FSWriter interface {
+    WriteFile(ctx context.Context, path string, data []byte, perm os.FileMode) error
+    Mkdir(ctx context.Context, path string, perm os.FileMode) error
+    MkdirAll(ctx context.Context, path string, perm os.FileMode) error
+    Remove(ctx context.Context, path string) error
+    RemoveAll(ctx context.Context, path string) error
+    Symlink(ctx context.Context, oldname, newname string) error
+    Rename(ctx context.Context, oldpath, newpath string) error
 }
 ```
 
@@ -422,13 +461,18 @@ This enables:
 The system uses adapters to implement port interfaces:
 
 **Filesystem Adapters** (`internal/adapters/`):
-- `OSFilesystem`: Production filesystem using `os` package
-- `MemFilesystem`: In-memory filesystem for testing
-- `NoopFilesystem`: No-op implementation for dry-run mode
+- `OSFilesystem` (`NewOSFilesystem`): Production filesystem using the `os` package
+- `MemFS` (`NewMemFS`): In-memory filesystem for testing
 
 **Logging Adapters** (`internal/adapters/`):
-- `SlogLogger`: Production logger using `log/slog`
-- `NoopLogger`: Silent logger for testing
+- `SlogLogger` (`NewSlogLogger`, `NewConsoleLogger`): Production logger using `log/slog`
+- `NoopLogger` (`NewNoopLogger`): Silent logger for testing
+
+**Observability Adapters** (`internal/adapters/`):
+- `NoopTracer`, `NoopMetrics`: Default no-op implementations
+
+Dry-run mode is not a filesystem adapter. `Config.DryRun` is threaded into each
+service (pkg/dot/client.go:122-131), which plans operations but skips execution.
 
 This pattern provides:
 - Swappable implementations
@@ -450,26 +494,52 @@ This pattern provides:
 **Manifest Structure**:
 ```go
 type Manifest struct {
-    Version      string
-    Packages     map[string]PackageManifest
-    LastModified time.Time
+    Version    string                 `json:"version"`
+    UpdatedAt  time.Time              `json:"updated_at"`
+    Packages   map[string]PackageInfo `json:"packages"`
+    Hashes     map[string]string      `json:"hashes"`
+    Repository *RepositoryInfo        `json:"repository,omitempty"`
+    Doctor     *DoctorState           `json:"doctor,omitempty"`
 }
 
-type PackageManifest struct {
-    Name         string
-    InstallDate  time.Time
-    Links        []string
-    ContentHash  string
+type PackageInfo struct {
+    Name        string            `json:"name"`
+    InstalledAt time.Time         `json:"installed_at"`
+    LinkCount   int               `json:"link_count"`
+    Links       []string          `json:"links"`
+    Backups     map[string]string `json:"backups,omitempty"`
+    Source      PackageSource     `json:"source,omitempty"`
+    TargetDir   string            `json:"target_dir,omitempty"`
+    PackageDir  string            `json:"package_dir,omitempty"`
 }
 ```
 
-**Persistence Location**: `<TargetDir>/.dotmanifest`
+**Persistence Location**: `<ManifestDir>/.dot-manifest.json`, defaulting to `<TargetDir>/.dot-manifest.json` when `Config.ManifestDir` is empty. Writes are guarded by a `.dot-manifest.lock` sibling file.
 
 **Purpose**:
 - Track installed packages
 - Enable incremental updates (detect changed packages)
 - Support status queries without filesystem scanning
 - Facilitate safe uninstall operations
+
+### Backup Handling
+
+When `Config.Backup` is set, `PolicyBackup` (`applyBackupPolicy`, internal/planner/policies.go:84)
+expands a conflict into three operations: `FileBackup`, `FileDelete`, and the
+original link operation.
+
+- Backup names are `<backupDir>/<filename>.<pathTag>.<timestamp>`, where
+  `pathTag` is a short hash of the full conflict path. Files sharing a basename
+  in different directories therefore never overwrite each other's backups
+  (internal/planner/policies.go:95-101).
+- `FileBackup.Execute` creates the backup directory on demand via `MkdirAll`
+  before writing, so a missing `<TargetDir>/.dot-backup` is not an error
+  (internal/domain/operation.go:678-683).
+- The paired `FileDelete` records the backup path
+  (`NewFileDeleteWithBackup`, internal/domain/operation.go:744), so rollback
+  restores the original file from the backup.
+- Backup paths are recorded per package in `PackageInfo.Backups`
+  (internal/manifest/manifest.go:36) for later restore.
 
 ### Configuration System
 
@@ -548,7 +618,7 @@ sequenceDiagram
         end
         
         Executor->>Manifest: Update package records
-        Manifest->>FS: Write .dotmanifest
+        Manifest->>FS: Write .dot-manifest.json
         Executor-->>Pipeline: Success
     end
     
@@ -574,7 +644,7 @@ sequenceDiagram
     CLI->>API: Client.Unmanage(ctx, packages)
     
     API->>Manifest: Load package manifests
-    Manifest->>FS: Read .dotmanifest
+    Manifest->>FS: Read .dot-manifest.json
     FS-->>Manifest: Manifest data
     Manifest-->>API: Package records
     
@@ -607,7 +677,7 @@ sequenceDiagram
     end
     
     API->>Manifest: Remove package records
-    Manifest->>FS: Update .dotmanifest
+    Manifest->>FS: Update .dot-manifest.json
     API-->>CLI: UnmanageResult
     CLI->>User: Display results
 ```
@@ -633,7 +703,7 @@ sequenceDiagram
     rect rgb(50, 80, 120)
         note right of StatusService: Load Manifests
         StatusService->>Manifest: Load package manifests
-        Manifest->>FS: Read .dotmanifest
+        Manifest->>FS: Read .dot-manifest.json
         FS-->>Manifest: Manifest data
         Manifest-->>StatusService: Package records
     end
@@ -690,7 +760,7 @@ sequenceDiagram
     rect rgb(50, 80, 120)
         note right of DoctorService: Load State
         DoctorService->>Manifest: Load all package manifests
-        Manifest->>FS: Read .dotmanifest
+        Manifest->>FS: Read .dot-manifest.json
         FS-->>Manifest: All package records
         Manifest-->>DoctorService: Installed packages
     end
@@ -818,10 +888,14 @@ Operations are represented as an interface with concrete implementations:
 
 ```go
 type Operation interface {
+    ID() OperationID
     Kind() OperationKind
     Validate() error
-    Dependencies() []FilePath
+    Dependencies() []Operation
+    Execute(ctx context.Context, fs FS) error
+    Rollback(ctx context.Context, fs FS) error
     String() string
+    Equals(other Operation) bool
 }
 
 // Concrete operation types:
@@ -829,15 +903,23 @@ type LinkCreate struct { ... }
 type LinkDelete struct { ... }
 type DirCreate struct { ... }
 type DirDelete struct { ... }
+type DirRemoveAll struct { ... }
+type DirCopy struct { ... }
+type FileMove struct { ... }
 type FileBackup struct { ... }
+type FileDelete struct { ... }
 ```
 
 **Operation Kinds**:
 - `OpKindLinkCreate`: Create symbolic link
 - `OpKindLinkDelete`: Remove symbolic link
 - `OpKindDirCreate`: Create directory
-- `OpKindDirDelete`: Remove directory
-- `OpKindFileBackup`: Backup existing file
+- `OpKindDirDelete`: Remove an empty directory
+- `OpKindDirRemoveAll`: Recursively remove a directory and its contents (not reversible)
+- `OpKindDirCopy`: Recursively copy a directory
+- `OpKindFileMove`: Move a file
+- `OpKindFileBackup`: Back up an existing file
+- `OpKindFileDelete`: Delete a file
 
 ## Error Handling
 
@@ -853,10 +935,11 @@ type ErrConflict struct { Path string, Reason string }
 
 // Execution errors
 type ErrExecutionFailed struct {
-    Executed   int
-    Failed     int
-    RolledBack int
-    Errors     []error
+    Executed       int
+    Failed         int
+    RolledBack     int
+    RollbackFailed int   // executed ops whose rollback failed or was impossible
+    Errors         []error
 }
 
 // Planning errors
@@ -880,10 +963,11 @@ Multiple errors are collected and reported together:
 
 ```go
 type ExecutionResult struct {
-    Executed   []Operation
-    Failed     []Operation
-    Errors     []error
-    RolledBack []Operation
+    Executed       []domain.OperationID
+    Failed         []domain.OperationID
+    RolledBack     []domain.OperationID
+    RollbackFailed []domain.OperationID
+    Errors         []error
 }
 ```
 
@@ -1027,8 +1111,12 @@ err := client.Manage(ctx, packages...)
 
 ### Test Coverage Requirements
 
-- Minimum 80% code coverage
-- Critical paths require 100% coverage
+The enforced gate is the unweighted mean of per-function coverage percentages
+reported by `go tool cover -func`, not total statement coverage. Bubble Tea UI
+and interactive adoption files under `internal/cli/adopt/` are excluded.
+
+- Local (`make check-coverage`, `make cs`, and therefore `make check`): 60%
+- CI (`.github/workflows/ci.yml`, `test` job): 75%
 - All error paths must be tested
 - Edge cases must have explicit tests
 
@@ -1040,7 +1128,41 @@ err := client.Manage(ctx, packages...)
 - Memory-based filesystem adapter
 - Golden file testing for outputs
 
-## Recent Architectural Improvements
+## Architectural Change Log
+
+Entries are dated and describe the state at the time of the change. The CHANGELOG
+is authoritative for released versions.
+
+### Rollback Accounting (2026-07)
+
+**Problem**: Rollback failures were invisible. An operation whose `Rollback` returned an error, or which could not be reverted at all, left the system in a partial state that callers could not detect.
+
+**Solution**:
+- `Executor.rollback` returns `(rolledBack, rollbackFailed)` (internal/executor/executor.go:442)
+- `ExecutionResult.RollbackFailed` records the affected operation IDs (internal/executor/result.go:11)
+- `ErrExecutionFailed.RollbackFailed` reports the count in the error message (internal/domain/errors.go:100)
+- `ErrRollbackImpossible` (internal/domain/errors.go:142) is returned by `DirRemoveAll.Rollback`, since recursive deletion is not reversible
+
+**Impact**: Callers can distinguish clean rollback from partial restoration. The former all-or-nothing claim no longer holds and is documented as best-effort.
+
+### Rollback Detachment from Cancellation (2026-07)
+
+**Problem**: Ctrl-C mid-plan cancelled the context that rollback itself ran under, so filesystem adapters refused every restore call and the plan's partial effects persisted.
+
+**Solution**: `rollback` calls `context.WithoutCancel(ctx)` (internal/executor/executor.go:443), preserving tracing and logging values while ignoring the parent's cancellation.
+
+**Impact**: Interrupting a plan restores prior state instead of leaving it half-applied.
+
+### Deletion Safety and Backup Naming (2026-07)
+
+**Problem**: `LinkDelete` deleted whatever occupied the recorded path, and backup filenames keyed only on basename plus timestamp, so two conflicting files with the same basename in different directories overwrote each other's backups. `FileBackup` also failed outright when the backup directory did not exist.
+
+**Solution**:
+- `NewLinkDeleteWithDestination` (internal/domain/operation.go:183) records the planned symlink destination; `LinkDelete` re-verifies with `Lstat` and refuses mismatches with `ErrUnsafeDelete`
+- Backup names include a short hash of the full conflict path (internal/planner/policies.go:95-101)
+- `FileBackup.Execute` creates the backup directory on demand (internal/domain/operation.go:678-683)
+
+**Impact**: Stale plans cannot destroy changed user data, and backups no longer collide or fail on a missing directory.
 
 ### CLI State Management (2025-01)
 
@@ -1085,11 +1207,11 @@ err := client.Manage(ctx, packages...)
 
 **Problem**: Executor loops did not check for context cancellation, preventing graceful shutdown and proper resource cleanup.
 
-**Solution**: Added explicit `ctx.Err()` checks at key points:
+**Solution**: Added explicit `ctx.Err()` checks at key points and detached rollback from cancellation:
 - Prepare phase: Check before validating each operation
 - Sequential execution: Check before executing each operation
 - Parallel execution: Check before executing each batch
-- Rollback: Log cancellation but continue for consistency
+- Rollback: runs under `context.WithoutCancel(ctx)` (internal/executor/executor.go:443), preserving trace and logging values while ignoring the cancelled deadline, because filesystem adapters return `ctx.Err()` on every call
 
 **New Error Type**:
 ```go
@@ -1100,10 +1222,10 @@ type ErrExecutionCancelled struct {
 ```
 
 **Cancellation Behavior**:
-- Operations already executed are rolled back
+- Operations already executed are rolled back even after Ctrl-C, because rollback uses a detached context
 - Remaining operations are skipped and counted
 - Cancellation error returned with accurate metrics
-- Rollback continues despite cancelled context
+- Operations that cannot be reverted are counted in `ExecutionResult.RollbackFailed` rather than silently dropped
 
 **Impact**:
 - Graceful shutdown support
@@ -1217,15 +1339,16 @@ graph TD
 2. Core layer depends only on domain
 3. Pipeline and Executor depend on domain and core
 4. API layer depends on all internal layers
-5. CLI layer depends only on API layer (not internal packages)
+5. CLI layer depends on the API layer plus presentation helpers under `internal/cli/`; it imports no other internal package
 6. Adapters depend only on domain ports
 
 ### Import Restrictions
 
 **Prohibited**:
-- Internal packages importing from `pkg/dot` (would create cycle)
-- CLI importing from `internal/*` directly
+- Non-presentation internal packages (`domain`, `scanner`, `planner`, `pipeline`, `executor`, `manifest`, `config`, `adapters`) importing from `pkg/dot`, which would create a cycle
 - Domain importing from infrastructure packages
+
+**Permitted exception**: presentation-only packages under `internal/cli/` may import `pkg/dot` to render its public types. `pkg/dot` never imports `internal/cli`, so no cycle exists.
 
 **Required**:
 - All internal packages import from `internal/domain` for types
@@ -1240,19 +1363,20 @@ Adapters are swappable implementations:
 // Production
 cfg := dot.Config{
     FS:     adapters.NewOSFilesystem(),
-    Logger: adapters.NewSlogLogger(os.Stderr),
+    Logger: adapters.NewSlogLogger(slog.Default()),
 }
 
 // Testing
 cfg := dot.Config{
-    FS:     adapters.NewMemFilesystem(),
+    FS:     adapters.NewMemFS(),
     Logger: adapters.NewNoopLogger(),
 }
 
-// Dry-run
+// Dry-run (no special filesystem; the flag is threaded into each service)
 cfg := dot.Config{
-    FS:     adapters.NewNoopFilesystem(),
-    Logger: adapters.NewSlogLogger(os.Stderr),
+    FS:     adapters.NewOSFilesystem(),
+    Logger: adapters.NewSlogLogger(slog.Default()),
+    DryRun: true,
 }
 ```
 
@@ -1284,31 +1408,24 @@ cfg := dot.Config{
 
 ### Custom Filesystem Implementations
 
-Implement `domain.FS` interface for:
-- Cloud storage backends
-- Version control system integration
-- Virtual filesystem support
+Implement `dot.FS` (aliased from `internal/domain` in pkg/dot/config.go) for
+cloud storage backends, VCS integration, or virtual filesystems.
 
-### Custom Conflict Resolution
+### Conflict Resolution
 
-Implement `planner.ResolutionPolicy` for:
-- Interactive conflict resolution
-- Custom backup strategies
-- Automated merge conflict resolution
-
-### Custom Output Formats
-
-Implement `renderer.Renderer` interface for:
-- Custom report formats
-- Integration with monitoring systems
-- Machine-readable structured output
+`planner.ResolutionPolicy` is a closed enumeration (`PolicyFail`, `PolicyBackup`,
+`PolicyOverwrite`, `PolicySkip`) in `internal/planner/policies.go:12`, selected
+through `Config.Backup` and `Config.Overwrite`. It is not an extension point:
+adding a policy requires a change to `internal/planner`.
 
 ### Metrics and Observability
 
-Implement `domain.Metrics` interface for:
-- Prometheus metrics collection
-- StatsD integration
-- Custom telemetry
+Implement `dot.Logger`, `dot.Tracer`, and `dot.Metrics` for Prometheus, StatsD,
+OpenTelemetry, or custom telemetry. All four infrastructure ports are injected
+through `Config` (pkg/dot/config.go:93-96).
+
+Output rendering is not an extension point: `internal/cli/renderer` is internal
+to the CLI. External consumers format `pkg/dot` result types themselves.
 
 ## Security Considerations
 
@@ -1319,11 +1436,22 @@ Implement `domain.Metrics` interface for:
 - Relative paths resolved before operations
 - Symlink targets validated
 
-### Safe Rollback
+### Deletion Safety
+
+`LinkDelete` records the symlink destination observed at plan time
+(`NewLinkDeleteWithDestination`, internal/domain/operation.go:183) and re-checks
+it with `Lstat` before deleting. A path that has become a regular file, or a
+symlink now pointing elsewhere, is refused with `ErrUnsafeDelete`
+(internal/domain/errors.go:130). This prevents a stale plan from destroying
+user data that changed between planning and execution.
+
+### Rollback
 
 - Checkpoint created before operations
-- Atomic rollback on failure
-- No partial state on errors
+- On failure, executed operations are reverted in reverse order
+- Rollback runs on a context detached from cancellation, so Ctrl-C mid-plan still restores state
+- Operations that cannot be reverted (notably `DirRemoveAll`) return `ErrRollbackImpossible`; the executor counts them in `ExecutionResult.RollbackFailed` and `ErrExecutionFailed` reports "N operations could not be rolled back"
+- Rollback is therefore best-effort, not a hard atomicity guarantee: callers must read the failure count rather than assume clean state
 
 ### Manifest Integrity
 

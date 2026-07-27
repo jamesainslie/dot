@@ -24,7 +24,7 @@ dot manages configuration files through symbolic links, providing a centralized 
 - **Incremental Operations**: Content-based change detection for efficient updates
 - **Transactional Safety**: Two-phase commit with automatic rollback on failure
 - **State Tracking**: Manifest-based state management for fast status queries
-- **Parallel Execution**: Concurrent operation processing for improved performance
+- **Concurrency-Ready Executor**: Batched parallel execution implemented behind a plan-level gate, not yet enabled for CLI-generated plans
 - **Cross-Platform**: Supports Linux, macOS, BSD, and Windows (with limitations)
 
 ## Installation
@@ -38,17 +38,27 @@ brew install dot
 
 ### From Binary Releases
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/yaklabco/dot/releases).
+Download the archive for your platform from
+[GitHub Releases](https://github.com/yaklabco/dot/releases).
+
+Assets are named `dot_<version>_<Os>_<Arch>.tar.gz` (`.zip` on Windows), where
+`<Os>` is `Linux`, `Darwin`, or `Windows` and `<Arch>` is `x86_64` or `arm64`.
 
 ```bash
-# Linux/macOS
-curl -L https://github.com/yaklabco/dot/releases/latest/download/dot-$(uname -s)-$(uname -m).tar.gz | tar xz
+# Set to the desired release, without the leading "v"
+VERSION=0.6.5
+
+OS=$(uname -s)
+ARCH=$(uname -m)
+[ "$ARCH" = "aarch64" ] && ARCH=arm64
+[ "$ARCH" = "amd64" ] && ARCH=x86_64
+curl -L "https://github.com/yaklabco/dot/releases/download/v${VERSION}/dot_${VERSION}_${OS}_${ARCH}.tar.gz" | tar xz
 sudo mv dot /usr/local/bin/
 ```
 
 ### From Source
 
-Requires Go 1.26 or later:
+Requires Go 1.26.1 or later:
 
 ```bash
 go install github.com/yaklabco/dot/cmd/dot@latest
@@ -367,8 +377,11 @@ Validate installation consistency and detect issues:
 # Health check
 dot doctor
 
-# With detailed output
-dot doctor -v
+# With detailed diagnostic output
+dot doctor --detailed
+
+# Deep scan mode
+dot doctor --mode deep
 
 # JSON output for scripting
 dot doctor --format json
@@ -382,7 +395,9 @@ dot doctor ignores
 
 Exit codes:
 - 0: No issues detected
-- 1: Issues found
+- 1: Warnings found
+- 2: Errors found
+- 130: Interrupted (SIGINT)
 
 #### List
 
@@ -405,16 +420,26 @@ dot list --format json
 ### Global Options
 
 ```bash
--d, --dir PATH       Package directory (default: current directory)
--t, --target PATH    Target directory (default: $HOME)
--n, --dry-run        Preview changes without applying
--v, --verbose        Increase verbosity (repeatable: -v, -vv, -vvv)
-    --quiet          Suppress non-error output
-    --log-json       Output logs in JSON format
-    --no-folding     Disable directory folding optimization
-    --absolute       Use absolute symlinks instead of relative
-    --ignore PATTERN Add ignore pattern (repeatable)
+-d, --dir PATH        Source directory containing packages (default: ".")
+-t, --target PATH     Target directory for symlinks (default: $HOME)
+    --backup-dir PATH Directory for backup files (default: <target>/.dot-backup)
+-n, --dry-run         Show what would be done without applying changes
+-v, --verbose         Increase verbosity: -v (info), -vv (debug), -vvv (trace)
+-q, --quiet           Suppress all non-error output
+    --log-json        Output logs in JSON format
+    --no-color        Disable color output
+    --batch           Batch mode for scripting (implies --quiet, non-interactive)
+    --ignore PATTERN  Additional ignore patterns (repeatable, supports !negation)
+    --max-file-size S Maximum file size to include (e.g. 100MB); empty = no limit
+    --no-defaults     Disable default ignore patterns (.git, .DS_Store, etc.)
+    --no-dotignore    Disable reading per-package .dotignore files
+    --cpu-profile F   Write CPU profile to file
+    --mem-profile F   Write memory profile to file
+    --pprof ADDR      Enable pprof HTTP server on address (e.g. :6060)
 ```
+
+Symlink mode and directory folding are configuration keys, not flags: set
+`symlinks.mode` to `absolute` and `symlinks.folding` to `false`.
 
 ### Maintenance Commands
 
@@ -448,8 +473,8 @@ dot config list
 # Get a specific value
 dot config get directories.package
 
-# Set a value
-dot config set logging.level debug
+# Set a value (log levels are upper case)
+dot config set logging.level DEBUG
 
 # Show configuration file path
 dot config path
@@ -460,49 +485,89 @@ dot config upgrade
 
 ### Configuration Locations
 
-Searched in order (later sources override earlier):
+Resolved in order (first match wins for the file; env and flags then overlay):
 
-1. System-wide: `/etc/dot/config.yaml`
-2. User global: `~/.config/dot/config.yaml` (XDG) or `~/.dotrc`
-3. Project local: `./.dotrc`
-4. Environment variables: `DOT_*` prefix
+1. Repository-local: `<package-dir>/.config/dot/config.yaml` (highest file priority)
+2. `$DOT_CONFIG`, if set, naming an explicit config file
+3. User global: `$XDG_CONFIG_HOME/dot/config.yaml`, else `~/.config/dot/config.yaml`
+4. Environment variables: `DOT_` prefix with `.` replaced by `_`
+   (for example `DOT_DIRECTORIES_PACKAGE`, `DOT_LOGGING_LEVEL`)
 5. Command-line flags (highest priority)
+
+Environment and flag overlays cover a subset of keys only; see
+`internal/config/loader.go` for the bound key list.
 
 ### Configuration Example
 
 ```yaml
 # ~/.config/dot/config.yaml
-packageDir: ~/dotfiles
-targetDir: ~
-linkMode: relative
-folding: true
-verbosity: 0
+directories:
+  package: ~/dotfiles
+  target: ~
+
+logging:
+  level: INFO
+  format: text
+  destination: stderr
+
+symlinks:
+  mode: relative
+  folding: true
+  overwrite: false
+  backup: false
+  backup_suffix: .bak
+  backup_dir: ""
 
 ignore:
-  - "*.log"
-  - ".git"
-  - ".DS_Store"
-  - "*.swp"
+  use_defaults: true
+  patterns:
+    - "*.log"
+    - "*.swp"
+  per_package_ignore: true
+  max_file_size: 0
 
-override: []
+dotfile:
+  translate: true
+  prefix: dot-
+  package_name_mapping: true
 
-backupDir: ~/.dot-backups
+output:
+  format: text
+  color: auto
+  progress: true
+  verbosity: 1
+
+operations:
+  atomic: true
+  dry_run: false
 ```
 
 ### Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `packageDir` | string | `.` | Source directory containing packages |
-| `targetDir` | string | `$HOME` | Destination for symlinks |
-| `linkMode` | string | `relative` | Link mode: `relative` or `absolute` |
-| `folding` | boolean | `true` | Enable directory folding optimization |
-| `verbosity` | integer | `0` | Logging verbosity (0-3) |
-| `ignore` | array | (defaults) | File patterns to exclude |
-| `override` | array | `[]` | Patterns to force include |
-| `backupDir` | string | (none) | Directory for conflict backups |
+Frequently used keys. See [Configuration Reference](docs/user/04-configuration.md)
+for the complete 12-section schema.
 
-See [Configuration Reference](docs/user/04-configuration.md) for complete documentation.
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `directories.package` | string | `.` | Source directory containing packages |
+| `directories.target` | string | `$HOME` | Destination for symlinks |
+| `directories.manifest` | string | `$XDG_DATA_HOME/dot/manifest` | Installation state directory |
+| `logging.level` | string | `INFO` | One of `DEBUG`, `INFO`, `WARN`, `ERROR` (case sensitive) |
+| `logging.format` | string | `text` | `text` or `json` |
+| `symlinks.mode` | string | `relative` | `relative` or `absolute` |
+| `symlinks.folding` | boolean | `true` | Enable directory folding optimization |
+| `symlinks.overwrite` | boolean | `false` | Replace conflicting files |
+| `symlinks.backup` | boolean | `false` | Back up conflicting files before replacing |
+| `symlinks.backup_dir` | string | `<target>/.dot-backup` | Conflict backup destination |
+| `ignore.use_defaults` | boolean | `true` | Apply the built-in ignore pattern set |
+| `ignore.patterns` | array | `[]` | Additional patterns to exclude |
+| `dotfile.translate` | boolean | `true` | Translate `dot-` file prefixes to `.` |
+| `dotfile.package_name_mapping` | boolean | `true` | Map package name to a target subdirectory |
+| `output.format` | string | `text` | `text`, `json`, `yaml`, or `table` |
+| `operations.atomic` | boolean | `true` | Roll back the whole plan on any failure |
+
+`dot config get` resolves a subset of keys, and `dot config set` accepts a larger
+but different subset. Neither covers `update.*` or `network.*`.
 
 ## Conflict Resolution
 
@@ -510,22 +575,44 @@ dot detects conflicts when existing files or symlinks prevent package installati
 
 ### Resolution Policies
 
-Configure via `--on-conflict` flag or configuration file:
+The policy applied to an existing regular file at a link target is selected by two
+configuration keys:
 
-- **fail** (default): Stop and report conflicts
-- **backup**: Move conflicting files to backup location
-- **overwrite**: Replace conflicting files with symlinks
-- **skip**: Skip conflicting files and continue
+| `symlinks.overwrite` | `symlinks.backup` | Effective policy |
+|---|---|---|
+| `false` | `false` | fail (default): stop and report the conflict |
+| `false` | `true` | backup: copy the file into the backup directory, then replace it |
+| `true` | any | overwrite: replace the file with the symlink |
 
-Example:
+All other conflict classes (wrong link destination, permission error, type mismatch)
+always fail and are not configurable.
+
+Set the policy persistently or per invocation:
 
 ```bash
-# Backup existing files
-dot --on-conflict backup manage vim
+# Persist in the configuration file
+dot config set symlinks.backup true
 
-# Skip conflicts and continue
-dot --on-conflict skip manage vim tmux
+# Per invocation via environment variable
+DOT_SYMLINKS_BACKUP=true dot manage vim
+DOT_SYMLINKS_OVERWRITE=true dot manage vim
 ```
+
+### Backup Behavior
+
+Backup destination defaults to `<target>/.dot-backup` and is overridden with the
+global `--backup-dir` flag or the `symlinks.backup_dir` configuration key. Backup
+files are named `<basename>.<path-hash>.<YYYYMMDD-HHMMSS>`, where `<path-hash>` is
+the first four bytes of the SHA-256 of the source path, so files sharing a basename
+in different directories do not collide. The backup directory is created on demand
+when the first backup is written.
+
+Known limitations:
+
+- `symlinks.backup_suffix` is accepted and validated but not applied to conflict
+  backup filenames.
+- `symlinks.backup_dir` can be read with `dot config get` but not written with
+  `dot config set`; edit the configuration file or use `--backup-dir`.
 
 See [User Guide - Workflows](docs/user/06-workflows.md) for conflict resolution strategies.
 
@@ -551,10 +638,13 @@ Limited support:
 
 ### Architectures
 
-- amd64 (x86-64)
-- arm64 (aarch64)
-- 386 (x86)
-- arm (32-bit ARM)
+Prebuilt binaries are published for:
+
+- amd64 (x86-64): Linux, macOS, Windows
+- arm64 (aarch64): Linux, macOS
+
+Other architectures supported by the Go toolchain can be built from source with
+`go install github.com/yaklabco/dot/cmd/dot@latest`.
 
 ## Documentation
 
@@ -597,35 +687,36 @@ make build
 ### Testing
 
 ```bash
-# Run all tests
+# Run all tests with race detection and coverage profile
 make test
 
-# Run with coverage
-make test-coverage
+# Same, with formatted tparse output
+make test-tparse
 
-# Run integration tests
-make test-integration
+# Verify the coverage profile meets the 60% gate
+make check-coverage
+
+# Generate and open an HTML coverage report
+make coverage
 ```
 
 ### Linting
 
 ```bash
-# Run all linters
-make lint
-
-# Run specific checks
-make lint-go
-make lint-docs
+make lint    # golangci-lint
+make vet     # go vet
+make fmt     # Check formatting
 ```
 
 ### Quality Checks
 
 ```bash
-# Run complete quality suite
+# Run the complete quality suite
 make check
 ```
 
-This runs tests, linting, and builds in sequence.
+This runs tests, the coverage gate, linters, vet, and the vulnerability check.
+It does not build the binary; run `make build` separately.
 
 ## Architecture
 
@@ -690,7 +781,7 @@ Contributions are welcome. All contributions must follow project standards:
 ### Requirements
 
 - Test-driven development: write tests before implementation
-- Minimum 75% test coverage for new code
+- Coverage gates: 60% locally, 75% in CI
 - All linters must pass without warnings
 - Conventional Commits specification for commit messages
 - Atomic commits: one logical change per commit
@@ -715,9 +806,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 This project adheres to strict development standards:
 
-- **Language**: Go 1.26
+- **Language**: Go 1.26.1
 - **Development**: Test-Driven Development (TDD) mandatory
-- **Testing**: Minimum 75% coverage, property-based tests for core logic
+- **Testing**: 60% local and 75% CI coverage gates, property-based tests for core logic
 - **Commits**: Atomic commits with Conventional Commits format
 - **Code Style**: golangci-lint v2 with comprehensive linter set
 - **Documentation**: Academic style, factual, technically precise
@@ -735,7 +826,7 @@ dot is inspired by [GNU Stow](https://www.gnu.org/software/stow/). dot provides 
 | Directory folding | Yes | Yes |
 | Incremental updates | Yes | No |
 | Transactional operations | Yes | No |
-| Parallel execution | Yes | No |
+| Parallel execution | Planned | No |
 | Adopt existing files | Yes | No |
 | Status/health checks | Yes | No |
 | Multiple output formats | Yes | No |
@@ -752,12 +843,10 @@ See [Migration Guide](docs/user/migration-from-stow.md) for transitioning from G
 
 ## Project Status
 
-**Current Version**: v0.6.0
-
 **Stability**: Stable
 
 See [CHANGELOG](CHANGELOG.md) for release history.
 
 ## Acknowledgments
 
-Inspired by GNU Stow, reimagined with modern language features and safety guarantees. Made with ❤️ in Go.
+Inspired by GNU Stow, reimplemented with modern language features and safety guarantees.

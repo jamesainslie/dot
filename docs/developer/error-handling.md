@@ -289,4 +289,5 @@ func TestOperation(t *testing.T) {
 - [Testing Standards](testing.md) - Test requirements
 - `internal/domain/result.go` - Result[T] implementation
 - `internal/domain/errors_helpers.go` - Error wrapping helpers
+- `internal/domain/result_helpers.go` - `UnwrapResult` and Result-to-error conversion
 

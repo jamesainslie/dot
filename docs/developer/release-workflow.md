@@ -11,7 +11,7 @@ The dot project uses [Release Please](https://github.com/googleapis/release-plea
 ## Prerequisites
 
 - Git commit messages **must** follow the Conventional Commits specification.
-- All tests (`make test`) and linters (`make lint`) must pass before merging.
+- All CI gates must pass before merging. Reproduce them locally with `make check` (test, coverage gate, lint, vet, govulncheck).
 
 ## Release Process
 

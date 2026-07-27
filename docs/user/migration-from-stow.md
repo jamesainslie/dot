@@ -15,8 +15,8 @@ dot provides feature parity with GNU Stow plus modern enhancements. Migration is
 | `stow -R PACKAGE` | `dot remanage PACKAGE` | Update package (dot has incremental detection) |
 | `stow -n PACKAGE` | `dot --dry-run manage PACKAGE` | Simulate operation |
 | `stow -v PACKAGE` | `dot -v manage PACKAGE` | Verbose output |
-| `stow -d DIR` | `dot --dir DIR` | Specify package directory |
-| `stow -t DIR` | `dot --target DIR` | Specify target directory |
+| `stow -d DIR` | `dot --dir DIR manage PACKAGE` | Specify package directory (also `-d`) |
+| `stow -t DIR` | `dot --target DIR manage PACKAGE` | Specify target directory (also `-t`) |
 | - | `dot adopt PACKAGE FILE` | New: import existing files |
 | - | `dot status` | New: show installation status |
 | - | `dot doctor` | New: validate health |
@@ -31,7 +31,26 @@ brew install dot
 # or download binary from releases
 ```
 
-### Step 2: Test with One Package
+### Step 2: Understand the Layout Difference
+
+By default dot maps the package name to a target subdirectory, controlled by the
+`dotfile.package_name_mapping` key, which is enabled by default. Package `vim`
+targets `~/vim/`, not `~/`. A Stow package carried across unchanged will
+therefore link into the wrong location.
+
+Choose one of the following before migrating:
+
+1. Keep Stow semantics by setting `dotfile.package_name_mapping: false` in
+   `~/.config/dot/config.yaml`. Package contents are then placed directly under
+   the target directory, as Stow does. This is the closest equivalent and the
+   only option that reproduces top-level dotfiles such as `~/.vimrc` from a
+   package named `vim`.
+2. Restructure each package so that its name is the directory it owns. A package
+   named `dot-ssh` targets `~/.ssh/`, so `dot-ssh/config` becomes `~/.ssh/config`.
+   This suits packages that own a single dotted directory, but it cannot place a
+   file directly at `~/.vimrc`, because every package maps to a subdirectory.
+
+### Step 3: Test with One Package
 
 ```bash
 cd ~/dotfiles
@@ -39,14 +58,17 @@ cd ~/dotfiles
 # Unstow with Stow
 stow -D vim
 
-# Stow with dot
+# Inspect the plan before applying it
+dot --dry-run manage vim
+
+# Install with dot
 dot manage vim
 
-# Verify identical result
-ls -la ~/.vimrc
+# Verify the links landed where expected
+dot status vim
 ```
 
-### Step 3: Migrate All Packages
+### Step 4: Migrate All Packages
 
 ```bash
 cd ~/dotfiles
@@ -56,14 +78,14 @@ for pkg in */; do
     stow -D "$pkg"
 done
 
-# Stow with dot
+# Install with dot
 dot manage $(ls -d */ | tr -d '/')
 
 # Verify
 dot status
 ```
 
-### Step 4: Remove GNU Stow (Optional)
+### Step 5: Remove GNU Stow (Optional)
 
 ```bash
 # Once confident
@@ -80,14 +102,20 @@ brew uninstall stow
 4. **Multiple Formats**: JSON, YAML, table output
 5. **Transactional**: Automatic rollback on failure
 6. **Type Safety**: Compile-time path safety
-7. **Performance**: Parallel execution, directory folding
+7. **Performance**: Parallel execution
+
+Note that directory folding, which Stow performs, is not implemented in dot.
+`manage` always creates one symlink per file.
 
 ### Behavioral Differences
 
 1. **Dotfile Translation**: dot uses `dot-` prefix, Stow uses `.` in package
-2. **Manifest**: dot maintains `.dot-manifest.json` for state tracking
-3. **Conflict Resolution**: dot has configurable policies (fail, backup, overwrite, skip)
-4. **Error Handling**: dot collects all errors, Stow stops at first
+2. **Package Name Mapping**: the package name selects the target subdirectory
+3. **Manifest**: dot maintains `.dot-manifest.json` under
+   `~/.local/share/dot/manifest/` for state tracking
+4. **Conflict Resolution**: dot fails on conflict by default; the
+   `symlinks.overwrite` and `symlinks.backup` configuration keys change this
+5. **Error Handling**: dot collects all errors, Stow stops at first
 
 ## Configuration Migration
 
@@ -97,8 +125,18 @@ Stow uses command-line options or `.stowrc` file.
 
 ### dot Configuration
 
-dot uses YAML/JSON/TOML configuration:
+dot reads YAML, JSON, or TOML from `~/.config/dot/config.yaml`, overridable with
+the `DOT_CONFIG` environment variable. Generate a commented default with
+`dot config init`. The nearest Stow equivalents:
 
+```yaml
+directories:
+  package: ~/dotfiles    # stow -d
+  target: ~              # stow -t
+
+symlinks:
+  mode: relative         # Stow's default link style
+```
 
 ## Package Structure
 
@@ -122,7 +160,9 @@ dotfiles/
         └── colors/
 ```
 
-Note: dot also works with Stow's structure (files starting with `.`).
+Note: dot reads files whose names already begin with `.`, but the package name
+still determines the target subdirectory unless `dotfile.package_name_mapping`
+is disabled.
 
 ## Common Migration Issues
 
@@ -140,9 +180,11 @@ Note: dot also works with Stow's structure (files starting with `.`).
 
 ### Issue: Manifest File
 
-**Cause**: dot creates `.dot-manifest.json` in target directory
+**Cause**: dot writes `.dot-manifest.json` under
+`~/.local/share/dot/manifest/` by default, not into the target directory.
 
-**Solution**: Add to `.gitignore` if target is version controlled
+**Solution**: No `.gitignore` entry is needed unless `directories.manifest` has
+been pointed at a version-controlled directory.
 
 ## Compatibility Mode
 

@@ -113,8 +113,10 @@ Comprehensive guide to using dot for dotfile and configuration management.
 ### Reference
 
 - [Bootstrap Configuration Specification](bootstrap-config-spec.md)
+- [Repository Configuration](repository-config.md)
 - [Ignore System](ignore-system.md)
 - [Migration from GNU Stow](migration-from-stow.md)
+- [Migration Guide: v0.2 to v0.3](migration-v0.3.md)
 - [Secrets Management](secrets-management.md)
 - [Homebrew Installation](installation-homebrew.md)
 
@@ -123,7 +125,7 @@ Comprehensive guide to using dot for dotfile and configuration management.
 - **GitHub Issues**: Report bugs or request features
 - **GitHub Discussions**: Ask questions and share experiences
 - **Documentation**: Search this guide for answers
-- **Man Pages**: `man dot` for quick reference
+- **Built-in Help**: `dot --help` and `dot <command> --help` for quick reference
 
 ## Documentation Conventions
 
@@ -138,13 +140,13 @@ This guide uses the following conventions:
 
 ```bash
 # Comments explain what commands do
-dot manage vim
+dot manage dot-vim
 
 # Output examples shown where helpful
 $ dot status
-Package: vim
-Status: installed
-Links: 3
+dot-vim
+  Links: 2
+  Installed: just now
 ```
 
 ### Notes and Warnings
@@ -159,7 +161,7 @@ Important information is highlighted:
 
 ## Version Information
 
-This documentation corresponds to dot v0.4.1.
+This documentation corresponds to dot v0.6.5.
 
 For older versions, see the documentation in the appropriate release tag.
 

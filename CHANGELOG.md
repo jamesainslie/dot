@@ -39,6 +39,34 @@
 * fix lint, format, and vulnerability check failures ([9d5ab37](https://github.com/yaklabco/dot/commit/9d5ab37c70a2ba826bc37b256103e37716b566c6))
 * set 1-day retention on build artifacts ([af7dc8e](https://github.com/yaklabco/dot/commit/af7dc8ef7b10ecb3b15f0fecf015c1218ac5250a))
 
+## [0.6.6](https://github.com/yaklabco/dot/compare/v0.6.5...v0.6.6) (2026-07-27)
+
+
+### Features
+
+* **doctor:** non-interactive ignore management and nix pattern category ([#70](https://github.com/yaklabco/dot/issues/70)) ([d14061b](https://github.com/yaklabco/dot/commit/d14061b22a8fa5562df1714b2d79f35e4522d965)), closes [#67](https://github.com/yaklabco/dot/issues/67)
+
+
+### Bug Fixes
+
+* **backup:** collision-free backup names and on-demand backup dir creation ([cdd3c67](https://github.com/yaklabco/dot/commit/cdd3c67161a3f08a4158d9fc26115706bcb0fded))
+* **cli:** correct help examples that advertise nonexistent flags ([cdd3c67](https://github.com/yaklabco/dot/commit/cdd3c67161a3f08a4158d9fc26115706bcb0fded))
+* **domain:** verify symlink state before deletion and make rollbacks restore or report failure ([cdd3c67](https://github.com/yaklabco/dot/commit/cdd3c67161a3f08a4158d9fc26115706bcb0fded))
+* execution-safety remediation and documentation drift audit ([#81](https://github.com/yaklabco/dot/issues/81)) ([cdd3c67](https://github.com/yaklabco/dot/commit/cdd3c67161a3f08a4158d9fc26115706bcb0fded))
+* **executor:** detach rollback from context cancellation so Ctrl-C mid-plan still restores state ([cdd3c67](https://github.com/yaklabco/dot/commit/cdd3c67161a3f08a4158d9fc26115706bcb0fded))
+* **manage:** register pre-existing correct links in the manifest ([#69](https://github.com/yaklabco/dot/issues/69)) ([3bcf16e](https://github.com/yaklabco/dot/commit/3bcf16e8e3538448e199c31cdd187fa381a116c5)), closes [#66](https://github.com/yaklabco/dot/issues/66)
+* **planner:** allow directory creation at parents of protected paths ([#62](https://github.com/yaklabco/dot/issues/62)) ([b9028a3](https://github.com/yaklabco/dot/commit/b9028a35c2187fb1802610ee1929c5b7ecc75af5))
+
+
+### Build System
+
+* clear vulnerability gate, upgrade x/net to v0.56.0 and x/text to v0.39.0 ([cdd3c67](https://github.com/yaklabco/dot/commit/cdd3c67161a3f08a4158d9fc26115706bcb0fded))
+
+
+### Continuous Integration
+
+* repair lint install, clear vulnerability findings, pin Go via go.mod ([#68](https://github.com/yaklabco/dot/issues/68)) ([9d23d0c](https://github.com/yaklabco/dot/commit/9d23d0c4e50ff04ceb29693e8bdd8a6bc794b771)), closes [#63](https://github.com/yaklabco/dot/issues/63)
+
 ## [0.6.4](https://github.com/yaklabco/dot/compare/v0.6.3...v0.6.4) (2026-02-27)
 
 

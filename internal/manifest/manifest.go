@@ -52,6 +52,10 @@ type RepositoryInfo struct {
 
 	// CommitSHA is the commit hash at clone time (optional).
 	CommitSHA string `json:"commit_sha,omitempty"`
+
+	// Profile is the bootstrap profile selected at clone time (optional).
+	// Manifests written before this field existed simply omit it.
+	Profile string `json:"profile,omitempty"`
 }
 
 // DoctorState tracks ignored symlinks and patterns for doctor diagnostics.

@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -397,4 +398,67 @@ func TestPackageInfo_BackwardCompatibility_NoDirectories(t *testing.T) {
 	// Verify new fields default to empty
 	assert.Equal(t, "", pkg.TargetDir)
 	assert.Equal(t, "", pkg.PackageDir)
+}
+
+func TestManifest_JSON_RepositoryProfile(t *testing.T) {
+	tests := []struct {
+		name        string
+		info        RepositoryInfo
+		wantProfile string
+		wantKey     bool
+	}{
+		{
+			name: "profile recorded",
+			info: RepositoryInfo{
+				URL:      "https://github.com/user/dotfiles",
+				Branch:   "main",
+				ClonedAt: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC),
+				Profile:  "work",
+			},
+			wantProfile: "work",
+			wantKey:     true,
+		},
+		{
+			name: "profile omitted when empty",
+			info: RepositoryInfo{
+				URL:      "https://github.com/user/dotfiles",
+				Branch:   "main",
+				ClonedAt: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC),
+			},
+			wantProfile: "",
+			wantKey:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := New()
+			m.SetRepository(tt.info)
+
+			data, err := json.Marshal(m)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantKey, strings.Contains(string(data), `"profile"`))
+
+			var loaded Manifest
+			require.NoError(t, json.Unmarshal(data, &loaded))
+
+			repo, exists := loaded.GetRepository()
+			require.True(t, exists)
+			assert.Equal(t, tt.wantProfile, repo.Profile)
+		})
+	}
+}
+
+func TestManifest_JSON_RepositoryWithoutProfileField(t *testing.T) {
+	// Manifests written before the profile field existed must still load.
+	legacy := `{"version":"1.0","updated_at":"2025-01-01T12:00:00Z","packages":{},"hashes":{},` +
+		`"repository":{"url":"https://github.com/user/dotfiles","branch":"main","cloned_at":"2025-01-01T12:00:00Z"}}`
+
+	var loaded Manifest
+	require.NoError(t, json.Unmarshal([]byte(legacy), &loaded))
+
+	repo, exists := loaded.GetRepository()
+	require.True(t, exists)
+	assert.Equal(t, "main", repo.Branch)
+	assert.Empty(t, repo.Profile)
 }

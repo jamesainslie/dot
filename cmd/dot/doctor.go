@@ -2,14 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/yaklabco/dot/internal/bootstrap"
 	"github.com/yaklabco/dot/internal/cli/pretty"
 	"github.com/yaklabco/dot/internal/cli/render"
 	"github.com/yaklabco/dot/internal/cli/renderer"
@@ -169,12 +173,79 @@ func newDoctorCommand() *cobra.Command {
 			return err
 		}
 
+		// Advisory only: never affects the exit code or the report.
+		printMachineProfileDrift(cmd, cfg, client)
+
 		// Store health status for exit code determination (no error for warnings/errors)
 		storeDoctorStatus(cmd, report)
 		return nil
 	}
 
 	return cmd
+}
+
+// printMachineProfileDrift writes the advisory drift note, if any, to stderr.
+//
+// Failures to read the hostname leave the note unwritten: the check is a
+// courtesy, not a diagnostic.
+func printMachineProfileDrift(cmd *cobra.Command, cfg dot.Config, client *dot.Client) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return
+	}
+
+	if message := machineProfileDrift(cmd.Context(), cfg, client, hostname); message != "" {
+		fmt.Fprintln(cmd.ErrOrStderr(), message)
+	}
+}
+
+// machineProfileDrift reports when the bootstrap machines section maps this
+// host to a profile other than the one recorded at clone time.
+//
+// The check is advisory: it returns a message to print alongside the report,
+// never an error, and never changes the health status or exit code. It stays
+// silent when there is no bootstrap config, no machines section, no matching
+// entry, or no profile recorded in the manifest.
+func machineProfileDrift(ctx context.Context, cfg dot.Config, client *dot.Client, hostname string) string {
+	bootstrapPath := filepath.Join(cfg.PackageDir, ".dotbootstrap.yaml")
+	if cfg.FS == nil || !cfg.FS.Exists(ctx, bootstrapPath) {
+		return ""
+	}
+
+	bootstrapCfg, err := bootstrap.Load(ctx, cfg.FS, bootstrapPath)
+	if err != nil || len(bootstrapCfg.Machines) == 0 {
+		return ""
+	}
+
+	rule, matched := bootstrap.ResolveMachineProfile(bootstrapCfg.Machines, hostname)
+	if !matched {
+		return ""
+	}
+
+	recorded := recordedProfile(ctx, client)
+	if recorded == "" || recorded == rule.Profile {
+		return ""
+	}
+
+	return fmt.Sprintf(
+		"Note: machines entry %q maps host %s to profile %q, but this installation was cloned with profile %q.",
+		rule.Host, hostname, rule.Profile, recorded,
+	)
+}
+
+// recordedProfile returns the profile recorded in the manifest repository
+// section, or an empty string when none is recorded.
+func recordedProfile(ctx context.Context, client *dot.Client) string {
+	if client == nil {
+		return ""
+	}
+
+	info, exists, err := client.RepositoryInfo(ctx)
+	if err != nil || !exists {
+		return ""
+	}
+
+	return info.Profile
 }
 
 // renderVerboseDiagnostics outputs detailed diagnostics with all issue information.
@@ -452,6 +523,12 @@ Triage Mode:
   orphaned links by category and allows you to ignore, adopt, or handle them
   individually. This is useful for cleaning up after uninstalling packages or
   managing symlinks created by other tools.
+
+Machine Profiles:
+  If the repository has a .dotbootstrap.yaml with a machines section and
+  it maps this host to a profile other than the one recorded at clone
+  time, doctor prints an advisory note. The note is informational and
+  does not affect the health status or the exit code.
 
 Exit codes:
   0 - Healthy (no issues found)

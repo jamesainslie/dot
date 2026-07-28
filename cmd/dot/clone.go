@@ -52,7 +52,16 @@ AUTHENTICATION:
 
 BOOTSTRAP CONFIGURATION:
   Optional .dotbootstrap.yaml defines installation profiles,
-  platform requirements, and package metadata.
+  platform requirements, and package metadata. Profiles may inherit
+  from a parent profile with extends.
+
+MACHINE PROFILES:
+  If .dotbootstrap.yaml has a machines section, the profile for this
+  host is resolved from its hostname when --profile is not given. The
+  entries are an ordered list and the first matching host pattern wins.
+  An explicit --profile always overrides the mapping; --interactive
+  skips it. With no match, selection falls back to defaults.profile or
+  an interactive prompt.
 
 Examples:
   # Clone and install all packages (creates ./dotfiles directory)

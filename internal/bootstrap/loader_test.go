@@ -122,6 +122,46 @@ defaults:
 			},
 		},
 		{
+			name: "valid config with profile inheritance",
+			content: `version: "1.0"
+packages:
+  - name: dot-git
+  - name: dot-vim
+profiles:
+  base:
+    description: Base
+    packages:
+      - dot-git
+  dev:
+    description: Dev
+    extends: base
+    packages:
+      - dot-vim
+`,
+			wantErr: false,
+			validate: func(t *testing.T, cfg Config) {
+				assert.Equal(t, "base", cfg.Profiles["dev"].Extends)
+				packages, err := GetProfile(cfg, "dev")
+				require.NoError(t, err)
+				assert.Equal(t, []string{"dot-git", "dot-vim"}, packages)
+			},
+		},
+		{
+			name: "invalid config - extends unknown profile",
+			content: `version: "1.0"
+packages:
+  - name: dot-vim
+profiles:
+  dev:
+    description: Dev
+    extends: ghost
+    packages:
+      - dot-vim
+`,
+			wantErr: true,
+			errMsg:  "extends unknown profile",
+		},
+		{
 			name: "invalid YAML syntax",
 			content: `version: "1.0"
 packages:

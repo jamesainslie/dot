@@ -7,6 +7,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"slices"
 )
 
 // Config represents the bootstrap configuration for a dotfiles repository.
@@ -19,6 +20,10 @@ type Config struct {
 
 	// Profiles defines named sets of packages for different use cases.
 	Profiles map[string]Profile `yaml:"profiles,omitempty"`
+
+	// Machines maps host patterns to profiles, in evaluation order.
+	// The first entry whose pattern matches the hostname wins.
+	Machines []MachineRule `yaml:"machines,omitempty"`
 
 	// Defaults specifies default settings for installation.
 	Defaults Defaults `yaml:"defaults,omitempty"`
@@ -46,6 +51,11 @@ type Profile struct {
 	// Description provides human-readable explanation of the profile.
 	Description string `yaml:"description"`
 
+	// Extends names a single parent profile whose packages are inherited.
+	// Inherited packages come first, in parent chain order, followed by the
+	// packages declared on this profile.
+	Extends string `yaml:"extends,omitempty"`
+
 	// Packages lists the package names included in this profile.
 	Packages []string `yaml:"packages"`
 }
@@ -69,7 +79,10 @@ type Defaults struct {
 //   - Invalid platform names are used
 //   - Invalid conflict policies are specified
 //   - Profiles reference non-existent packages
+//   - Profiles extend an unknown profile or form a cycle
 //   - Default profile does not exist
+//   - Machine entries have an empty or malformed host pattern
+//   - Machine entries reference a non-existent profile
 func (c Config) Validate() error {
 	// Check version
 	if c.Version == "" {
@@ -89,6 +102,11 @@ func (c Config) Validate() error {
 
 	// Validate profiles reference valid packages
 	if err := c.validateProfiles(packageNames); err != nil {
+		return err
+	}
+
+	// Validate host to profile mappings
+	if err := c.validateMachines(); err != nil {
 		return err
 	}
 
@@ -144,10 +162,25 @@ func (c Config) validateDefaults() error {
 	return nil
 }
 
-// validateProfiles validates that profiles reference valid packages.
+// validateProfiles validates profile inheritance and package references.
+//
+// Profiles are checked in name order so that a configuration with several
+// problems always reports the same one.
 func (c Config) validateProfiles(packageNames map[string]struct{}) error {
-	for profileName, profile := range c.Profiles {
-		for _, pkgName := range profile.Packages {
+	profileNames := make([]string, 0, len(c.Profiles))
+	for profileName := range c.Profiles {
+		profileNames = append(profileNames, profileName)
+	}
+	slices.Sort(profileNames)
+
+	for _, profileName := range profileNames {
+		// Resolution reports unknown parents and cycles.
+		resolved, err := ResolveProfilePackages(c.Profiles, profileName)
+		if err != nil {
+			return err
+		}
+
+		for _, pkgName := range resolved {
 			if _, exists := packageNames[pkgName]; !exists {
 				return fmt.Errorf("profile %q references unknown package: %s", profileName, pkgName)
 			}

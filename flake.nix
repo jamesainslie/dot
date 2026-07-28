@@ -8,10 +8,11 @@
   outputs =
     { self, nixpkgs }:
     let
-      # Kept in step with the released tag. release-please bumps the tag; bump
-      # this alongside it so `dot --version` reports the same string the
-      # release binaries do.
-      version = "0.7.0";
+      # Read from the release-please manifest, which is the file release-please
+      # updates on every release, so the flake cannot drift from the released
+      # tag. It is the derivation version and the string compiled into
+      # main.version.
+      version = (builtins.fromJSON (builtins.readFile ./.release-please-manifest.json)).".";
 
       systems = [
         "x86_64-linux"

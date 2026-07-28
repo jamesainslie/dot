@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yaklabco/dot/internal/config"
+	"gopkg.in/yaml.v3"
 )
 
 func TestExtendedConfig_ExpandPaths(t *testing.T) {
@@ -62,11 +63,6 @@ func TestExtendedConfig_ExpandPaths(t *testing.T) {
 			want:  filepath.Join(home, "outer/inner"),
 		},
 		{
-			name:  "undefined variable expands to empty",
-			value: "$DOT_TEST_UNDEFINED/packages",
-			want:  "/packages",
-		},
-		{
 			name:  "absolute path is unchanged",
 			value: "/etc/dot",
 			want:  "/etc/dot",
@@ -102,7 +98,7 @@ func TestExtendedConfig_ExpandPaths(t *testing.T) {
 			cfg.Symlinks.BackupDir = tt.value
 			cfg.Logging.File = tt.value
 
-			cfg.ExpandPaths()
+			require.NoError(t, cfg.ExpandPaths())
 
 			assert.Equal(t, tt.want, cfg.Directories.Package, "directories.package")
 			assert.Equal(t, tt.want, cfg.Directories.Target, "directories.target")
@@ -122,7 +118,7 @@ func TestExtendedConfig_ExpandPathsLeavesNonPathValues(t *testing.T) {
 	cfg.Ignore.Patterns = []string{"~/*.local", "$HOME/secret"}
 	cfg.Update.Repository = "yaklabco/dot"
 
-	cfg.ExpandPaths()
+	require.NoError(t, cfg.ExpandPaths())
 
 	assert.Equal(t, "~dot-", cfg.Dotfile.Prefix)
 	assert.Equal(t, "$HOME.bak", cfg.Symlinks.BackupSuffix)
@@ -138,12 +134,87 @@ func TestExtendedConfig_ExpandPathsIsIdempotent(t *testing.T) {
 	cfg.Directories.Target = "~"
 	cfg.Directories.Package = "~/.dotfiles"
 
-	cfg.ExpandPaths()
+	require.NoError(t, cfg.ExpandPaths())
 	first := *cfg
-	cfg.ExpandPaths()
+	require.NoError(t, cfg.ExpandPaths())
 
 	assert.Equal(t, first.Directories.Target, cfg.Directories.Target)
 	assert.Equal(t, first.Directories.Package, cfg.Directories.Package)
+}
+
+func TestExtendedConfig_ExpandPathsRejectsUndefinedVariables(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("DOT_TEST_ROOT", "/srv/dotfiles")
+
+	tests := []struct {
+		name    string
+		value   string
+		wantVar string
+	}{
+		{
+			name:    "bare undefined variable",
+			value:   "$DOT_TEST_UNDEFINED",
+			wantVar: "$DOT_TEST_UNDEFINED",
+		},
+		{
+			name:    "undefined variable with a suffix",
+			value:   "$DOT_TEST_UNDEFINED/packages",
+			wantVar: "$DOT_TEST_UNDEFINED",
+		},
+		{
+			name:    "braced undefined variable",
+			value:   "${DOT_TEST_UNDEFINED}/packages",
+			wantVar: "$DOT_TEST_UNDEFINED",
+		},
+		{
+			name:    "undefined variable alongside a defined one",
+			value:   "$DOT_TEST_ROOT/$DOT_TEST_UNDEFINED",
+			wantVar: "$DOT_TEST_UNDEFINED",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.DefaultExtended()
+			cfg.Directories.Package = tt.value
+
+			err := cfg.ExpandPaths()
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "directories.package")
+			assert.Contains(t, err.Error(), tt.wantVar)
+			assert.Equal(t, tt.value, cfg.Directories.Package, "value is left as written when expansion fails")
+		})
+	}
+}
+
+func TestExtendedConfig_ExpandPathsReportsUnresolvableHome(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	cfg := config.DefaultExtended()
+	cfg.Directories.Target = "~"
+
+	err := cfg.ExpandPaths()
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "directories.target")
+}
+
+func TestLoadExtendedFromFile_RejectsUndefinedVariables(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	content := `
+directories:
+  package: $DOT_TEST_UNDEFINED/repo
+  target: "~"
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(content), 0o600))
+
+	_, err := config.LoadExtendedFromFile(configPath)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "$DOT_TEST_UNDEFINED")
 }
 
 func TestLoadExtendedFromFile_ExpandsPathValues(t *testing.T) {
@@ -332,4 +403,113 @@ directories:
 
 	assert.Equal(t, filepath.Join(home, "flag-dotfiles"), cfg.Directories.Package)
 	assert.Equal(t, filepath.Join(home, "flag-target"), cfg.Directories.Target)
+}
+
+// writtenPaths mirrors the path-typed subset of a written configuration file.
+type writtenPaths struct {
+	Directories struct {
+		Package  string `yaml:"package"`
+		Target   string `yaml:"target"`
+		Manifest string `yaml:"manifest"`
+	} `yaml:"directories"`
+	Symlinks struct {
+		BackupDir string `yaml:"backup_dir"`
+	} `yaml:"symlinks"`
+	Logging struct {
+		Level string `yaml:"level"`
+		File  string `yaml:"file"`
+	} `yaml:"logging"`
+}
+
+func readWrittenPaths(t *testing.T, path string) writtenPaths {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	var written writtenPaths
+	require.NoError(t, yaml.Unmarshal(data, &written))
+
+	return written
+}
+
+const portableConfigContent = `
+directories:
+  package: ~/.dotfiles
+  target: "~"
+  manifest: ~/.local/share/dot/manifest
+
+symlinks:
+  backup: true
+  backup_dir: ~/.dotfiles.backup
+
+logging:
+  level: INFO
+  file: ~/.local/state/dot/dot.log
+`
+
+// TestWriter_UpdatePreservesUnexpandedPathValues guards the round trip: a
+// hand-written "~" must survive "dot config set" instead of being frozen into
+// the absolute path of whichever machine happened to run the command.
+func TestWriter_UpdatePreservesUnexpandedPathValues(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(portableConfigContent), 0o600))
+
+	require.NoError(t, config.NewWriter(configPath).Update("logging.level", "DEBUG"))
+
+	written := readWrittenPaths(t, configPath)
+	assert.Equal(t, "~/.dotfiles", written.Directories.Package)
+	assert.Equal(t, "~", written.Directories.Target)
+	assert.Equal(t, "~/.local/share/dot/manifest", written.Directories.Manifest)
+	assert.Equal(t, "~/.dotfiles.backup", written.Symlinks.BackupDir)
+	assert.Equal(t, "~/.local/state/dot/dot.log", written.Logging.File)
+	assert.Equal(t, "DEBUG", written.Logging.Level, "the requested update is applied")
+
+	cfg, err := config.LoadExtendedFromFile(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, ".dotfiles"), cfg.Directories.Package)
+	assert.Equal(t, home, cfg.Directories.Target)
+}
+
+func TestWriter_UpdatePreservesEnvironmentReferences(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("DOT_TEST_ROOT", filepath.Join(home, "srv"))
+
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	content := `
+directories:
+  package: $DOT_TEST_ROOT/packages
+  target: "~"
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(content), 0o600))
+
+	require.NoError(t, config.NewWriter(configPath).Update("logging.level", "DEBUG"))
+
+	written := readWrittenPaths(t, configPath)
+	assert.Equal(t, "$DOT_TEST_ROOT/packages", written.Directories.Package)
+}
+
+// TestUpgradeConfig_PreservesUnexpandedPathValues covers the same round trip
+// through "dot config upgrade", which rewrites the whole file.
+func TestUpgradeConfig_PreservesUnexpandedPathValues(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
+
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(portableConfigContent), 0o600))
+
+	_, err := config.UpgradeConfig(configPath, true)
+	require.NoError(t, err)
+
+	written := readWrittenPaths(t, configPath)
+	assert.Equal(t, "~/.dotfiles", written.Directories.Package)
+	assert.Equal(t, "~", written.Directories.Target)
+	assert.Equal(t, "~/.local/share/dot/manifest", written.Directories.Manifest)
+	assert.Equal(t, "~/.dotfiles.backup", written.Symlinks.BackupDir)
+	assert.Equal(t, "~/.local/state/dot/dot.log", written.Logging.File)
 }

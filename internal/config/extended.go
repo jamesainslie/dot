@@ -307,6 +307,54 @@ func DefaultExtended() *ExtendedConfig {
 
 // LoadExtendedFromFile loads extended configuration from specified file.
 func LoadExtendedFromFile(path string) (*ExtendedConfig, error) {
+	cfg, err := readExtendedFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Resolve "~" and "$VAR" in path values before anything consumes them, so
+	// a config file stays portable across machines instead of creating
+	// directories literally named "~" or "$HOME".
+	if err := cfg.ExpandPaths(); err != nil {
+		return nil, fmt.Errorf("expand config paths: %w", err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("validate config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// loadExtendedFromFileVerbatim loads extended configuration keeping every path
+// value exactly as it was written.
+//
+// Write-back paths use it: "dot config set" and "dot config upgrade" re-marshal
+// the whole configuration, so loading through LoadExtendedFromFile would freeze
+// a portable "~/.dotfiles" into the absolute path of whichever machine ran the
+// command. Validation still runs against an expanded copy, so a file that
+// LoadExtendedFromFile rejects is rejected here for the same reason.
+func loadExtendedFromFileVerbatim(path string) (*ExtendedConfig, error) {
+	cfg, err := readExtendedFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	expanded := *cfg
+	if err := expanded.ExpandPaths(); err != nil {
+		return nil, fmt.Errorf("expand config paths: %w", err)
+	}
+
+	if err := expanded.Validate(); err != nil {
+		return nil, fmt.Errorf("validate config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// readExtendedFile decodes a configuration file over the defaults, without
+// expanding or validating it.
+func readExtendedFile(path string) (*ExtendedConfig, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
 
@@ -317,15 +365,6 @@ func LoadExtendedFromFile(path string) (*ExtendedConfig, error) {
 	cfg := DefaultExtended()
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
-	}
-
-	// Resolve "~" and "$VAR" in path values before anything consumes them, so
-	// a config file stays portable across machines instead of creating
-	// directories literally named "~" or "$HOME".
-	cfg.ExpandPaths()
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
 	}
 
 	return cfg, nil

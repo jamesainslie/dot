@@ -183,6 +183,13 @@ Set a specific value:
 dot config set directories.package ~/dotfiles
 ```
 
+`dot config set` and `dot config upgrade` rewrite the whole file, but they read it verbatim first,
+so a `~` or `$VAR` you wrote by hand is written back unchanged. A repository config shared across
+machines stays portable through both commands.
+
+`dot config list` and `dot config get` report expanded values, which is the quickest way to confirm
+where a path actually resolves.
+
 ## Configuration Options
 
 Configuration is organised into sections. Keys are given as `section.field`. There is no flat
@@ -197,11 +204,21 @@ and the default silently remains in effect. Confirm every edit with `dot config 
 | `directories.target` | string | the user's home directory |
 | `directories.manifest` | string | `<XDG_DATA_HOME>/dot/manifest`, usually `$HOME/.local/share/dot/manifest` |
 
-**Write path values in full; there is no expansion.** A leading `~` and a `$VAR` reference are
-stored literally and then resolved against the working directory, so `target: ~/dotfiles` creates a
-directory named `~` under the current directory rather than under your home directory. Use an
-absolute path such as `/home/alice/dotfiles`. Note that `target: ~` on its own is YAML null, not a
-path; it leaves the key unset and the default applies.
+**Path values are expanded when the configuration is loaded.** A leading `~` resolves to your home
+directory and `$VAR` or `${VAR}` references resolve from the environment, so `package: ~/.dotfiles`
+and `manifest: $XDG_DATA_HOME/dot/manifest` both work and stay portable across machines. Expansion
+applies to path-typed values only: `directories.package`, `directories.target`,
+`directories.manifest`, `symlinks.backup_dir`, and `logging.file`. Pattern and prefix values such
+as `ignore.patterns` and `dotfile.prefix` are matched verbatim, tilde and all.
+
+Three details are worth knowing:
+
+- A variable that is not set is an error naming the variable, unlike a shell, where
+  `package: $UNSET_VAR/dotfiles` would quietly become `/dotfiles`.
+- Only a leading `~` or `~/` is a home reference. `~alice/.dotfiles` is left alone, and so is a
+  tilde anywhere but the start.
+- In YAML, an unquoted `target: ~` is null rather than a string; it leaves the key unset and the
+  default applies. Write `target: "~"` when you mean the home directory.
 
 Relative paths in `directories.package` are resolved from the working directory. The manifest is a
 single JSON file, `.dot-manifest.json`, inside `directories.manifest`; by default that is
@@ -364,21 +381,41 @@ negation, and size filtering.
 With `dotfile.translate` enabled, a leading `dot-` in a source name becomes a leading `.` in the
 target name.
 
-With `dotfile.package_name_mapping` enabled, package names determine target directories:
+`dotfile.package_name_mapping` selects between the two supported repository layouts. Both are
+fully supported; pick the one that matches how your repository is organised.
+
+**Name-mapped layout** (`package_name_mapping: true`, the default). The package name determines the
+target directory:
 
 - Package `dot-vim` installs into `~/.vim/`
 - Package `dot-gnupg` installs into `~/.gnupg/`
 - Package `config` installs into `~/config/`
 
-This eliminates redundant directory nesting: `dot-gnupg/gpg.conf` links to `~/.gnupg/gpg.conf`
-rather than `~/gpg.conf`. Set it to `false` to restore the legacy behaviour, in which the package
-name is used only for identification and the package structure must mirror the target structure.
+This removes a level of nesting inside the repository: `dot-gnupg/gpg.conf` links to
+`~/.gnupg/gpg.conf`, and the package directory holds only the files themselves.
 
 ```yaml
 dotfile:
   translate: true
   prefix: "dot-"
   package_name_mapping: true
+```
+
+**Full-tree layout** (`package_name_mapping: false`). The package name identifies the package only,
+and the directory tree inside the package mirrors the target directory, which is how GNU Stow
+works:
+
+- `gnupg/dot-gnupg/gpg.conf` links to `~/.gnupg/gpg.conf`
+- `vim/dot-vimrc` links to `~/.vimrc`
+
+Choose this layout when you are migrating an existing Stow repository or when a single package
+needs to place files in several different directories under the target.
+
+```yaml
+dotfile:
+  translate: true
+  prefix: "dot-"
+  package_name_mapping: false
 ```
 
 ### output
@@ -516,20 +553,20 @@ export DOT_LOGGING_FORMAT=json
 
 `~/.config/dot/config.yaml`:
 
-Paths are written in full because no expansion is performed. Substitute your own home directory
-for `/home/alice`.
+Paths are written home-relative so the same file works on every machine; absolute paths are equally
+valid where a location really is machine-specific.
 
 ```yaml
 directories:
-  package: /home/alice/dotfiles
-  target: /home/alice
-  manifest: /home/alice/.local/share/dot/manifest
+  package: ~/dotfiles
+  target: "~"
+  manifest: ~/.local/share/dot/manifest
 
 logging:
   level: INFO
   format: text
   destination: stderr
-  file: /home/alice/.local/state/dot/dot.log
+  file: ~/.local/state/dot/dot.log
 
 symlinks:
   mode: relative
@@ -537,7 +574,7 @@ symlinks:
   overwrite: false
   backup: true
   backup_suffix: ".bak"
-  backup_dir: /home/alice/.dot-backups
+  backup_dir: ~/.dot-backups
 
 ignore:
   use_defaults: true
@@ -772,9 +809,11 @@ directories:
   package: /home/alice/dotfiles
 ```
 
-### 3. Use Absolute Paths
+### 3. Prefer Home-Relative Paths
 
-Path values are not expanded. Write `/home/alice/dotfiles`, never `~/dotfiles` or `$HOME/dotfiles`.
+Path values are expanded on load, so `~/dotfiles` and `$HOME/dotfiles` both resolve correctly and
+keep the file portable across machines and user accounts. Reach for an absolute path such as
+`/home/alice/dotfiles` only when the location genuinely is machine-specific.
 
 ### 4. Document Custom Settings
 
@@ -784,7 +823,7 @@ Add comments explaining non-obvious choices:
 symlinks:
   # Back up rather than fail, because this host has pre-existing configs
   backup: true
-  backup_dir: /home/alice/.dot-backups
+  backup_dir: ~/.dot-backups
 ```
 
 ### 5. Verify After Editing

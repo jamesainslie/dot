@@ -56,6 +56,26 @@ curl -L "https://github.com/yaklabco/dot/releases/download/v${VERSION}/dot_${VER
 sudo mv dot /usr/local/bin/
 ```
 
+### Nix
+
+The repository is a flake with `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and
+`aarch64-darwin` outputs:
+
+```bash
+# Run without installing
+nix run github:yaklabco/dot -- --help
+
+# Build into ./result
+nix build github:yaklabco/dot
+
+# Install into a profile
+nix profile install github:yaklabco/dot
+```
+
+To pull it into a system or home-manager configuration, add
+`dot.url = "github:yaklabco/dot"` to your flake inputs and use
+`dot.packages.${system}.default`.
+
 ### From Source
 
 Requires Go 1.26.1 or later:
@@ -128,10 +148,14 @@ dot manage dot-vim
 
 This creates `~/.vim/vimrc` pointing to `~/dotfiles/dot-vim/vimrc`.
 
-Package names determine target directories:
+Under the default name-mapped layout, package names determine target directories:
 - `dot-vim` → `~/.vim/`
 - `dot-gnupg` → `~/.gnupg/`
 - `vim` → `~/vim/`
+
+Set `dotfile.package_name_mapping: false` for the full-tree layout instead, where the
+package mirrors the target directory as in GNU Stow. See
+[Repository Layouts](#repository-layouts).
 
 ### Check Status
 
@@ -163,14 +187,28 @@ The destination directory where symlinks are created. Default: `$HOME`.
 
 A directory within the package directory containing configuration files.
 
-### Package Name Mapping
+### Repository Layouts
 
-Package names determine target directories (default behavior):
+dot supports two repository layouts, selected by `dotfile.package_name_mapping`.
+Both are fully supported; choose the one that fits how your repository is organised.
+
+**Name-mapped layout** (`package_name_mapping: true`, the default). The package name
+is the target directory it owns:
 - Package `dot-vim` → files installed to `~/.vim/`
 - Package `dot-gnupg` → files installed to `~/.gnupg/`
 - Package `config` → files installed to `~/config/`
 
-This eliminates redundant nesting and makes package naming intuitive.
+This removes a level of nesting from the repository, at the cost of not being able
+to place a file directly at `~/.vimrc`.
+
+**Full-tree layout** (`package_name_mapping: false`). The package name identifies the
+package only, and the tree inside it mirrors the target directory, the way GNU Stow
+works:
+- `vim/dot-vimrc` → `~/.vimrc`
+- `gnupg/dot-gnupg/gpg.conf` → `~/.gnupg/gpg.conf`
+
+Choose this when migrating an existing Stow repository, or when one package needs to
+place files in several different directories under the target.
 
 ### Dotfile Translation
 
@@ -499,11 +537,17 @@ Environment and flag overlays cover a subset of keys only; see
 
 ### Configuration Example
 
+Path values are expanded when the configuration is loaded: a leading `~` resolves to
+the home directory and `$VAR` or `${VAR}` resolves from the environment. This applies
+to `directories.package`, `directories.target`, `directories.manifest`,
+`symlinks.backup_dir`, and `logging.file`. Quote a bare tilde, because an unquoted
+`target: ~` is YAML null rather than a path.
+
 ```yaml
 # ~/.config/dot/config.yaml
 directories:
   package: ~/dotfiles
-  target: ~
+  target: "~"
 
 logging:
   level: INFO
@@ -562,7 +606,7 @@ for the complete 12-section schema.
 | `ignore.use_defaults` | boolean | `true` | Apply the built-in ignore pattern set |
 | `ignore.patterns` | array | `[]` | Additional patterns to exclude |
 | `dotfile.translate` | boolean | `true` | Translate `dot-` file prefixes to `.` |
-| `dotfile.package_name_mapping` | boolean | `true` | Map package name to a target subdirectory |
+| `dotfile.package_name_mapping` | boolean | `true` | `true` for the name-mapped layout, `false` for the full-tree (Stow-style) layout |
 | `output.format` | string | `text` | `text`, `json`, `yaml`, or `table` |
 | `operations.atomic` | boolean | `true` | Roll back the whole plan on any failure |
 

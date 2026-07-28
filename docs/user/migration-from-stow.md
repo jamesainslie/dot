@@ -33,22 +33,34 @@ brew install dot
 
 ### Step 2: Understand the Layout Difference
 
-By default dot maps the package name to a target subdirectory, controlled by the
-`dotfile.package_name_mapping` key, which is enabled by default. Package `vim`
-targets `~/vim/`, not `~/`. A Stow package carried across unchanged will
-therefore link into the wrong location.
+dot supports two repository layouts, selected by `dotfile.package_name_mapping`.
+Neither is deprecated; they suit different repositories, and a Stow user is
+choosing between them rather than migrating away from one.
 
-Choose one of the following before migrating:
+**Full-tree layout** (`dotfile.package_name_mapping: false`). The package name
+identifies the package only, and the tree inside the package mirrors the target
+directory, exactly as Stow works. `vim/dot-vimrc` becomes `~/.vimrc`. Set this in
+`~/.config/dot/config.yaml`, or better in the repository config so every machine
+picks it up:
 
-1. Keep Stow semantics by setting `dotfile.package_name_mapping: false` in
-   `~/.config/dot/config.yaml`. Package contents are then placed directly under
-   the target directory, as Stow does. This is the closest equivalent and the
-   only option that reproduces top-level dotfiles such as `~/.vimrc` from a
-   package named `vim`.
-2. Restructure each package so that its name is the directory it owns. A package
-   named `dot-ssh` targets `~/.ssh/`, so `dot-ssh/config` becomes `~/.ssh/config`.
-   This suits packages that own a single dotted directory, but it cannot place a
-   file directly at `~/.vimrc`, because every package maps to a subdirectory.
+```yaml
+dotfile:
+  package_name_mapping: false
+```
+
+This is the closest equivalent to Stow and the layout to choose when a single
+package owns files in several places, or owns a top-level dotfile such as
+`~/.vimrc`.
+
+**Name-mapped layout** (`dotfile.package_name_mapping: true`, the default). The
+package name is the directory it owns: `dot-ssh` targets `~/.ssh/`, so
+`dot-ssh/config` becomes `~/.ssh/config` with no intermediate directory in the
+repository. This suits repositories where each package owns one dotted
+directory. It cannot place a file directly at `~/.vimrc`, because every package
+maps to a subdirectory.
+
+Whichever you pick, a Stow package carried across unchanged under the default
+layout links into `~/vim/` rather than `~/`, so decide before migrating.
 
 ### Step 3: Test with One Package
 
@@ -110,7 +122,9 @@ Note that directory folding, which Stow performs, is not implemented in dot.
 ### Behavioral Differences
 
 1. **Dotfile Translation**: dot uses `dot-` prefix, Stow uses `.` in package
-2. **Package Name Mapping**: the package name selects the target subdirectory
+2. **Repository Layout**: under the default name-mapped layout the package name
+   selects the target subdirectory; `dotfile.package_name_mapping: false`
+   switches to the full-tree layout Stow users already have
 3. **Manifest**: dot maintains `.dot-manifest.json` under
    `~/.local/share/dot/manifest/` for state tracking
 4. **Conflict Resolution**: dot fails on conflict by default; the
@@ -132,11 +146,15 @@ the `DOT_CONFIG` environment variable. Generate a commented default with
 ```yaml
 directories:
   package: ~/dotfiles    # stow -d
-  target: ~              # stow -t
+  target: "~"            # stow -t
 
 symlinks:
   mode: relative         # Stow's default link style
 ```
+
+A leading `~` and `$VAR` references in path values are expanded when the config
+is loaded, so these are portable across machines. Quote a bare tilde: unquoted,
+`target: ~` is YAML null and the key is left unset.
 
 ## Package Structure
 
@@ -150,19 +168,33 @@ dotfiles/
         └── colors/
 ```
 
-### dot (Recommended)
+### dot, full-tree layout
+
+`dotfile.package_name_mapping: false`. The package mirrors the target tree, as
+in Stow:
 
 ```
 dotfiles/
 └── vim/
-    ├── dot-vimrc        # Translates to .vimrc
-    └── dot-vim/         # Translates to .vim/
+    ├── dot-vimrc        # Translates to ~/.vimrc
+    └── dot-vim/         # Translates to ~/.vim/
         └── colors/
 ```
 
-Note: dot reads files whose names already begin with `.`, but the package name
-still determines the target subdirectory unless `dotfile.package_name_mapping`
-is disabled.
+### dot, name-mapped layout
+
+`dotfile.package_name_mapping: true` (the default). The package name is the
+directory it owns, so the repository carries one level less nesting:
+
+```
+dotfiles/
+└── dot-vim/             # The package targets ~/.vim/
+    └── colors/
+```
+
+Note: dot reads files whose names already begin with `.`, so a Stow repository
+needs no renaming to be readable. The `dot-` prefix is a convention that keeps
+dotfiles visible in the repository, not a requirement.
 
 ## Common Migration Issues
 

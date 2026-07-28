@@ -57,7 +57,10 @@ func (w *Writer) Update(key string, value interface{}) error {
 	var err error
 
 	if fileExists(w.path) {
-		cfg, err = LoadExtendedFromFile(w.path)
+		// Load verbatim: this config is written straight back out, and an
+		// expanded load would replace a hand-written "~" or "$VAR" with this
+		// machine's absolute path.
+		cfg, err = loadExtendedFromFileVerbatim(w.path)
 		if err != nil {
 			return fmt.Errorf("load existing config: %w", err)
 		}

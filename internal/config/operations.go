@@ -19,9 +19,10 @@ func UpgradeConfig(configPath string, force bool) (string, error) {
 		return "", fmt.Errorf("config file does not exist: %s\nRun 'dot config init' to create one", configPath)
 	}
 
-	// Load existing config
-	loader := NewLoader("dot", configPath)
-	oldConfig, err := loader.LoadWithEnv()
+	// Load existing config verbatim: the upgrade rewrites the whole file, so
+	// an expanded load would bake this machine's absolute paths, and any
+	// DOT_* override in the current environment, into the user's config.
+	oldConfig, err := loadExtendedFromFileVerbatim(configPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to load existing config: %w", err)
 	}

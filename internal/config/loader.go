@@ -56,6 +56,14 @@ func (l *Loader) LoadWithEnv() (*ExtendedConfig, error) {
 
 	// Load from environment (sparse config with only env-set values)
 	envCfg := l.loadFromEnv()
+
+	// Environment values carry the same "~" and "$VAR" forms a config file may
+	// use. Expand the overlay before merging, so file values that were already
+	// expanded on load are not run through expansion a second time.
+	if err := envCfg.ExpandPaths(); err != nil {
+		return nil, fmt.Errorf("expand environment configuration: %w", err)
+	}
+
 	// Use simple merge for env (only strings, no booleans unless tracked)
 	cfg = mergeConfigs(cfg, envCfg)
 
@@ -78,6 +86,14 @@ func (l *Loader) LoadWithFlags(flags map[string]interface{}) (*ExtendedConfig, e
 
 	// Apply flag overrides
 	flagCfg, verbositySet := l.configFromFlags(flags)
+
+	// Flags normally arrive already expanded by the shell, but a quoted or
+	// script-supplied value reaches us verbatim. Expand the overlay before
+	// merging, for the same reason the environment overlay is expanded first.
+	if err := flagCfg.ExpandPaths(); err != nil {
+		return nil, fmt.Errorf("expand flag configuration: %w", err)
+	}
+
 	cfg = mergeConfigsWithVerbosity(cfg, flagCfg, verbositySet)
 
 	// Validate again after flag overrides

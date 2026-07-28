@@ -17,6 +17,11 @@ func TestConfigUpgrade_WithOldConfig(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.yaml")
 
+	// The golden tests in this package set and unset HOME with os.Setenv, so
+	// pin it here rather than inheriting whatever ran last: the "~" below is
+	// only resolvable with a home directory.
+	t.Setenv("HOME", t.TempDir())
+
 	// Create an old-style config with some custom values
 	oldConfig := `directories:
   package: "/custom/dotfiles"
@@ -59,7 +64,12 @@ ignore:
 
 	// Verify user values were preserved
 	assert.Equal(t, "/custom/dotfiles", upgraded.Directories.Package)
-	assert.Equal(t, "~", upgraded.Directories.Target)
+
+	// Path values are expanded on load, so the loaded target is this machine's
+	// home directory. The file keeps the portable "~", asserted below.
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	assert.Equal(t, home, upgraded.Directories.Target)
 	assert.Equal(t, "DEBUG", upgraded.Logging.Level)
 	assert.Equal(t, "json", upgraded.Logging.Format)
 	assert.Equal(t, "absolute", upgraded.Symlinks.Mode)
@@ -82,6 +92,7 @@ ignore:
 	content, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 	contentStr := string(content)
+	assert.Contains(t, contentStr, `target: "~"`, "upgrade keeps the path as the user wrote it")
 	assert.Contains(t, contentStr, "# Dot Configuration")
 	assert.Contains(t, contentStr, "# Upgraded on")
 	assert.Contains(t, contentStr, "# Backup saved to:")

@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/yaklabco/dot/internal/bootstrap"
 	"github.com/yaklabco/dot/pkg/dot"
 )
 
@@ -40,6 +42,13 @@ Output:
   - Default conflict resolution policy
   - Example profile structures
   - Helpful comments for customization
+
+Repository layout:
+  If package contents are stored as real dotfile paths (for example
+  nvim/.config/nvim) rather than under dot- prefixed names, the command
+  also writes .config/dot/config.yaml in the package directory with
+  dotfile.package_name_mapping set to false. An existing file at that
+  path is left untouched.
 
 Examples:
   # Generate bootstrap config in package directory
@@ -137,6 +146,15 @@ func runCloneBootstrap(cmd *cobra.Command, outputPath string, dryRun bool, fromM
 		return formatBootstrapError(err)
 	}
 
+	// Full-tree repositories need package name mapping turned off
+	repoConfigPath, err := writeRepoConfigForFullTree(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	if repoConfigPath != "" {
+		cmd.Printf("Repository configuration written to: %s\n", repoConfigPath)
+	}
+
 	// Success message
 	cmd.Printf("Bootstrap configuration written to: %s\n", outputPath)
 	cmd.Printf("  Packages: %d\n", result.PackageCount)
@@ -146,6 +164,68 @@ func runCloneBootstrap(cmd *cobra.Command, outputPath string, dryRun bool, fromM
 	cmd.Println("\nReview and customize the configuration before committing.")
 
 	return nil
+}
+
+// writeRepoConfigForFullTree writes a repository configuration when the
+// package directory uses the full-tree layout.
+//
+// Full-tree repositories store package contents as real dotfile paths, so
+// package name mapping has to be off for every dot command run against them.
+// The setting is recorded in <repo>/.config/dot/config.yaml. An existing file
+// is never modified.
+//
+// Returns the path written, or an empty string when nothing was written.
+func writeRepoConfigForFullTree(ctx context.Context, cfg dot.Config) (string, error) {
+	layout, err := detectRepoLayout(ctx, cfg)
+	if err != nil {
+		return "", err
+	}
+	if layout != bootstrap.LayoutFullTree {
+		return "", nil
+	}
+
+	repoConfigPath := filepath.Join(cfg.PackageDir, ".config", "dot", "config.yaml")
+	if cfg.FS.Exists(ctx, repoConfigPath) {
+		return "", nil
+	}
+
+	if err := cfg.FS.MkdirAll(ctx, filepath.Dir(repoConfigPath), 0755); err != nil {
+		return "", fmt.Errorf("create repository config directory: %w", err)
+	}
+	if err := cfg.FS.WriteFile(ctx, repoConfigPath, bootstrap.RepoConfigYAML(), 0644); err != nil {
+		return "", fmt.Errorf("write repository config: %w", err)
+	}
+
+	return repoConfigPath, nil
+}
+
+// detectRepoLayout classifies the package directory by reading each package's
+// top-level entries.
+func detectRepoLayout(ctx context.Context, cfg dot.Config) (bootstrap.Layout, error) {
+	entries, err := cfg.FS.ReadDir(ctx, cfg.PackageDir)
+	if err != nil {
+		return "", fmt.Errorf("read package directory: %w", err)
+	}
+
+	packages := make(map[string][]string, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+
+		contents, err := cfg.FS.ReadDir(ctx, filepath.Join(cfg.PackageDir, entry.Name()))
+		if err != nil {
+			return "", fmt.Errorf("read package %s: %w", entry.Name(), err)
+		}
+
+		names := make([]string, 0, len(contents))
+		for _, item := range contents {
+			names = append(names, item.Name())
+		}
+		packages[entry.Name()] = names
+	}
+
+	return bootstrap.DetectLayout(packages), nil
 }
 
 // formatBootstrapError formats bootstrap-specific errors with helpful messages.

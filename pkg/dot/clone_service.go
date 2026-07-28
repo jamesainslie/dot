@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/yaklabco/dot/internal/adapters"
 	"github.com/yaklabco/dot/internal/bootstrap"
 	"github.com/yaklabco/dot/internal/cli/selector"
@@ -37,6 +39,14 @@ type CloneService struct {
 	// hostname reports the machine hostname for machines resolution.
 	// Defaults to os.Hostname; tests substitute their own.
 	hostname func() (string, error)
+
+	// rebuildManageSvc rebuilds the manage service with dotfile options taken
+	// from the just-cloned repository's .config/dot/config.yaml, so a repo
+	// that commits its own layout settings installs correctly in the same
+	// clone invocation, before any user-level config exists. A nil value for
+	// either option means "keep the pre-clone configuration". Wired by the
+	// client; nil disables the reload.
+	rebuildManageSvc func(packageNameMapping *bool, translate *bool) *ManageService
 }
 
 // newCloneService creates a new clone service.
@@ -140,6 +150,12 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 
 	s.logger.Info(ctx, "repository_cloned_successfully", "path", s.packageDir)
 
+	// The cloned repository may carry its own dot configuration; apply its
+	// dotfile options to the install that follows.
+	if err := s.applyRepoDotfileConfig(ctx); err != nil {
+		return err
+	}
+
 	// Load bootstrap configuration if present
 	s.logger.Debug(ctx, "checking_for_bootstrap_config")
 	bootstrapConfig, hasBootstrap, err := loadBootstrapConfig(ctx, s.fs, s.packageDir)
@@ -206,6 +222,51 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 		s.logger.Warn(ctx, "failed_to_persist_package_directory", "error", err)
 	}
 
+	return nil
+}
+
+// repoDotfileConfig is the subset of a repository-level config.yaml the
+// clone install step cares about.
+type repoDotfileConfig struct {
+	Dotfile struct {
+		PackageNameMapping *bool `yaml:"package_name_mapping"`
+		Translate          *bool `yaml:"translate"`
+	} `yaml:"dotfile"`
+}
+
+// applyRepoDotfileConfig reads .config/dot/config.yaml from the cloned
+// repository and, when it sets dotfile options, rebuilds the manage service
+// used for the install. Absent file: no-op. Present but unparseable: loud
+// error, matching the CLI config loader's contract for repository configs.
+func (s *CloneService) applyRepoDotfileConfig(ctx context.Context) error {
+	configPath := filepath.Join(s.packageDir, ".config", "dot", "config.yaml")
+	if !s.fs.Exists(ctx, configPath) {
+		return nil
+	}
+
+	data, err := s.fs.ReadFile(ctx, configPath)
+	if err != nil {
+		return fmt.Errorf("read repository config %s: %w", configPath, err)
+	}
+
+	var cfg repoDotfileConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("parse repository config %s: %w", configPath, err)
+	}
+
+	if cfg.Dotfile.PackageNameMapping == nil && cfg.Dotfile.Translate == nil {
+		return nil
+	}
+	if s.rebuildManageSvc == nil {
+		s.logger.Warn(ctx, "repo_config_found_but_reload_unsupported", "path", configPath)
+		return nil
+	}
+
+	s.manageSvc = s.rebuildManageSvc(cfg.Dotfile.PackageNameMapping, cfg.Dotfile.Translate)
+	s.logger.Info(ctx, "repo_config_applied",
+		"path", configPath,
+		"package_name_mapping", cfg.Dotfile.PackageNameMapping,
+		"translate", cfg.Dotfile.Translate)
 	return nil
 }
 

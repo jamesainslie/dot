@@ -200,8 +200,8 @@ For example: directories.package, logging.level`,
 func runConfigGet(key string) error {
 	configPath := getConfigFilePath()
 
-	loader := dot.NewConfigLoader("dot", configPath)
-	cfg, err := loader.LoadWithEnv()
+	// Repository config takes precedence, matching every other command.
+	cfg, err := loadConfigWithRepoPriority(GetCLIFlags().packageDir, configPath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
@@ -341,8 +341,8 @@ Shows the final merged configuration from all sources.`,
 func runConfigListCmd(cmd *cobra.Command, args []string) error {
 	configPath := getConfigFilePath()
 
-	loader := dot.NewConfigLoader("dot", configPath)
-	cfg, err := loader.LoadWithEnv()
+	// Repository config takes precedence, matching every other command.
+	cfg, err := loadConfigWithRepoPriority(GetCLIFlags().packageDir, configPath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}

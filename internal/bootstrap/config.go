@@ -21,6 +21,10 @@ type Config struct {
 	// Profiles defines named sets of packages for different use cases.
 	Profiles map[string]Profile `yaml:"profiles,omitempty"`
 
+	// Machines maps host patterns to profiles, in evaluation order.
+	// The first entry whose pattern matches the hostname wins.
+	Machines []MachineRule `yaml:"machines,omitempty"`
+
 	// Defaults specifies default settings for installation.
 	Defaults Defaults `yaml:"defaults,omitempty"`
 }
@@ -75,7 +79,10 @@ type Defaults struct {
 //   - Invalid platform names are used
 //   - Invalid conflict policies are specified
 //   - Profiles reference non-existent packages
+//   - Profiles extend an unknown profile or form a cycle
 //   - Default profile does not exist
+//   - Machine entries have an empty or malformed host pattern
+//   - Machine entries reference a non-existent profile
 func (c Config) Validate() error {
 	// Check version
 	if c.Version == "" {
@@ -95,6 +102,11 @@ func (c Config) Validate() error {
 
 	// Validate profiles reference valid packages
 	if err := c.validateProfiles(packageNames); err != nil {
+		return err
+	}
+
+	// Validate host to profile mappings
+	if err := c.validateMachines(); err != nil {
 		return err
 	}
 

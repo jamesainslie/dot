@@ -11,13 +11,15 @@ import (
 
 // LinkSpec specifies a desired symbolic link.
 type LinkSpec struct {
-	Source domain.FilePath   // Source file in package
-	Target domain.TargetPath // Target location
+	Source  domain.FilePath   // Source file in package
+	Target  domain.TargetPath // Target location
+	Package string            // Name of the package that claimed this target
 }
 
 // DirSpec specifies a desired directory.
 type DirSpec struct {
-	Path domain.FilePath
+	Path    domain.FilePath
+	Package string // Name of the package that first required this directory
 }
 
 // DesiredState represents the desired filesystem state.
@@ -42,12 +44,20 @@ func (pr PlanResult) HasConflicts() bool {
 // should exist based on the package contents.
 //
 // For each file in each package:
-// 1. Compute relative path from package root
-// 2. Apply dotfile translation (dot-vimrc -> .vimrc)
-// 3. If packageNameMapping enabled, prepend translated package name
-// 4. Join with target to get target path
-// 5. Create LinkSpec (source -> target)
-// 6. Create DirSpec for parent directories
+//  1. Compute relative path from package root
+//  2. Apply dotfile translation (dot-vimrc -> .vimrc)
+//  3. If packageNameMapping is enabled, prepend the translated package name;
+//     otherwise use the stow-style full-tree layout, where the package tree
+//     maps straight onto the target
+//  4. Join with target to get target path
+//  5. Create LinkSpec (source -> target)
+//  6. Create DirSpec for parent directories
+//
+// Every target path is owned by exactly one package. If a second, different
+// package claims a path that is already claimed, planning fails with
+// domain.ErrDuplicateTarget (same path, both as links) or
+// domain.ErrTargetKindConflict (one package links a file where another needs a
+// directory) rather than letting the last package walked silently win.
 func ComputeDesiredState(packages []domain.Package, target domain.TargetPath, packageNameMapping bool, translate ...bool) domain.Result[DesiredState] {
 	// Default translate to true for backward compatibility
 	doTranslate := true
@@ -108,18 +118,19 @@ func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, pkgName stri
 			combinedPath := filepath.Join(translatedPkgName, translated)
 			targetPath = target.Join(combinedPath)
 		} else {
-			// Legacy behavior: no package name mapping
+			// Stow-style full-tree layout: the package tree maps straight onto
+			// the target, so paths are relative to the package root and the
+			// package name never appears in the target path.
 			targetPath = target.Join(translated)
 		}
 
-		// Add link spec
-		state.Links[targetPath.String()] = LinkSpec{
-			Source: node.Path,
-			Target: targetPath,
+		// Claim the target path for this package, rejecting cross-package collisions
+		if err := claimLinkTarget(state, targetPath, node.Path, pkgName); err != nil {
+			return err
 		}
 
 		// Add parent directory specs
-		if err := addParentDirs(targetPath, target, state); err != nil {
+		if err := addParentDirs(targetPath, target, pkgName, state); err != nil {
 			return err
 		}
 	}
@@ -134,8 +145,44 @@ func walkPackageFiles(node domain.Node, pkgRoot domain.PackagePath, pkgName stri
 	return nil
 }
 
+// claimLinkTarget records a link spec for pkgName at targetPath.
+//
+// A target path may only be claimed by one package. Re-walking the same package,
+// or a package claiming the same path twice, is a no-op rather than an error.
+func claimLinkTarget(state *DesiredState, targetPath domain.TargetPath, source domain.FilePath, pkgName string) error {
+	key := targetPath.String()
+
+	if existing, claimed := state.Links[key]; claimed && existing.Package != pkgName {
+		return domain.ErrDuplicateTarget{
+			TargetPath:    key,
+			FirstPackage:  existing.Package,
+			SecondPackage: pkgName,
+		}
+	}
+
+	// Another package already needs this path as a directory holding its links.
+	if dir, claimed := state.Dirs[key]; claimed && dir.Package != pkgName {
+		return domain.ErrTargetKindConflict{
+			TargetPath:  key,
+			FilePackage: pkgName,
+			DirPackage:  dir.Package,
+		}
+	}
+
+	state.Links[key] = LinkSpec{
+		Source:  source,
+		Target:  targetPath,
+		Package: pkgName,
+	}
+
+	return nil
+}
+
 // addParentDirs adds directory specs for all parent directories of path.
-func addParentDirs(path domain.TargetPath, target domain.TargetPath, state *DesiredState) error {
+// Directories may be shared between packages; only the first claimant is
+// recorded, so that two packages placing distinct files in the same directory
+// create it once.
+func addParentDirs(path domain.TargetPath, target domain.TargetPath, pkgName string, state *DesiredState) error {
 	current := path
 	targetStr := target.String()
 
@@ -153,6 +200,15 @@ func addParentDirs(path domain.TargetPath, target domain.TargetPath, state *Desi
 			break
 		}
 
+		// Another package already links this exact path as a file
+		if link, claimed := state.Links[parentStr]; claimed && link.Package != pkgName {
+			return domain.ErrTargetKindConflict{
+				TargetPath:  parentStr,
+				FilePackage: link.Package,
+				DirPackage:  pkgName,
+			}
+		}
+
 		// Add directory spec if not already present
 		if _, exists := state.Dirs[parentStr]; !exists {
 			// Convert TargetPath to FilePath for DirSpec storage
@@ -161,7 +217,7 @@ func addParentDirs(path domain.TargetPath, target domain.TargetPath, state *Desi
 				return fmt.Errorf("invalid path %s: %w", parentStr, dirPathResult.UnwrapErr())
 			}
 			dirPath := dirPathResult.Unwrap()
-			state.Dirs[parentStr] = DirSpec{Path: dirPath}
+			state.Dirs[parentStr] = DirSpec{Path: dirPath, Package: pkgName}
 		}
 
 		current = parent

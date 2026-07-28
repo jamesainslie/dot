@@ -28,7 +28,7 @@ func TestNewCloneService(t *testing.T) {
 	cloner := adapters.NewGoGitCloner()
 	sel := selector.NewInteractiveSelector(os.Stdin, os.Stdout)
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, manageSvc, cloner, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	assert.NotNil(t, svc)
 	assert.Equal(t, "/packages", svc.packageDir)
@@ -324,7 +324,7 @@ func TestCloneService_SelectPackagesWithBootstrap_DefaultProfile(t *testing.T) {
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	packages, err := svc.selectPackagesWithBootstrap(ctx, config, CloneOptions{})
 	require.NoError(t, err)
@@ -355,7 +355,7 @@ func TestCloneService_SelectPackagesWithBootstrap_ExplicitProfile(t *testing.T) 
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	packages, err := svc.selectPackagesWithBootstrap(ctx, config, CloneOptions{Profile: "minimal"})
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestCloneService_SelectPackagesWithBootstrap_ProfileWithPlatformFilter(t *t
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	packages, err := svc.selectPackagesWithBootstrap(ctx, config, CloneOptions{Profile: "all"})
 	require.NoError(t, err)
@@ -432,7 +432,7 @@ func TestCloneService_SelectPackagesWithBootstrap_DefaultProfileWithPlatformFilt
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	packages, err := svc.selectPackagesWithBootstrap(ctx, config, CloneOptions{})
 	require.NoError(t, err)
@@ -479,7 +479,7 @@ func TestCloneService_SelectPackagesWithBootstrap_ProfileNotFoundError(t *testin
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	// Test with explicit non-existent profile
 	_, err := svc.selectPackagesWithBootstrap(ctx, config, CloneOptions{Profile: "nonexistent"})
@@ -523,7 +523,7 @@ func TestCloneService_SelectPackagesWithBootstrap_DefaultProfilePriority(t *test
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	// With Interactive=false and a default profile configured,
 	// the default profile should be used even if terminal is interactive.
@@ -564,7 +564,7 @@ func TestCloneService_SelectPackagesWithBootstrap_ExplicitInteractiveOverridesDe
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	// With Interactive=true, should prompt even if default profile exists
 	packages, err := svc.selectPackagesWithBootstrap(ctx, config, CloneOptions{Interactive: true})
@@ -590,7 +590,7 @@ func TestCloneService_SelectPackagesWithoutBootstrap_AllPackages(t *testing.T) {
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	// Non-interactive should install all
 	packages, err := svc.selectPackagesWithoutBootstrap(ctx, CloneOptions{})
@@ -611,7 +611,7 @@ func TestCloneService_SelectPackagesWithoutBootstrap_NoPackages(t *testing.T) {
 	output := &strings.Builder{}
 	sel := selector.NewInteractiveSelector(input, output)
 
-	svc := newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, nil, nil, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	packages, err := svc.selectPackagesWithoutBootstrap(ctx, CloneOptions{})
 	require.NoError(t, err)
@@ -674,7 +674,7 @@ func TestCloneService_Clone_Success(t *testing.T) {
 		dryRun:     true, // Dry run to avoid actual file operations
 	}
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, selector, "/packages", "/home", true)
+	svc := newCloneService(fs, logger, manageSvc, cloner, selector, manifest.NewFSManifestStore(fs), "/packages", "/home", true)
 
 	err = svc.Clone(ctx, "https://github.com/user/dotfiles", CloneOptions{
 		Branch: "main",
@@ -698,7 +698,7 @@ func TestCloneService_Clone_PackageDirNotEmpty(t *testing.T) {
 	selector := &mockPackageSelector{}
 	manageSvc := &ManageService{}
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, selector, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, manageSvc, cloner, selector, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	err = svc.Clone(ctx, "https://github.com/user/dotfiles", CloneOptions{})
 
@@ -721,7 +721,7 @@ func TestCloneService_Clone_CloneFails(t *testing.T) {
 	selector := &mockPackageSelector{}
 	manageSvc := &ManageService{}
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, selector, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, manageSvc, cloner, selector, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	err := svc.Clone(ctx, "https://github.com/user/invalid", CloneOptions{})
 
@@ -773,7 +773,7 @@ profiles:
 		dryRun:     true,
 	}
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, selector, "/packages", "/home", true)
+	svc := newCloneService(fs, logger, manageSvc, cloner, selector, manifest.NewFSManifestStore(fs), "/packages", "/home", true)
 
 	err = svc.Clone(ctx, "https://github.com/user/dotfiles", CloneOptions{
 		Profile: "minimal",
@@ -836,7 +836,7 @@ func TestCloneService_Clone_ManageNoChangesIsSuccess(t *testing.T) {
 	unmanageSvc := newUnmanageService(fs, logger, exec, manifestSvc, packageDir, targetDir, false)
 	manageSvc := newManageService(fs, logger, managePipe, exec, manifestSvc, unmanageSvc, packageDir, targetDir, false)
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, sel, packageDir, targetDir, false)
+	svc := newCloneService(fs, logger, manageSvc, cloner, sel, manifest.NewFSManifestStore(fs), packageDir, targetDir, false)
 
 	// Clone should succeed even though Manage returns ErrNoChanges
 	err := svc.Clone(ctx, "https://github.com/user/dotfiles", CloneOptions{Force: true})
@@ -859,7 +859,7 @@ func TestCloneService_Clone_DryRunDoesNotClone(t *testing.T) {
 	sel := &mockPackageSelector{}
 	manageSvc := &ManageService{}
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, sel, "/packages", "/home", true)
+	svc := newCloneService(fs, logger, manageSvc, cloner, sel, manifest.NewFSManifestStore(fs), "/packages", "/home", true)
 
 	err := svc.Clone(ctx, "https://github.com/user/dotfiles", CloneOptions{})
 	require.NoError(t, err)
@@ -890,7 +890,7 @@ func TestCloneService_Clone_NoPackagesSelected(t *testing.T) {
 
 	manageSvc := &ManageService{}
 
-	svc := newCloneService(fs, logger, manageSvc, cloner, selector, "/packages", "/home", false)
+	svc := newCloneService(fs, logger, manageSvc, cloner, selector, manifest.NewFSManifestStore(fs), "/packages", "/home", false)
 
 	err := svc.Clone(ctx, "https://github.com/user/dotfiles", CloneOptions{
 		Interactive: true,

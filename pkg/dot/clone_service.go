@@ -30,8 +30,8 @@ type CloneService struct {
 	targetDir  string
 	dryRun     bool
 
-	// manifestStore is the store repository info is written to. When nil,
-	// the manifest lives in the target directory.
+	// manifestStore is the store repository info is written to. It is the
+	// same store every other command reads from.
 	manifestStore *manifest.FSManifestStore
 }
 
@@ -42,19 +42,21 @@ func newCloneService(
 	manageSvc *ManageService,
 	cloner adapters.GitCloner,
 	sel selector.PackageSelector,
+	manifestStore *manifest.FSManifestStore,
 	packageDir string,
 	targetDir string,
 	dryRun bool,
 ) *CloneService {
 	return &CloneService{
-		fs:         fs,
-		logger:     logger,
-		manageSvc:  manageSvc,
-		cloner:     cloner,
-		selector:   sel,
-		packageDir: packageDir,
-		targetDir:  targetDir,
-		dryRun:     dryRun,
+		fs:            fs,
+		logger:        logger,
+		manageSvc:     manageSvc,
+		cloner:        cloner,
+		selector:      sel,
+		manifestStore: manifestStore,
+		packageDir:    packageDir,
+		targetDir:     targetDir,
+		dryRun:        dryRun,
 	}
 }
 
@@ -362,9 +364,6 @@ func (s *CloneService) updateManifestRepository(ctx context.Context, info manife
 
 	// Load existing manifest from the same store the rest of dot reads
 	manifestStore := s.manifestStore
-	if manifestStore == nil {
-		manifestStore = manifest.NewFSManifestStore(s.fs)
-	}
 	manifestResult := manifestStore.Load(ctx, targetPathResult.Unwrap())
 	if !manifestResult.IsOk() {
 		return manifestResult.UnwrapErr()

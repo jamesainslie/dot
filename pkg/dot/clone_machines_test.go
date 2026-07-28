@@ -34,9 +34,13 @@ func machineTestConfig() bootstrap.Config {
 }
 
 func newTestCloneService(fs FS) *CloneService {
+	return newTestCloneServiceWithStore(fs, manifest.NewFSManifestStore(fs))
+}
+
+func newTestCloneServiceWithStore(fs FS, store *manifest.FSManifestStore) *CloneService {
 	logger := adapters.NewNoopLogger()
 	sel := selector.NewInteractiveSelector(strings.NewReader(""), &strings.Builder{})
-	return newCloneService(fs, logger, nil, nil, sel, "/packages", "/home", false)
+	return newCloneService(fs, logger, nil, nil, sel, store, "/packages", "/home", false)
 }
 
 func TestCloneService_ProfileFromMachines(t *testing.T) {
@@ -169,8 +173,7 @@ func TestCloneService_UpdateManifestRepository_UsesConfiguredStore(t *testing.T)
 	ctx := context.Background()
 	fs := adapters.NewMemFS()
 
-	svc := newTestCloneService(fs)
-	svc.manifestStore = manifest.NewFSManifestStoreWithDir(fs, "/state/dot")
+	svc := newTestCloneServiceWithStore(fs, manifest.NewFSManifestStoreWithDir(fs, "/state/dot"))
 
 	err := svc.updateManifestRepository(ctx, manifest.RepositoryInfo{
 		URL:     "https://github.com/user/dotfiles",

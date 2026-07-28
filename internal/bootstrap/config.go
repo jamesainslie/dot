@@ -7,6 +7,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"slices"
 )
 
 // Config represents the bootstrap configuration for a dotfiles repository.
@@ -45,6 +46,11 @@ type PackageSpec struct {
 type Profile struct {
 	// Description provides human-readable explanation of the profile.
 	Description string `yaml:"description"`
+
+	// Extends names a single parent profile whose packages are inherited.
+	// Inherited packages come first, in parent chain order, followed by the
+	// packages declared on this profile.
+	Extends string `yaml:"extends,omitempty"`
 
 	// Packages lists the package names included in this profile.
 	Packages []string `yaml:"packages"`
@@ -144,10 +150,25 @@ func (c Config) validateDefaults() error {
 	return nil
 }
 
-// validateProfiles validates that profiles reference valid packages.
+// validateProfiles validates profile inheritance and package references.
+//
+// Profiles are checked in name order so that a configuration with several
+// problems always reports the same one.
 func (c Config) validateProfiles(packageNames map[string]struct{}) error {
-	for profileName, profile := range c.Profiles {
-		for _, pkgName := range profile.Packages {
+	profileNames := make([]string, 0, len(c.Profiles))
+	for profileName := range c.Profiles {
+		profileNames = append(profileNames, profileName)
+	}
+	slices.Sort(profileNames)
+
+	for _, profileName := range profileNames {
+		// Resolution reports unknown parents and cycles.
+		resolved, err := ResolveProfilePackages(c.Profiles, profileName)
+		if err != nil {
+			return err
+		}
+
+		for _, pkgName := range resolved {
 			if _, exists := packageNames[pkgName]; !exists {
 				return fmt.Errorf("profile %q references unknown package: %s", profileName, pkgName)
 			}

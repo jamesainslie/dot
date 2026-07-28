@@ -78,11 +78,11 @@ func GetPackageNames(cfg Config) []string {
 
 // GetProfile retrieves packages for a named profile.
 //
-// Returns an error if the profile does not exist.
+// Profiles that declare extends inherit their parent chain packages, which are
+// returned ahead of the profile's own packages.
+//
+// Returns an error if the profile does not exist or its inheritance chain is
+// broken.
 func GetProfile(cfg Config, profileName string) ([]string, error) {
-	profile, exists := cfg.Profiles[profileName]
-	if !exists {
-		return nil, fmt.Errorf("profile not found: %s", profileName)
-	}
-	return profile.Packages, nil
+	return ResolveProfilePackages(cfg.Profiles, profileName)
 }

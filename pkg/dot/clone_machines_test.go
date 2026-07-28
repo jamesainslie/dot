@@ -10,6 +10,7 @@ import (
 	"github.com/yaklabco/dot/internal/adapters"
 	"github.com/yaklabco/dot/internal/bootstrap"
 	"github.com/yaklabco/dot/internal/cli/selector"
+	"github.com/yaklabco/dot/internal/manifest"
 )
 
 // machineTestConfig returns a bootstrap config with a machines section.
@@ -162,4 +163,27 @@ func TestBuildRepositoryInfo_Profile(t *testing.T) {
 	assert.Equal(t, "main", info.Branch)
 	assert.Equal(t, "abc123", info.CommitSHA)
 	assert.Equal(t, "work", info.Profile)
+}
+
+func TestCloneService_UpdateManifestRepository_UsesConfiguredStore(t *testing.T) {
+	ctx := context.Background()
+	fs := adapters.NewMemFS()
+
+	svc := newTestCloneService(fs)
+	svc.manifestStore = manifest.NewFSManifestStoreWithDir(fs, "/state/dot")
+
+	err := svc.updateManifestRepository(ctx, manifest.RepositoryInfo{
+		URL:     "https://github.com/user/dotfiles",
+		Branch:  "main",
+		Profile: "work",
+	})
+	require.NoError(t, err)
+
+	loaded := manifest.NewFSManifestStoreWithDir(fs, "/state/dot").Load(ctx, NewTargetPath("/home").Unwrap())
+	require.True(t, loaded.IsOk())
+
+	stored := loaded.Unwrap()
+	repo, exists := stored.GetRepository()
+	require.True(t, exists)
+	assert.Equal(t, "work", repo.Profile)
 }

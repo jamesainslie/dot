@@ -129,6 +129,8 @@ func NewClient(cfg Config) (*Client, error) {
 	gitCloner := adapters.NewGoGitCloner()
 	packageSelector := selector.NewInteractiveSelector(cfg.GetStdin(), cfg.GetStdout())
 	cloneSvc := newCloneService(cfg.FS, cfg.Logger, manageSvc, gitCloner, packageSelector, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
+	// Repository info must land in the manifest every other command reads.
+	cloneSvc.manifestStore = manifestStore
 
 	// Create bootstrap service
 	bootstrapSvc := newBootstrapService(cfg.FS, cfg.Logger, cfg.PackageDir, cfg.TargetDir)

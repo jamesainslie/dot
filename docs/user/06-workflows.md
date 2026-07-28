@@ -112,9 +112,20 @@ dot sync --push
 dot sync
 ```
 
-Content-only changes arrive through the symlinks with no relinking at all.
-Structural changes (a new file in a package, a deleted one) are applied by the
-remanage step, so no separate `dot remanage` call is needed.
+Content-only changes are already live the moment the pull lands, because the
+symlinks point at the files git just rewrote. Structural changes (a new file in
+a package, a deleted one) are applied by the remanage step, so no separate
+`dot remanage` call is needed. The remanage step runs either way and reports
+what it touched; only a pull that changed nothing at all stays silent.
+
+A package that another machine deleted cannot be relinked. `sync` names it,
+points at `dot unmanage`, and carries on with the rest of the run:
+
+```text
+⚠ 1 package in the manifest missing from the package directory
+  dot-vim
+  Run 'dot unmanage dot-vim' to remove the leftover links.
+```
 
 **When the rebase conflicts**
 

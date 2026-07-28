@@ -728,8 +728,10 @@ executable, so it uses your existing remotes, credentials, and hooks.
 **Workflow**:
 1. Runs `git pull --rebase --autostash` in the package directory and reports
    the commits gained
-2. Remanages every package in the manifest, so files added or removed
-   upstream are linked or unlinked on this machine
+2. Remanages every manifest package that still exists in the package
+   directory, so files added or removed upstream are linked or unlinked on
+   this machine. A package deleted upstream is reported, not remanaged, and
+   does not stop the rest of the run
 3. Prints a health summary: how many packages are healthy out of the total
 4. Lists uncommitted local changes grouped by package, or prints nothing extra
    when the tree is clean
@@ -800,6 +802,9 @@ Common errors and solutions:
   binary
 - **Push rejected**: The remote moved ahead. Run `dot sync` again to rebase,
   then `dot sync --push`
+- **Package in the manifest missing from the package directory**: Another
+  machine deleted the package. Run `dot unmanage PACKAGE` to remove its
+  leftover links
 
 **Exit Codes**:
 - `0`: Success

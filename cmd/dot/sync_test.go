@@ -185,6 +185,8 @@ func TestSyncCommand_ContentOnlyPull(t *testing.T) {
 
 	assert.Contains(t, stdout, "Pulled 1 commit")
 	assert.Contains(t, stdout, "feat(vim): enable ruler")
+	// The relink pass still runs and reports itself, as the docs describe.
+	assert.Contains(t, stdout, "Remanaged 1 package")
 
 	// A content-only change does not alter the link set.
 	assert.Equal(t, linksBefore, listLinks(t, sandbox.targetDir))
@@ -215,7 +217,7 @@ func TestSyncCommand_StructuralPullCreatesLink(t *testing.T) {
 }
 
 func TestSyncCommand_UpToDateIsQuiet(t *testing.T) {
-	sandbox := newSyncSandbox(t)
+	newSyncSandbox(t)
 	manageInSandbox(t, "dot-vim")
 
 	stdout, _, err := runSyncCommand(t)
@@ -224,7 +226,6 @@ func TestSyncCommand_UpToDateIsQuiet(t *testing.T) {
 	assert.Contains(t, stdout, "Already up to date")
 	assert.NotContains(t, stdout, "Uncommitted changes")
 	assert.Contains(t, stdout, "1/1")
-	_ = sandbox
 }
 
 func TestSyncCommand_PackageRemovedUpstreamKeepsGoing(t *testing.T) {

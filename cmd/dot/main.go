@@ -47,10 +47,13 @@ func run() int {
 	doctorResult := &DoctorResultHolder{}
 	ctx = WithDoctorResultHolder(ctx, doctorResult)
 
-	rootCmd := NewRootCommand(version, commit, date)
+	resolvedVersion := resolveVersion(version)
+	rootCmd := NewRootCommand(resolvedVersion, commit, date)
 
-	// Execute command with fang for enhanced output
-	err := fang.Execute(ctx, rootCmd)
+	// Execute command with fang for enhanced output. Fang derives its own
+	// --version from build info and ignores cobra's Version field, so the
+	// resolved version must be passed explicitly (issue #85).
+	err := fang.Execute(ctx, rootCmd, fang.WithVersion(resolvedVersion))
 	if err != nil {
 		return 1
 	}

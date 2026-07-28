@@ -30,27 +30,36 @@ mkdir -p ~/.dotfiles/.config/dot
 $EDITOR ~/.dotfiles/.config/dot/config.yaml
 ```
 
-Example configuration. Path values are not expanded, so write them in full and substitute your own
-home directory for `/home/alice`:
+Example configuration. Path values are expanded when the config is loaded, so write them relative
+to the home directory and the same file works on every machine:
 
 ```yaml
 directories:
-  package: /home/alice/.dotfiles
-  target: /home/alice
-  manifest: /home/alice/.local/share/dot/manifest
+  package: ~/.dotfiles
+  target: "~"
+  manifest: ~/.local/share/dot/manifest
 
 symlinks:
   backup: true
-  backup_dir: /home/alice/.dotfiles.backup
+  backup_dir: ~/.dotfiles.backup
 
 dotfile:
   translate: true
   package_name_mapping: true
 ```
 
-A leading `~` or a `$VAR` reference is stored literally and resolved against the working directory,
-which produces a directory named `~` or `$HOME` rather than the intended location. This makes a
-committed repository config machine-specific: see Machine-Specific Settings below.
+A leading `~` resolves to the home directory of whoever runs `dot`, and `$VAR` or `${VAR}`
+references resolve from the environment. Expansion covers path-typed values only:
+`directories.package`, `directories.target`, `directories.manifest`, `symlinks.backup_dir`, and
+`logging.file`. Two details matter when writing YAML by hand:
+
+- Quote a bare tilde. Unquoted, `target: ~` is YAML null, which leaves the key unset so the default
+  applies; `target: "~"` is the string that expands to the home directory.
+- An unset variable expands to the empty string, so `package: $DOTFILES_ROOT/repo` becomes `/repo`
+  on a machine where `DOTFILES_ROOT` is not exported.
+
+Because of expansion, a committed repository config can pin `directories.package` and
+`directories.target` without hard-coding one machine's layout.
 
 ### 2. Commit and Share
 
@@ -95,7 +104,9 @@ The config file lives in the repository root at `.config/dot/config.yaml`. It is
 
 Your repository defines how it should be managed:
 
-- Package name mapping and dotfile translation
+- Which layout the repository uses: name-mapped (`dot-gnupg` to `~/.gnupg`) or full-tree, where the
+  package mirrors the target directory
+- Dotfile translation and its prefix
 - Ignore patterns
 - Backup behaviour
 - Output and logging preferences
@@ -108,21 +119,21 @@ The two files are not layered. If the repository config exists it is loaded in f
 `~/.config/dot/config.yaml` is not read at all, so a partial machine-local override is not possible
 while a repository config is present.
 
-This matters for paths in particular. Because `directories.package` and `directories.target` must
-be absolute and are not expanded, a committed repository config pins them to one machine's layout.
-Either omit those two keys from the repository config and supply them per machine, or accept that
-every machine must use the same paths.
+Paths are the easy part: because `~` and `$VAR` are expanded on load, `package: ~/.dotfiles` and
+`target: "~"` in a committed repository config resolve per machine and per user without any
+override. Reach for an environment variable when the layout itself differs, for example
+`package: $DOTFILES_ROOT` with `DOTFILES_ROOT` exported from each machine's shell profile.
 
-For per-machine differences, use command-line flags or the bound `DOT_*` environment variables,
-both of which take precedence over either file:
+Genuinely divergent settings still need flags or the bound `DOT_*` environment variables, both of
+which take precedence over either file:
 
 ```bash
 export DOT_DIRECTORIES_TARGET=/custom/path
 dot --dir ~/.dotfiles --target ~ manage vim
 ```
 
-Shell expansion applies on the command line, so `~` works there even though it does not work inside
-the configuration file.
+Values supplied that way are expanded too, so `DOT_DIRECTORIES_TARGET=~/staging` works whether or
+not the shell got to it first.
 
 ## Configuration Precedence
 
@@ -142,21 +153,41 @@ read.
 ```yaml
 # .config/dot/config.yaml in your repository
 directories:
-  package: /home/alice/.dotfiles
-  target: /home/alice
+  package: ~/.dotfiles
+  target: "~"
 
 dotfile:
   package_name_mapping: true
 ```
+
+### Full-Tree (Stow-Style) Repository Config
+
+Declare the layout your repository actually uses. A repository whose packages mirror the target
+tree sets `package_name_mapping: false`:
+
+```yaml
+# .config/dot/config.yaml in your repository
+directories:
+  package: ~/.dotfiles
+  target: "~"
+
+dotfile:
+  translate: true
+  prefix: "dot-"
+  package_name_mapping: false
+```
+
+Committing this key is the point of a repository config: whoever clones the repository gets the
+layout it was written for, with no per-machine flag.
 
 ### Advanced Configuration
 
 ```yaml
 # .config/dot/config.yaml
 directories:
-  package: /home/alice/my-dotfiles
-  target: /home/alice
-  manifest: /home/alice/.local/share/dot/manifest
+  package: ~/my-dotfiles
+  target: "~"
+  manifest: ~/.local/share/dot/manifest
 
 logging:
   level: INFO
@@ -165,7 +196,7 @@ logging:
 symlinks:
   mode: relative
   folding: true
-  backup_dir: /home/alice/.dotfiles.backup
+  backup_dir: ~/.dotfiles.backup
 
 ignore:
   use_defaults: true
@@ -221,7 +252,7 @@ If you use a different package directory (not `~/.dotfiles`), update the path:
 ```yaml
 # In your repository's .config/dot/config.yaml
 directories:
-  package: /home/alice/my-dotfiles  # Absolute, must match actual location
+  package: ~/my-dotfiles  # Must match the actual location after expansion
 ```
 
 Or use the `--dir` flag (short form `-d`):
@@ -283,10 +314,10 @@ git commit -m "feat(config): add dot configuration"
 
 Put configuration that should be the same across all machines in the repository:
 
-- Package directory location
+- Package directory location, written home-relative so it expands per machine
 - Target directory structure
 - Ignore patterns
-- Package name mapping preferences
+- The repository layout (`dotfile.package_name_mapping`)
 
 ### 2. Use Flags or Environment Variables for Machine-Specific Settings
 

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,46 +56,66 @@ dotfile:
 // TestDuplicateTargetAcrossPackages_CLISurface checks the message a user sees
 // when two packages fight over the same target path.
 //
-// Only manage is covered here. clone routes through ManageService.Manage with
-// the full package list, so it hits the same guard, while remanage plans each
-// package in isolation and never builds one shared desired state.
+// clone routes through ManageService.Manage with the full package list, so it
+// hits the same guard as manage; remanage plans each package on its own and is
+// guarded separately in pkg/dot.
 func TestDuplicateTargetAcrossPackages_CLISurface(t *testing.T) {
-	tests := []struct {
-		name    string
-		command func() *cobra.Command
-	}{
-		{name: "manage", command: newManageCommand},
+	packageDir, targetDir := duplicateTargetSandbox(t)
+
+	setupIntegrationTestFlags(t, CLIFlags{
+		packageDir: packageDir,
+		targetDir:  targetDir,
+	})
+
+	var out bytes.Buffer
+	cmd := newManageCommand()
+	cmd.SetContext(context.Background())
+	cmd.SetArgs([]string{"base", "overlay"})
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	err := cmd.Execute()
+	require.Error(t, err, "overlapping packages must not be planned silently")
+
+	for _, want := range []string{filepath.Join(targetDir, ".vimrc"), "base", "overlay"} {
+		assert.Contains(t, err.Error(), want)
+		assert.Contains(t, out.String(), want)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			packageDir, targetDir := duplicateTargetSandbox(t)
+	// The printed message must tell the user what to do about it, not just
+	// state that the collision happened.
+	assert.Contains(t, out.String(), "Remove the file from one package")
+	assert.Contains(t, out.String(), "package_name_mapping")
 
-			setupIntegrationTestFlags(t, CLIFlags{
-				packageDir: packageDir,
-				targetDir:  targetDir,
-			})
+	// Planning failed, so nothing was linked.
+	_, statErr := os.Lstat(filepath.Join(targetDir, ".vimrc"))
+	assert.True(t, os.IsNotExist(statErr), "no link should be created when planning fails")
+}
 
-			var stderr bytes.Buffer
-			cmd := tt.command()
-			cmd.SetContext(context.Background())
-			cmd.SetArgs([]string{"base", "overlay"})
-			cmd.SetOut(&stderr)
-			cmd.SetErr(&stderr)
+// TestDuplicateTargetAcrossPackages_RemanageCLISurface covers the remanage
+// path, which plans each package separately.
+func TestDuplicateTargetAcrossPackages_RemanageCLISurface(t *testing.T) {
+	packageDir, targetDir := duplicateTargetSandbox(t)
 
-			err := cmd.Execute()
-			require.Error(t, err, "overlapping packages must not be planned silently")
+	setupIntegrationTestFlags(t, CLIFlags{
+		packageDir: packageDir,
+		targetDir:  targetDir,
+	})
 
-			for _, want := range []string{filepath.Join(targetDir, ".vimrc"), "base", "overlay"} {
-				assert.Contains(t, err.Error(), want)
-				assert.Contains(t, stderr.String(), want)
-			}
+	var out bytes.Buffer
+	cmd := newRemanageCommand()
+	cmd.SetContext(context.Background())
+	cmd.SetArgs([]string{"base", "overlay"})
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
 
-			// Planning failed, so nothing was linked.
-			_, statErr := os.Lstat(filepath.Join(targetDir, ".vimrc"))
-			assert.True(t, os.IsNotExist(statErr), "no link should be created when planning fails")
-		})
+	err := cmd.Execute()
+	require.Error(t, err, "overlapping packages must not be remanaged silently")
+
+	for _, want := range []string{filepath.Join(targetDir, ".vimrc"), "base", "overlay"} {
+		assert.Contains(t, err.Error(), want)
 	}
+	assert.Contains(t, out.String(), "Remove the file from one package")
 }
 
 func TestDuplicateTargetAcrossPackages_DryRunAlsoFails(t *testing.T) {

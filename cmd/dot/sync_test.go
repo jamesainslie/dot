@@ -320,6 +320,28 @@ func TestSyncCommand_PushRoundTrip(t *testing.T) {
 	assert.True(t, strings.HasPrefix(strings.TrimSpace(subject), "sync: "), "subject was %q", subject)
 }
 
+func TestSyncCommand_PushRespectsFailingPreCommitHook(t *testing.T) {
+	sandbox := newSyncSandbox(t)
+	manageInSandbox(t, "dot-vim")
+
+	// A hook that rejects the commit stands in for any repository policy.
+	hooks := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(hooks, "pre-commit"), []byte("#!/bin/sh\nexit 1\n"), 0o700))
+	gitInDir(t, sandbox.packageDir, "config", "core.hooksPath", hooks)
+
+	require.NoError(t, os.WriteFile(filepath.Join(sandbox.packageDir, "dot-vim", "dot-vimrc"), []byte("set number\nset ruler\n"), 0o644))
+
+	stdout, _, err := runSyncCommand(t, "--push")
+	require.Error(t, err, "sync never bypasses hooks with --no-verify")
+
+	assert.NotContains(t, stdout, "Pushed")
+
+	verify := sandbox.cloneOrigin(t, "verify")
+	content, err := os.ReadFile(filepath.Join(verify, "dot-vim", "dot-vimrc"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(content), "set ruler", "the rejected edit never reached the remote")
+}
+
 func TestSyncCommand_PushWithCleanTree(t *testing.T) {
 	newSyncSandbox(t)
 	manageInSandbox(t, "dot-vim")

@@ -359,6 +359,17 @@ func TestOpenAndDir(t *testing.T) {
 	assert.Equal(t, clone, repo.Dir())
 }
 
+func TestOpenWithoutGitOnPath(t *testing.T) {
+	t.Setenv("PATH", "")
+
+	_, err := Open(t.TempDir())
+	require.Error(t, err)
+
+	var notFound ErrGitNotFound
+	require.ErrorAs(t, err, &notFound)
+	assert.Contains(t, err.Error(), "git")
+}
+
 func TestPullResult_UpToDate(t *testing.T) {
 	tests := []struct {
 		name   string

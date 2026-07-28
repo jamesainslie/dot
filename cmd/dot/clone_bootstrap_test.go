@@ -251,6 +251,27 @@ func runBootstrapForRepo(t *testing.T, packageDir, targetDir string) string {
 	return buf.String()
 }
 
+func TestCloneBootstrapCommand_RepoConfigFailureIsAdvisory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	packageDir := filepath.Join(tmpDir, "packages")
+	targetDir := filepath.Join(tmpDir, "target")
+	require.NoError(t, os.MkdirAll(filepath.Join(packageDir, "nvim", ".config"), 0755))
+	require.NoError(t, os.MkdirAll(targetDir, 0755))
+
+	// A file where the repository config directory belongs makes the write fail.
+	require.NoError(t, os.WriteFile(filepath.Join(packageDir, ".config"), []byte("not a directory"), 0644))
+
+	output := runBootstrapForRepo(t, packageDir, targetDir)
+
+	assert.Contains(t, output, "Warning: could not write repository config")
+	assert.Contains(t, output, "Bootstrap configuration written to:")
+	assert.FileExists(t, filepath.Join(packageDir, ".dotbootstrap.yaml"))
+}
+
 func TestCloneBootstrapCommand_FullTreeRepoConfig(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

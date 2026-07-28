@@ -146,12 +146,14 @@ func runCloneBootstrap(cmd *cobra.Command, outputPath string, dryRun bool, fromM
 		return formatBootstrapError(err)
 	}
 
-	// Full-tree repositories need package name mapping turned off
+	// Full-tree repositories need package name mapping turned off. The
+	// bootstrap file is already written at this point, so a failure here is
+	// reported and the command still succeeds.
 	repoConfigPath, err := writeRepoConfigForFullTree(ctx, cfg)
-	if err != nil {
-		return err
-	}
-	if repoConfigPath != "" {
+	switch {
+	case err != nil:
+		cmd.PrintErrf("Warning: could not write repository config: %v\n", err)
+	case repoConfigPath != "":
 		cmd.Printf("Repository configuration written to: %s\n", repoConfigPath)
 	}
 

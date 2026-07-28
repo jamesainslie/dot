@@ -63,7 +63,18 @@ func machineDriftFixture(t *testing.T, bootstrapYAML, recordedProfile string) do
 		TargetDir:   "/home",
 		ManifestDir: "/state",
 		FS:          fs,
+		Logger:      adapters.NewNoopLogger(),
 	}
+}
+
+// machineDriftClient builds the client the drift check reads the manifest through.
+func machineDriftClient(t *testing.T, cfg dot.Config) *dot.Client {
+	t.Helper()
+
+	client, err := dot.NewClient(cfg)
+	require.NoError(t, err)
+
+	return client
 }
 
 func TestMachineProfileDrift(t *testing.T) {
@@ -128,12 +139,9 @@ func TestMachineProfileDrift(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			restore := doctorHostname
-			doctorHostname = func() (string, error) { return tt.hostname, nil }
-			t.Cleanup(func() { doctorHostname = restore })
-
 			cfg := machineDriftFixture(t, tt.bootstrapYAML, tt.recordedProfile)
-			message := machineProfileDrift(context.Background(), cfg)
+			client := machineDriftClient(t, cfg)
+			message := machineProfileDrift(context.Background(), cfg, client, tt.hostname)
 
 			if tt.wantEmpty {
 				assert.Empty(t, message)
@@ -147,12 +155,15 @@ func TestMachineProfileDrift(t *testing.T) {
 	}
 }
 
-func TestMachineProfileDrift_HostnameError(t *testing.T) {
-	restore := doctorHostname
-	doctorHostname = func() (string, error) { return "", assert.AnError }
-	t.Cleanup(func() { doctorHostname = restore })
+func TestMachineProfileDrift_NoHostname(t *testing.T) {
+	cfg := machineDriftFixture(t, machinesBootstrapYAML, "work")
+	client := machineDriftClient(t, cfg)
 
+	assert.Empty(t, machineProfileDrift(context.Background(), cfg, client, ""))
+}
+
+func TestMachineProfileDrift_NoClient(t *testing.T) {
 	cfg := machineDriftFixture(t, machinesBootstrapYAML, "work")
 
-	assert.Empty(t, machineProfileDrift(context.Background(), cfg))
+	assert.Empty(t, machineProfileDrift(context.Background(), cfg, nil, "zeus.local"))
 }

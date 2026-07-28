@@ -17,7 +17,6 @@ import (
 	"github.com/yaklabco/dot/internal/cli/pretty"
 	"github.com/yaklabco/dot/internal/cli/render"
 	"github.com/yaklabco/dot/internal/cli/renderer"
-	"github.com/yaklabco/dot/internal/manifest"
 	"github.com/yaklabco/dot/pkg/dot"
 )
 
@@ -175,9 +174,7 @@ func newDoctorCommand() *cobra.Command {
 		}
 
 		// Advisory only: never affects the exit code or the report.
-		if message := machineProfileDrift(cmd.Context(), cfg); message != "" {
-			fmt.Fprintln(cmd.ErrOrStderr(), message)
-		}
+		printMachineProfileDrift(cmd, cfg, client)
 
 		// Store health status for exit code determination (no error for warnings/errors)
 		storeDoctorStatus(cmd, report)
@@ -187,8 +184,20 @@ func newDoctorCommand() *cobra.Command {
 	return cmd
 }
 
-// doctorHostname reports the machine hostname. Indirected for tests.
-var doctorHostname = os.Hostname
+// printMachineProfileDrift writes the advisory drift note, if any, to stderr.
+//
+// Failures to read the hostname leave the note unwritten: the check is a
+// courtesy, not a diagnostic.
+func printMachineProfileDrift(cmd *cobra.Command, cfg dot.Config, client *dot.Client) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return
+	}
+
+	if message := machineProfileDrift(cmd.Context(), cfg, client, hostname); message != "" {
+		fmt.Fprintln(cmd.ErrOrStderr(), message)
+	}
+}
 
 // machineProfileDrift reports when the bootstrap machines section maps this
 // host to a profile other than the one recorded at clone time.
@@ -197,7 +206,7 @@ var doctorHostname = os.Hostname
 // never an error, and never changes the health status or exit code. It stays
 // silent when there is no bootstrap config, no machines section, no matching
 // entry, or no profile recorded in the manifest.
-func machineProfileDrift(ctx context.Context, cfg dot.Config) string {
+func machineProfileDrift(ctx context.Context, cfg dot.Config, client *dot.Client, hostname string) string {
 	bootstrapPath := filepath.Join(cfg.PackageDir, ".dotbootstrap.yaml")
 	if cfg.FS == nil || !cfg.FS.Exists(ctx, bootstrapPath) {
 		return ""
@@ -208,17 +217,12 @@ func machineProfileDrift(ctx context.Context, cfg dot.Config) string {
 		return ""
 	}
 
-	hostname, err := doctorHostname()
-	if err != nil {
-		return ""
-	}
-
 	rule, matched := bootstrap.ResolveMachineProfile(bootstrapCfg.Machines, hostname)
 	if !matched {
 		return ""
 	}
 
-	recorded := recordedProfile(ctx, cfg)
+	recorded := recordedProfile(ctx, client)
 	if recorded == "" || recorded == rule.Profile {
 		return ""
 	}
@@ -231,29 +235,17 @@ func machineProfileDrift(ctx context.Context, cfg dot.Config) string {
 
 // recordedProfile returns the profile recorded in the manifest repository
 // section, or an empty string when none is recorded.
-func recordedProfile(ctx context.Context, cfg dot.Config) string {
-	targetPath := dot.NewTargetPath(cfg.TargetDir)
-	if !targetPath.IsOk() {
+func recordedProfile(ctx context.Context, client *dot.Client) string {
+	if client == nil {
 		return ""
 	}
 
-	store := manifest.NewFSManifestStore(cfg.FS)
-	if cfg.ManifestDir != "" {
-		store = manifest.NewFSManifestStoreWithDir(cfg.FS, cfg.ManifestDir)
-	}
-
-	result := store.Load(ctx, targetPath.Unwrap())
-	if !result.IsOk() {
+	info, exists, err := client.RepositoryInfo(ctx)
+	if err != nil || !exists {
 		return ""
 	}
 
-	loaded := result.Unwrap()
-	repo, exists := loaded.GetRepository()
-	if !exists {
-		return ""
-	}
-
-	return repo.Profile
+	return info.Profile
 }
 
 // renderVerboseDiagnostics outputs detailed diagnostics with all issue information.

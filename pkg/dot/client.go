@@ -32,6 +32,9 @@ type Client struct {
 	adoptSvc     *AdoptService
 	cloneSvc     *CloneService
 	bootstrapSvc *BootstrapService
+
+	// manifestStore is the store every command reads the manifest from.
+	manifestStore *manifest.FSManifestStore
 }
 
 // NewClient creates a new Client with the given configuration.
@@ -135,14 +138,15 @@ func NewClient(cfg Config) (*Client, error) {
 	bootstrapSvc := newBootstrapService(cfg.FS, cfg.Logger, cfg.PackageDir, cfg.TargetDir)
 
 	return &Client{
-		config:       cfg,
-		manageSvc:    manageSvc,
-		unmanageSvc:  unmanageSvc,
-		statusSvc:    statusSvc,
-		doctorSvc:    doctorSvc,
-		adoptSvc:     adoptSvc,
-		cloneSvc:     cloneSvc,
-		bootstrapSvc: bootstrapSvc,
+		config:        cfg,
+		manageSvc:     manageSvc,
+		unmanageSvc:   unmanageSvc,
+		statusSvc:     statusSvc,
+		doctorSvc:     doctorSvc,
+		adoptSvc:      adoptSvc,
+		cloneSvc:      cloneSvc,
+		bootstrapSvc:  bootstrapSvc,
+		manifestStore: manifestStore,
 	}, nil
 }
 
@@ -290,6 +294,33 @@ func (c *Client) DoctorListIgnored(ctx context.Context) (map[string]IgnoredLink,
 //   - Package installation fails
 func (c *Client) Clone(ctx context.Context, repoURL string, opts CloneOptions) error {
 	return c.cloneSvc.Clone(ctx, repoURL, opts)
+}
+
+// RepositoryInfo is the repository provenance recorded at clone time.
+type RepositoryInfo = manifest.RepositoryInfo
+
+// RepositoryInfo returns the repository information recorded in the manifest,
+// covering the clone URL, branch, commit and selected profile.
+//
+// The boolean result reports whether any repository information is recorded:
+// installations that were never cloned, and manifests written before the
+// field existed, report false. Reading the manifest uses the same store as
+// every other command, so the configured manifest directory is honoured.
+func (c *Client) RepositoryInfo(ctx context.Context) (RepositoryInfo, bool, error) {
+	targetPath := NewTargetPath(c.config.TargetDir)
+	if !targetPath.IsOk() {
+		return RepositoryInfo{}, false, targetPath.UnwrapErr()
+	}
+
+	result := c.manifestStore.Load(ctx, targetPath.Unwrap())
+	if !result.IsOk() {
+		return RepositoryInfo{}, false, result.UnwrapErr()
+	}
+
+	loaded := result.Unwrap()
+	info, exists := loaded.GetRepository()
+
+	return info, exists, nil
 }
 
 // GenerateBootstrap creates a bootstrap configuration from current installation.

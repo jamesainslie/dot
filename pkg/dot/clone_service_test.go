@@ -151,7 +151,7 @@ func TestCloneService_BuildRepositoryInfo(t *testing.T) {
 	branch := "main"
 	beforeClone := time.Now()
 
-	info := buildRepositoryInfo(url, branch, "abc123def456")
+	info := buildRepositoryInfo(url, branch, "abc123def456", "")
 
 	assert.Equal(t, url, info.URL)
 	assert.Equal(t, branch, info.Branch)

@@ -78,7 +78,8 @@ type CloneOptions struct {
 //  1. Validate packageDir is empty (unless Force=true)
 //  2. Resolve authentication from environment
 //  3. Clone repository to packageDir
-//  4. Load bootstrap config if present
+//  4. Load bootstrap config if present, resolving the host profile from
+//     its machines section when no profile was requested
 //  5. Select packages (profile, interactive, or all)
 //  6. Filter packages by current platform
 //  7. Install selected packages via ManageService
@@ -138,6 +139,11 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 
 	if hasBootstrap {
 		s.logger.Info(ctx, "bootstrap_config_found", "packages", len(bootstrapConfig.Packages), "profiles", len(bootstrapConfig.Profiles))
+
+		// Machines can name a profile for this host when none was given.
+		if machineProfile := s.profileFromMachines(ctx, bootstrapConfig, opts); machineProfile != "" {
+			opts.Profile = machineProfile
+		}
 	} else {
 		s.logger.Debug(ctx, "no_bootstrap_config_found")
 	}
@@ -180,7 +186,7 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 	}
 
 	// Update manifest with repository information
-	s.updateRepoManifest(ctx, repoURL, opts.Branch)
+	s.updateRepoManifest(ctx, repoURL, opts.Branch, selectedProfileName(bootstrapConfig, opts, hasBootstrap))
 
 	s.logger.Info(ctx, "clone_complete", "packages_installed", len(packagesToInstall))
 
@@ -190,6 +196,56 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 	}
 
 	return nil
+}
+
+// osHostname reports the machine hostname. Indirected for tests.
+var osHostname = os.Hostname
+
+// profileFromMachines resolves a profile for the current host from the
+// machines section of the bootstrap config.
+//
+// It returns an empty string, meaning "no opinion", when the caller named a
+// profile explicitly, when interactive selection was requested, when the
+// config has no machines section, or when no entry matches this host. Entries
+// are evaluated in file order and the first match wins.
+func (s *CloneService) profileFromMachines(ctx context.Context, config bootstrap.Config, opts CloneOptions) string {
+	if opts.Profile != "" || opts.Interactive || len(config.Machines) == 0 {
+		return ""
+	}
+
+	hostname, err := osHostname()
+	if err != nil {
+		s.logger.Warn(ctx, "hostname_lookup_failed", "error", err)
+		return ""
+	}
+
+	rule, matched := bootstrap.ResolveMachineProfile(config.Machines, hostname)
+	if !matched {
+		s.logger.Info(ctx, "no_machine_entry_matched", "hostname", hostname, "entries", len(config.Machines))
+		return ""
+	}
+
+	s.logger.Info(ctx, "machine_profile_resolved", "hostname", hostname, "host_pattern", rule.Host, "profile", rule.Profile)
+	fmt.Fprintf(os.Stderr, "Host %s matches machines entry %q, using profile %q\n", hostname, rule.Host, rule.Profile)
+
+	return rule.Profile
+}
+
+// selectedProfileName reports the profile that drove package selection.
+//
+// This is the profile recorded in the manifest. Interactive selection and
+// installs without a bootstrap config record nothing.
+func selectedProfileName(config bootstrap.Config, opts CloneOptions, hasBootstrap bool) string {
+	if !hasBootstrap {
+		return ""
+	}
+	if opts.Profile != "" {
+		return opts.Profile
+	}
+	if opts.Interactive {
+		return ""
+	}
+	return config.Defaults.Profile
 }
 
 // selectPackagesWithBootstrap selects packages using bootstrap configuration.
@@ -431,12 +487,13 @@ func intersectPackages(packages, allowed []string) []string {
 }
 
 // buildRepositoryInfo constructs repository information.
-func buildRepositoryInfo(url, branch, commitSHA string) manifest.RepositoryInfo {
+func buildRepositoryInfo(url, branch, commitSHA, profile string) manifest.RepositoryInfo {
 	return manifest.RepositoryInfo{
 		URL:       url,
 		Branch:    branch,
 		ClonedAt:  time.Now(),
 		CommitSHA: commitSHA,
+		Profile:   profile,
 	}
 }
 
@@ -528,7 +585,7 @@ func getAuthMethodName(auth adapters.AuthMethod) string {
 }
 
 // updateRepoManifest updates the manifest with repository information.
-func (s *CloneService) updateRepoManifest(ctx context.Context, repoURL, branchOpt string) {
+func (s *CloneService) updateRepoManifest(ctx context.Context, repoURL, branchOpt, profile string) {
 	s.logger.Debug(ctx, "updating_manifest_with_repository_info")
 	branch := branchOpt
 	if branch == "" {
@@ -552,7 +609,7 @@ func (s *CloneService) updateRepoManifest(ctx context.Context, repoURL, branchOp
 		s.logger.Debug(ctx, "detected_commit_sha", "sha", commitSHA)
 	}
 
-	repoInfo := buildRepositoryInfo(repoURL, branch, commitSHA)
+	repoInfo := buildRepositoryInfo(repoURL, branch, commitSHA, profile)
 
 	if err := s.updateManifestRepository(ctx, repoInfo); err != nil {
 		s.logger.Warn(ctx, "failed_to_update_manifest_repository", "error", err)

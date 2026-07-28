@@ -120,6 +120,16 @@ func (s syncSandbox) publish(t *testing.T, relPath, content, message string) {
 	gitInDir(t, other, "push")
 }
 
+// remove deletes a path from an independent clone and pushes the deletion.
+func (s syncSandbox) remove(t *testing.T, relPath, message string) {
+	t.Helper()
+	other := s.cloneOrigin(t, "remover")
+	require.NoError(t, os.RemoveAll(filepath.Join(other, relPath)))
+	gitInDir(t, other, "add", "--all")
+	gitInDir(t, other, "commit", "-m", message)
+	gitInDir(t, other, "push")
+}
+
 // manage installs packages through the manage command in the sandbox.
 func manageInSandbox(t *testing.T, packages ...string) {
 	t.Helper()
@@ -215,6 +225,43 @@ func TestSyncCommand_UpToDateIsQuiet(t *testing.T) {
 	assert.NotContains(t, stdout, "Uncommitted changes")
 	assert.Contains(t, stdout, "1/1")
 	_ = sandbox
+}
+
+func TestSyncCommand_PackageRemovedUpstreamKeepsGoing(t *testing.T) {
+	sandbox := newSyncSandbox(t)
+	manageInSandbox(t, "dot-vim")
+
+	// A local edit keeps the tree dirty so the warning block is observable.
+	require.NoError(t, os.WriteFile(filepath.Join(sandbox.packageDir, "README.md"), []byte("notes\n"), 0o644))
+
+	sandbox.remove(t, "dot-vim", "chore: retire the vim package")
+
+	stdout, _, err := runSyncCommand(t)
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "Pulled 1 commit")
+	assert.Contains(t, stdout, "dot-vim", "the package that vanished upstream is named")
+	assert.Contains(t, stdout, "dot unmanage", "the warning explains how to finish the removal")
+	assert.Contains(t, stdout, "Packages:", "the health summary still runs")
+	assert.Contains(t, stdout, "Uncommitted changes", "the dirty-tree warning still runs")
+}
+
+func TestSyncCommand_DryRunDoesNotClaimRemanage(t *testing.T) {
+	sandbox := newSyncSandbox(t)
+	manageInSandbox(t, "dot-vim")
+
+	// Removing a link gives remanage real work to do on a live run.
+	link := filepath.Join(sandbox.targetDir, ".vim", ".vimrc")
+	require.NoError(t, os.Remove(link))
+
+	cliFlags.dryRun = true
+	t.Cleanup(func() { cliFlags.dryRun = false })
+
+	stdout, _, err := runSyncCommand(t)
+	require.NoError(t, err)
+
+	assert.NotContains(t, stdout, "Remanaged", "a dry run never claims work it did not do")
+	assert.NoFileExists(t, link, "a dry run does not restore the link")
 }
 
 func TestSyncCommand_DirtyTreeWarning(t *testing.T) {

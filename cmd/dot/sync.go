@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -97,7 +99,7 @@ func runSync(cmd *cobra.Command, push bool) error {
 		return err
 	}
 
-	if err := syncRelink(ctx, formatter, client); err != nil {
+	if err := syncRelink(ctx, formatter, client, cfg.PackageDir, cfg.DryRun); err != nil {
 		return err
 	}
 
@@ -150,25 +152,35 @@ func reportRebaseConflict(errFormatter *output.Formatter, conflict gitsync.ErrRe
 	errFormatter.Indent(1, fmt.Sprintf("Resolve the conflicts in %s, then run 'dot sync' again.", conflict.Dir))
 }
 
-// syncRelink remanages every package in the manifest and reports package health.
-// A run with nothing to do stays silent apart from the health summary.
-func syncRelink(ctx context.Context, formatter *output.Formatter, client *dot.Client) error {
+// syncRelink remanages every manifest package that still exists in the package
+// directory and reports package health. A run with nothing to do stays silent
+// apart from the health summary.
+func syncRelink(ctx context.Context, formatter *output.Formatter, client *dot.Client, packageDir string, dryRun bool) error {
 	installed, err := client.List(ctx)
 	if err != nil {
 		return err
 	}
 
 	names := make([]string, 0, len(installed))
+	missing := make([]string, 0)
 	for _, pkg := range installed {
-		names = append(names, pkg.Name)
+		if packageExists(packageDir, pkg.Name) {
+			names = append(names, pkg.Name)
+			continue
+		}
+		missing = append(missing, pkg.Name)
 	}
+
+	// A package deleted upstream must not abort the sync: report it and carry
+	// on, so the health summary and the dirty-tree warning still run.
+	reportMissingPackages(formatter, missing)
 
 	if len(names) > 0 {
 		err = client.Remanage(ctx, names...)
 		var noChanges dot.ErrNoChanges
 		switch {
 		case err == nil:
-			formatter.Success("remanaged", len(names), "package", "packages")
+			reportRelinked(formatter, len(names), dryRun)
 		case errors.As(err, &noChanges):
 			// Nothing changed: stay quiet.
 		default:
@@ -177,6 +189,40 @@ func syncRelink(ctx context.Context, formatter *output.Formatter, client *dot.Cl
 	}
 
 	return reportHealth(ctx, formatter, client)
+}
+
+// packageExists reports whether a manifest package still has a directory in
+// the package directory.
+func packageExists(packageDir, name string) bool {
+	info, err := os.Stat(filepath.Join(packageDir, name))
+	return err == nil && info.IsDir()
+}
+
+// reportMissingPackages warns about manifest packages whose directory is gone,
+// which is what a package deleted on another machine looks like after a pull.
+func reportMissingPackages(formatter *output.Formatter, missing []string) {
+	if len(missing) == 0 {
+		return
+	}
+
+	formatter.Warning(fmt.Sprintf("%s in the manifest missing from the package directory",
+		formatCount(len(missing), "package", "packages")))
+	for _, name := range missing {
+		formatter.Indent(1, name)
+	}
+	formatter.Indent(1, fmt.Sprintf("Run 'dot unmanage %s' to remove the leftover links.",
+		strings.Join(missing, " ")))
+}
+
+// reportRelinked prints the outcome of the remanage step. A dry run never
+// claims work it did not do.
+func reportRelinked(formatter *output.Formatter, count int, dryRun bool) {
+	if dryRun {
+		formatter.Info(fmt.Sprintf("Dry run: %s would be remanaged",
+			formatCount(count, "package", "packages")))
+		return
+	}
+	formatter.Success("remanaged", count, "package", "packages")
 }
 
 // reportHealth prints the healthy-package summary line.

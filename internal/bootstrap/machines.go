@@ -26,8 +26,12 @@ type MachineRule struct {
 //
 // Each pattern is matched against both the full hostname and its first label,
 // so a rule for "hephaestus" matches "hephaestus.example.com" as well.
-// Matching is case-insensitive. Rules are evaluated in declaration order and
-// the first match wins; a trailing "*" rule therefore acts as a catch-all.
+// Rules are evaluated in declaration order and the first match wins; a
+// trailing "*" rule therefore acts as a catch-all.
+//
+// Matching is case-insensitive: pattern and hostname are both lowercased
+// first, so a pattern may be written in any case and character classes such
+// as [A-C] match either case of the same letters.
 //
 // Returns false when the hostname is empty or no rule matches.
 func ResolveMachineProfile(machines []MachineRule, hostname string) (MachineRule, bool) {

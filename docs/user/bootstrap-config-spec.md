@@ -165,7 +165,9 @@ Put the most specific patterns first and any catch-all last.
 Patterns use `path.Match` glob syntax (`*`, `?`, `[class]`), with no special treatment of
 dots. Each pattern is matched against both the full hostname and its first label, so an
 entry for `hephaestus` also matches `hephaestus.example.com`. Matching is
-case-insensitive.
+case-insensitive: pattern and hostname are both lowercased before matching, so a pattern
+may be written in any case, and a class such as `[A-C]` matches either case of those
+letters.
 
 ```yaml
 machines:

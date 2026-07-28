@@ -39,17 +39,17 @@ func TestResolveMachineProfile(t *testing.T) {
 			wantMatch:   true,
 		},
 		{
-			name:        "short hostname matches prefix glob",
-			hostname:    "hephaestus.o11y.geicoinf.com",
-			wantProfile: "work",
-			wantHost:    "*.geicoinf.com",
+			name:        "prefix glob matches when no earlier rule does",
+			hostname:    "hephaestus.local",
+			wantProfile: "devhost",
+			wantHost:    "hephaestus*",
 			wantMatch:   true,
 		},
 		{
-			name:        "first match wins over later entries",
-			hostname:    "zeus.local",
-			wantProfile: "personal",
-			wantHost:    "zeus.local",
+			name:        "first match wins when two rules match",
+			hostname:    "hephaestus.o11y.geicoinf.com",
+			wantProfile: "work",
+			wantHost:    "*.geicoinf.com",
 			wantMatch:   true,
 		},
 		{
@@ -76,6 +76,55 @@ func TestResolveMachineProfile(t *testing.T) {
 			if tt.wantMatch {
 				assert.Equal(t, tt.wantProfile, rule.Profile)
 				assert.Equal(t, tt.wantHost, rule.Host)
+			}
+		})
+	}
+}
+
+func TestResolveMachineProfile_CaseFolding(t *testing.T) {
+	machines := []MachineRule{
+		{Host: "Hephaestus*", Profile: "devhost"},
+		{Host: "web[A-C]", Profile: "web"},
+	}
+
+	tests := []struct {
+		name        string
+		hostname    string
+		wantProfile string
+		wantMatch   bool
+	}{
+		{
+			name:        "pattern written in mixed case matches a lowercase host",
+			hostname:    "hephaestus.o11y.example.com",
+			wantProfile: "devhost",
+			wantMatch:   true,
+		},
+		{
+			name:        "character class matches the case it was written in",
+			hostname:    "webA",
+			wantProfile: "web",
+			wantMatch:   true,
+		},
+		{
+			name:        "character class matches the opposite case too",
+			hostname:    "webc",
+			wantProfile: "web",
+			wantMatch:   true,
+		},
+		{
+			name:      "character class still excludes hosts outside the range",
+			hostname:  "webD",
+			wantMatch: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule, matched := ResolveMachineProfile(machines, tt.hostname)
+
+			assert.Equal(t, tt.wantMatch, matched)
+			if tt.wantMatch {
+				assert.Equal(t, tt.wantProfile, rule.Profile)
 			}
 		})
 	}

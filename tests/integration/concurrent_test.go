@@ -21,7 +21,7 @@ func TestConcurrent_ParallelPackageScanning(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+i)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 
@@ -73,7 +73,7 @@ func TestConcurrent_StatusQueriesDuringManage(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+i)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 
@@ -146,7 +146,7 @@ func TestConcurrent_ParallelExecutionBatches(t *testing.T) {
 		pkgName := filepath.Join("pkg", string(rune('a'+i)))
 		pkg := env.FixtureBuilder().Package(pkgName)
 		for j := 0; j < 3; j++ {
-			pkg.WithFile("dot-file"+string(rune('a'+j)), "content")
+			pkg.WithFile("dot-file-"+filepath.Base(pkgName)+string(rune('a'+j)), "content")
 		}
 		pkg.Create()
 	}
@@ -174,7 +174,7 @@ func TestConcurrent_CancellationDuringExecution(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+i)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 
@@ -207,7 +207,7 @@ func TestConcurrent_StressTest(t *testing.T) {
 			pkgName += string(rune('0' + (i / 26)))
 		}
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 
@@ -240,7 +240,7 @@ func TestConcurrent_NoRaceConditions(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+i)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 

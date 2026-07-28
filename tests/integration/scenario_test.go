@@ -158,7 +158,7 @@ func TestScenario_LargeRepository(t *testing.T) {
 		packages[i] = pkgName
 
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 

@@ -5,7 +5,8 @@
 The `.dotbootstrap.yaml` file provides declarative configuration for package installation during repository cloning. It enables:
 
 - Defining available packages with platform requirements
-- Creating named installation profiles
+- Creating named installation profiles, optionally inheriting from another profile
+- Mapping hostnames to profiles
 - Specifying default behaviors
 - Managing conflict resolution policies
 
@@ -29,6 +30,7 @@ dotfiles/
 version: "1.0"           # Required: Configuration version
 packages: []             # Required: List of package specifications
 profiles: {}             # Optional: Named installation profiles
+machines: []             # Optional: Ordered host pattern to profile mappings
 defaults: {}             # Optional: Default settings
 ```
 
@@ -99,9 +101,102 @@ Named collections of packages for specific installation scenarios.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `description` | string | Yes | Human-readable profile description |
+| `extends` | string | No | Name of a single parent profile to inherit packages from |
 | `packages` | string[] | Yes | List of package names to install |
 
 Profile package names must reference packages defined in the `packages` section.
+
+#### Profile Inheritance
+
+A profile may name one parent with `extends`. The resolved package list is the union of
+the whole parent chain and the profile's own packages, ordered from the root ancestor
+down to the profile itself, with duplicates removed. A package listed by both a parent
+and a child keeps its earlier, more ancestral position.
+
+```yaml
+profiles:
+  base:
+    description: "Everything every machine gets"
+    packages:
+      - dot-git
+      - dot-zsh
+
+  dev:
+    description: "Base plus editors"
+    extends: base
+    packages:
+      - dot-vim
+      - dot-tmux
+
+  work:
+    description: "Dev plus work-only configuration"
+    extends: dev
+    packages:
+      - dot-ssh
+```
+
+Here `work` resolves to `dot-git`, `dot-zsh`, `dot-vim`, `dot-tmux`, `dot-ssh`.
+
+Chains may be any depth but each profile has at most one parent. A parent that does not
+exist, or a chain that loops back on itself, is a validation error.
+
+### Machines
+
+**Type:** Array of MachineRule  
+**Required:** No
+
+Maps hostnames to profiles so a single repository can install a different package set on
+each machine without passing `--profile`.
+
+#### MachineRule Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `host` | string | Yes | Glob pattern matched against the hostname |
+| `profile` | string | Yes | Name of the profile to use on matching hosts |
+
+#### Ordering and Matching
+
+`machines` is an ordered **list**, not a map, because evaluation order is part of the
+semantics: patterns are allowed to overlap and **the first matching entry wins**. YAML
+mappings do not preserve order once loaded, so a list is the only way to express that.
+Put the most specific patterns first and any catch-all last.
+
+Patterns use `path.Match` glob syntax (`*`, `?`, `[class]`), with no special treatment of
+dots. Each pattern is matched against both the full hostname and its first label, so an
+entry for `hephaestus` also matches `hephaestus.example.com`. Matching is
+case-insensitive.
+
+```yaml
+machines:
+  - host: "hephaestus*"          # Checked first
+    profile: devhost
+
+  - host: "*.geicoinf.com"       # Any other work host
+    profile: work
+
+  - host: "zeus.local"
+    profile: personal
+
+  - host: "*"                    # Catch-all, checked last
+    profile: minimal
+```
+
+#### Resolution During Clone
+
+When `--profile` is not given, `dot clone` resolves the profile for the current host from
+`machines` and logs the entry that matched. Precedence:
+
+1. `--profile`, if given, always wins
+2. `--interactive` skips the machines section entirely
+3. The first `machines` entry matching the hostname
+4. `defaults.profile`, when no entry matches
+5. An interactive prompt or all packages, as before
+
+The profile that was used is recorded in the manifest repository section. `dot doctor`
+prints an advisory note when the `machines` section maps the current host to a different
+profile than the one recorded at clone time. The note is informational only and does not
+change doctor's health status or exit code.
 
 ### Defaults
 
@@ -160,22 +255,28 @@ profiles:
       - dot-vim
       - dot-zsh
 
-  full:
-    description: "Complete configuration with all packages"
-    packages:
-      - dot-vim
-      - dot-zsh
-      - dot-tmux
-      - dot-git
-      - dot-ssh
-
   development:
     description: "Development environment setup"
+    extends: minimal
     packages:
-      - dot-vim
-      - dot-zsh
       - dot-tmux
       - dot-git
+
+  full:
+    description: "Complete configuration with all packages"
+    extends: development
+    packages:
+      - dot-ssh
+
+machines:
+  - host: "*.corp.example.com"
+    profile: development
+
+  - host: "laptop"
+    profile: full
+
+  - host: "*"
+    profile: minimal
 
 defaults:
   on_conflict: backup
@@ -191,8 +292,13 @@ Validation is performed on load and covers:
 3. **Platform values:** each entry must be one of `linux`, `darwin`, `windows`, `freebsd`.
 4. **Conflict policies:** each `on_conflict`, per package or in `defaults`, must be one of `fail`,
    `backup`, `overwrite`, `skip`.
-5. **Profile package references:** every name in a profile's `packages` must be a defined package.
-6. **Default profile:** if `defaults.profile` is set, it must exist in `profiles`.
+5. **Profile package references:** every name in a profile's resolved package list, its own
+   packages plus everything inherited through `extends`, must be a defined package.
+6. **Profile inheritance:** if `extends` is set, the named parent must exist in `profiles`, and
+   the chain must not loop back on itself.
+7. **Default profile:** if `defaults.profile` is set, it must exist in `profiles`.
+8. **Machine entries:** each entry needs a non-empty, well-formed `host` glob and a `profile`
+   that exists in `profiles`.
 
 Not validated: whether a package name corresponds to a directory in the repository, whether a
 profile is non-empty, and whether a profile has a description. A profile with no description or no
@@ -224,9 +330,10 @@ Package selection resolves in this order:
 
 1. `--profile`, if given
 2. `--interactive`, if given
-3. `defaults.profile` from the bootstrap config, if set
-4. An interactive prompt, if attached to a terminal
-5. All platform-compatible packages
+3. The first `machines` entry matching the hostname, if the section is present
+4. `defaults.profile` from the bootstrap config, if set
+5. An interactive prompt, if attached to a terminal
+6. All platform-compatible packages
 
 `--interactive` does not override an explicit `--profile`. Packages whose names are reserved by dot
 are skipped with a warning at every step.
@@ -360,7 +467,22 @@ dot clone bootstrap --force
 ```
 
 All discovered packages are emitted with `required: false`, alongside a default conflict policy and
-example profile structures. Review and customise the result before committing it.
+example profile structures. Profiles, `extends`, and `machines` are never invented for you; add
+them by hand. Review and customise the result before committing it.
+
+#### Repository Layout Detection
+
+`dot clone bootstrap` also classifies the repository layout by reading one directory level inside
+each package:
+
+- A package name or a top-level entry carrying the `dot-` prefix means the prefixed layout, the
+  historical default, and nothing extra is written.
+- Otherwise, a top-level entry that is itself a dotfile, such as `.config` or `.zshrc`, means the
+  full-tree layout: package contents are already real dotfile paths.
+
+For a full-tree repository the command writes `.config/dot/config.yaml` in the package directory
+with `dotfile.package_name_mapping: false`, so later dot commands in that repository do not
+translate package names. An existing file at that path is left untouched.
 
 ## Best Practices
 
@@ -377,6 +499,8 @@ example profile structures. Review and customise the result before committing it
 - Provide `full` profile for complete setup
 - Define role-specific profiles (development, server, etc.)
 - Document profile purposes in descriptions
+- Put shared packages in a base profile and `extends` it, rather than repeating lists
+- Order `machines` from most specific host pattern to least, with any catch-all last
 
 ### Conflict Management
 

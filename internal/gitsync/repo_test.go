@@ -155,6 +155,75 @@ func TestRepo_EnsureRepository(t *testing.T) {
 	})
 }
 
+// stubRunner returns canned results, so tests can exercise git failures that
+// are awkward to provoke with a real repository.
+type stubRunner struct {
+	out Output
+	err error
+}
+
+func (r stubRunner) Run(_ context.Context, _ string, _ ...string) (Output, error) {
+	return r.out, r.err
+}
+
+func TestRepo_EnsureRepositoryPropagatesUnexpectedFailure(t *testing.T) {
+	inner := ErrCommand{
+		Args:     []string{"rev-parse", "--is-inside-work-tree"},
+		ExitCode: 128,
+		Stderr:   "fatal: detected dubious ownership in repository",
+		Err:      errors.New("exit status 128"),
+	}
+	// The directory exists, so the failure cannot be a missing package dir.
+	repo := NewRepo(t.TempDir(), stubRunner{err: inner})
+
+	err := repo.EnsureRepository(context.Background())
+	require.Error(t, err)
+
+	var notRepo ErrNotRepository
+	assert.NotErrorAs(t, err, &notRepo, "an unrelated git failure is not reported as a missing repository")
+
+	var cmdErr ErrCommand
+	require.ErrorAs(t, err, &cmdErr)
+	assert.Contains(t, cmdErr.Stderr, "dubious ownership")
+}
+
+func TestRepo_HeadOnUnbornBranch(t *testing.T) {
+	requireGit(t)
+
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-b", "main")
+	configureRepo(t, dir)
+
+	repo := openTestRepo(t, dir)
+	head, err := repo.Head(context.Background())
+	require.NoError(t, err, "an unborn HEAD is a normal state, not an error")
+	assert.Empty(t, head)
+}
+
+func TestRepo_PullIntoUnbornBranchReportsEveryCommit(t *testing.T) {
+	requireGit(t)
+	origin, _ := newOriginWithClone(t)
+
+	// A repository with no commits of its own, tracking the seeded origin.
+	fresh := filepath.Join(t.TempDir(), "fresh")
+	require.NoError(t, os.MkdirAll(fresh, 0o755))
+	runGit(t, fresh, "init", "-b", "main")
+	configureRepo(t, fresh)
+	runGit(t, fresh, "remote", "add", "origin", origin)
+	runGit(t, fresh, "config", "branch.main.remote", "origin")
+	runGit(t, fresh, "config", "branch.main.merge", "refs/heads/main")
+
+	repo := openTestRepo(t, fresh)
+	result, err := repo.Pull(context.Background())
+	require.NoError(t, err)
+
+	assert.Empty(t, result.OldHead)
+	assert.NotEmpty(t, result.NewHead)
+	require.Len(t, result.Commits, 1, "the imported history counts as pulled commits")
+	assert.Equal(t, "seed: initial packages", result.Commits[0].Subject)
+	assert.False(t, result.UpToDate())
+}
+
 func TestRepo_PullReportsNewCommits(t *testing.T) {
 	requireGit(t)
 	origin, clone := newOriginWithClone(t)
@@ -216,6 +285,11 @@ func TestRepo_PullConflictReportsPaths(t *testing.T) {
 	require.ErrorAs(t, err, &conflict)
 	assert.Contains(t, conflict.Paths, "dot-vim/dot-vimrc")
 	assert.Contains(t, conflict.Error(), "dot-vim/dot-vimrc")
+
+	// The failing git invocation stays reachable for exit-code mapping.
+	var cmdErr ErrCommand
+	require.ErrorAs(t, err, &cmdErr)
+	assert.Equal(t, []string{"pull", "--rebase", "--autostash"}, cmdErr.Args)
 }
 
 func TestRepo_StatusReportsWorkingTree(t *testing.T) {

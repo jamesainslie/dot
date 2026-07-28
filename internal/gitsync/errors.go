@@ -33,10 +33,16 @@ type ErrRebaseConflict struct {
 	Dir    string
 	Paths  []string
 	Output string
+	// Err is the failing git invocation, kept so callers can inspect it.
+	Err error
 }
 
 func (e ErrRebaseConflict) Error() string {
 	return fmt.Sprintf("rebase stopped with conflicts in %s: %s", e.Dir, strings.Join(e.Paths, ", "))
+}
+
+func (e ErrRebaseConflict) Unwrap() error {
+	return e.Err
 }
 
 // ErrCommand reports a git invocation that exited non-zero or failed to start.

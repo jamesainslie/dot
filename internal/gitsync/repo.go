@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -135,28 +136,77 @@ func (r *Repo) Dir() string {
 }
 
 // EnsureRepository verifies that the directory is inside a git working tree.
+// It reports ErrNotRepository only when git says so, or when the directory
+// does not exist; any other git failure (a broken installation, a permissions
+// problem, a rejected repository) is returned unchanged.
 func (r *Repo) EnsureRepository(ctx context.Context) error {
 	out, err := r.runner.Run(ctx, r.dir, "rev-parse", "--is-inside-work-tree")
-	if err != nil || strings.TrimSpace(out.Stdout) != "true" {
+	switch {
+	case err == nil && strings.TrimSpace(out.Stdout) == "true":
+		return nil
+	case err == nil:
+		// git answered, but the directory is not a working tree (a bare repo).
 		return ErrNotRepository{Dir: r.dir}
+	case isNotRepositoryErr(err), !dirExists(r.dir):
+		return ErrNotRepository{Dir: r.dir}
+	default:
+		return err
 	}
-	return nil
 }
 
-// Head returns the current commit hash.
+// isNotRepositoryErr reports whether a failed git invocation failed because the
+// directory is outside a git working tree.
+func isNotRepositoryErr(err error) bool {
+	var cmdErr ErrCommand
+	if !errors.As(err, &cmdErr) {
+		return false
+	}
+	stderr := strings.ToLower(cmdErr.Stderr)
+	return strings.Contains(stderr, "not a git repository") ||
+		strings.Contains(stderr, "not a working tree")
+}
+
+// dirExists reports whether path is an existing directory.
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+// Head returns the current commit hash. A repository whose HEAD is unborn,
+// meaning it has no commits yet, reports an empty hash and no error.
 func (r *Repo) Head(ctx context.Context) (string, error) {
 	out, err := r.runner.Run(ctx, r.dir, "rev-parse", "HEAD")
 	if err != nil {
+		if isUnbornHeadErr(err) {
+			return "", nil
+		}
 		return "", err
 	}
 	return strings.TrimSpace(out.Stdout), nil
+}
+
+// isUnbornHeadErr reports whether a failed rev-parse failed because HEAD points
+// at a branch that has no commits yet.
+func isUnbornHeadErr(err error) bool {
+	var cmdErr ErrCommand
+	if !errors.As(err, &cmdErr) {
+		return false
+	}
+	stderr := strings.ToLower(cmdErr.Stderr)
+	return strings.Contains(stderr, "unknown revision") ||
+		strings.Contains(stderr, "ambiguous argument 'head'")
 }
 
 // Pull runs `git pull --rebase --autostash` and reports the commits gained.
 // It returns ErrRebaseConflict when the rebase stops with conflicting paths;
 // callers are expected to stop and let the user resolve them by hand.
 func (r *Repo) Pull(ctx context.Context) (PullResult, error) {
-	oldHead, _ := r.Head(ctx)
+	// An empty oldHead means the branch was unborn: every commit the pull
+	// brings in is new to this working tree.
+	oldHead, err := r.Head(ctx)
+	if err != nil {
+		return PullResult{}, err
+	}
 
 	out, err := r.runner.Run(ctx, r.dir, "pull", "--rebase", "--autostash")
 	if err != nil {
@@ -165,6 +215,7 @@ func (r *Repo) Pull(ctx context.Context) (PullResult, error) {
 				Dir:    r.dir,
 				Paths:  paths,
 				Output: out.Combined(),
+				Err:    err,
 			}
 		}
 		return PullResult{}, err
@@ -227,13 +278,19 @@ func (r *Repo) conflictedPaths(ctx context.Context) []string {
 
 // commitsBetween lists the commits reachable from newHead but not oldHead.
 // After a rebase this includes locally rewritten commits, which are new to
-// this branch as well.
+// this branch as well. An empty oldHead means the branch was unborn before the
+// pull, so the whole imported history counts as new.
 func (r *Repo) commitsBetween(ctx context.Context, oldHead, newHead string) ([]Commit, error) {
-	if oldHead == "" || oldHead == newHead {
+	if newHead == "" || oldHead == newHead {
 		return nil, nil
 	}
 
-	out, err := r.runner.Run(ctx, r.dir, "log", "--pretty=format:%h\t%s", oldHead+".."+newHead)
+	revisions := newHead
+	if oldHead != "" {
+		revisions = oldHead + ".." + newHead
+	}
+
+	out, err := r.runner.Run(ctx, r.dir, "log", "--pretty=format:%h\t%s", revisions)
 	if err != nil {
 		return nil, err
 	}

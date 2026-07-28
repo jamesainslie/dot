@@ -134,6 +134,30 @@ func NewClient(cfg Config) (*Client, error) {
 	// Repository info must land in the manifest every other command reads.
 	cloneSvc := newCloneService(cfg.FS, cfg.Logger, manageSvc, gitCloner, packageSelector, manifestStore, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
 
+	// A cloned repository may commit its own dotfile options in
+	// .config/dot/config.yaml; the clone service rebuilds its manage service
+	// from them so the first install already uses the repo's layout.
+	cloneSvc.rebuildManageSvc = func(mapping *bool, translate *bool) *ManageService {
+		m := cfg.PackageNameMapping
+		if mapping != nil {
+			m = *mapping
+		}
+		tr := cfg.Translate
+		if translate != nil {
+			tr = translate
+		}
+		pipe := pipeline.NewManagePipeline(pipeline.ManagePipelineOpts{
+			FS:                 cfg.FS,
+			IgnoreSet:          ignoreSet,
+			ScanConfig:         scanConfig,
+			Policies:           policies,
+			BackupDir:          cfg.BackupDir,
+			PackageNameMapping: m,
+			Translate:          tr,
+		})
+		return newManageService(cfg.FS, cfg.Logger, pipe, exec, manifestSvc, unmanageSvc, cfg.PackageDir, cfg.TargetDir, cfg.DryRun)
+	}
+
 	// Create bootstrap service
 	bootstrapSvc := newBootstrapService(cfg.FS, cfg.Logger, cfg.PackageDir, cfg.TargetDir)
 

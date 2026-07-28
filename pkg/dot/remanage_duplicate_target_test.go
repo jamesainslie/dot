@@ -12,7 +12,7 @@ import (
 
 // remanageDuplicateClient builds an in-memory client whose packages each
 // contain the given relative files. Nothing outside the MemFS is touched.
-func remanageDuplicateClient(t *testing.T, packages map[string][]string) (*dot.Client, context.Context) {
+func remanageDuplicateClient(t *testing.T, packages map[string][]string) (*dot.Client, *adapters.MemFS, context.Context) {
 	t.Helper()
 
 	fs := adapters.NewMemFS()
@@ -34,7 +34,7 @@ func remanageDuplicateClient(t *testing.T, packages map[string][]string) (*dot.C
 	})
 	require.NoError(t, err)
 
-	return client, ctx
+	return client, fs, ctx
 }
 
 // TestPlanRemanageRejectsDuplicateTargets covers the remanage path, which plans
@@ -87,7 +87,7 @@ func TestPlanRemanageRejectsDuplicateTargets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, ctx := remanageDuplicateClient(t, tt.packages)
+			client, _, ctx := remanageDuplicateClient(t, tt.packages)
 
 			_, err := client.PlanRemanage(ctx, tt.args...)
 
@@ -109,7 +109,7 @@ func TestPlanRemanageRejectsDuplicateTargets(t *testing.T) {
 // TestRemanageRejectsDuplicateTargets checks the executing path, not just the
 // planning path, so no link is created for a colliding pair.
 func TestRemanageRejectsDuplicateTargets(t *testing.T) {
-	client, ctx := remanageDuplicateClient(t, map[string][]string{
+	client, _, ctx := remanageDuplicateClient(t, map[string][]string{
 		"base":    {"dot-vimrc"},
 		"overlay": {"dot-vimrc"},
 	})
@@ -119,4 +119,55 @@ func TestRemanageRejectsDuplicateTargets(t *testing.T) {
 	require.Error(t, err)
 	var duplicate dot.ErrDuplicateTarget
 	assert.ErrorAs(t, err, &duplicate)
+}
+
+// TestRemanageRejectsCollisionWithManagedPackage covers the first-time
+// collision against a package that is already installed: vim owns .rc on disk
+// and in the manifest, then emacs gains a colliding dot-rc. The per-package
+// remanage plan for emacs resolves the collision as a wrong-link conflict and
+// omits the operation, so the claim guard over planned operations never sees
+// it. The conflict must surface as an error naming both packages, not vanish
+// into an exit-0 remanage that records emacs with zero links.
+func TestRemanageRejectsCollisionWithManagedPackage(t *testing.T) {
+	client, _, ctx := remanageDuplicateClient(t, map[string][]string{
+		"vim":   {"dot-rc"},
+		"emacs": {"dot-erc", "dot-rc"},
+	})
+
+	require.NoError(t, client.Manage(ctx, "vim"))
+
+	err := client.Remanage(ctx, "vim", "emacs")
+
+	require.Error(t, err)
+	var duplicate dot.ErrDuplicateTarget
+	require.ErrorAs(t, err, &duplicate)
+	assert.Contains(t, err.Error(), "/test/target/.rc")
+	assert.Contains(t, err.Error(), "vim")
+	assert.Contains(t, err.Error(), "emacs")
+
+	// The failed remanage must not have half-registered emacs.
+	status, statusErr := client.Status(ctx, "emacs")
+	if statusErr == nil {
+		for _, pkg := range status.Packages {
+			if pkg.Name == "emacs" {
+				assert.NotEmpty(t, pkg.Links,
+					"emacs must not be recorded with zero links after a rejected remanage")
+			}
+		}
+	}
+}
+
+// TestRemanageForeignConflictStillErrors ensures the conflict fallback holds
+// when the blocking target is not owned by any package: a plain file the user
+// created. The error is the generic conflict error, but it must be an error.
+func TestRemanageForeignConflictStillErrors(t *testing.T) {
+	client, fs, ctx := remanageDuplicateClient(t, map[string][]string{
+		"vim": {"dot-rc"},
+	})
+
+	require.NoError(t, fs.WriteFile(ctx, "/test/target/.rc", []byte("user file"), 0644))
+
+	err := client.Remanage(ctx, "vim")
+
+	require.Error(t, err)
 }

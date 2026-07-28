@@ -165,6 +165,7 @@ comprehensive conflict detection, and incremental updates.`,
 		newDoctorCommand(),
 		newConfigCommand(),
 		newCloneCommand(),
+		newSyncCommand(),
 		newUpgradeCommand(version),
 	)
 

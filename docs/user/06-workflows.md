@@ -62,22 +62,96 @@ dot status
 
 ### Keeping Machines in Sync
 
-On machine with changes:
+`dot sync` is the single verb for day-to-day multi-machine work. Run it in
+the package directory (or point `--dir` at it):
+
 ```bash
-cd ~/dotfiles
-vim dot-vim/dot-vimrc
-dot remanage dot-vim
-git add dot-vim/
-git commit -m "feat(vim): update configuration"
-git push
+dot sync
 ```
 
-On other machines:
+One run does four things:
+
+1. `git pull --rebase --autostash`, reporting the commits gained
+2. Remanages every package in the manifest, so files added or removed
+   upstream are linked or unlinked here
+3. Prints how many packages are healthy
+4. Lists uncommitted local edits, grouped by package
+
+Step 4 is the half that a bare `git pull` misses. Because your editor writes
+through the symlink, every edit to a managed file lands in the package
+directory and leaves the repository dirty. Nothing announces that, so changes
+sit unpushed until the next machine notices they are missing.
+
+**Outbound: publishing local edits**
+
+```bash
+# Edit through the symlink as usual
+vim ~/.vimrc
+
+# Review, relink, and publish in one step
+dot sync --push
+```
+
+`--push` stages every working-tree change and commits it as
+`sync: <short-hostname> local edits (<packages>)`, for example
+`sync: zeus local edits (dot-vim)`, then pushes. Commit hooks run normally.
+When there is nothing to commit, `sync` says so and does not push.
+
+For a hand-written message, commit yourself and let `sync` handle the rest:
+
 ```bash
 cd ~/dotfiles
-git pull
-dot remanage dot-vim dot-zsh dot-tmux
+git add dot-vim/
+git commit -m "feat(vim): enable ruler"
+dot sync --push
 ```
+
+**Inbound: picking up other machines' changes**
+
+```bash
+dot sync
+```
+
+Content-only changes arrive through the symlinks with no relinking at all.
+Structural changes (a new file in a package, a deleted one) are applied by the
+remanage step, so no separate `dot remanage` call is needed.
+
+**When the rebase conflicts**
+
+`sync` stops, prints the conflicted paths, and exits non-zero. It never tries
+to resolve anything:
+
+```text
+✗ Rebase stopped with conflicts
+  • dot-vim/dot-vimrc
+  Resolve the conflicts in /home/user/dotfiles, then run 'dot sync' again.
+```
+
+Resolve them in the package directory with your usual git tools, then rerun:
+
+```bash
+cd ~/dotfiles
+vim dot-vim/dot-vimrc      # resolve markers
+git add dot-vim/dot-vimrc
+git rebase --continue
+dot sync
+```
+
+**Manual git fallback**
+
+`sync` shells out to the system `git`, so nothing stops you from driving the
+repository yourself. The equivalent sequence is:
+
+```bash
+cd ~/dotfiles
+git pull --rebase --autostash
+dot remanage dot-vim dot-zsh dot-tmux   # relink structural changes
+git status                              # look for local edits to publish
+```
+
+Use the manual route for anything `sync` deliberately does not do: switching
+branches, rewriting history, partial commits, or pushing to a different
+remote.
 
 ## Conflict Resolution
 

@@ -319,6 +319,11 @@ func LoadExtendedFromFile(path string) (*ExtendedConfig, error) {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
+	// Resolve "~" and "$VAR" in path values before anything consumes them, so
+	// a config file stays portable across machines instead of creating
+	// directories literally named "~" or "$HOME".
+	cfg.ExpandPaths()
+
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("validate config: %w", err)
 	}

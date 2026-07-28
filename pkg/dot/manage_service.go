@@ -371,9 +371,17 @@ func (s *ManageService) PlanRemanage(ctx context.Context, packages ...string) (P
 	packageOps := make(map[string][]OperationID)
 	skippedLinks := make(map[string][]string)
 
+	// Remanage plans each package on its own, so the planner guard over one
+	// shared desired state never sees a cross-package collision. Track the
+	// claimed link targets here instead.
+	claimedTargets := make(map[string]string)
+
 	for _, pkg := range packages {
 		ops, pkgOpsMap, pkgSkipped, err := s.planSinglePackageRemanage(ctx, pkg, &m, hasher)
 		if err != nil {
+			return Plan{}, err
+		}
+		if err := claimLinkTargets(claimedTargets, pkg, ops); err != nil {
 			return Plan{}, err
 		}
 		allOperations = append(allOperations, ops...)
@@ -398,6 +406,30 @@ func (s *ManageService) PlanRemanage(ctx context.Context, packages ...string) (P
 		PackageOperations:   packageOps,
 		PackageSkippedLinks: skippedLinks,
 	}, nil
+}
+
+// claimLinkTargets records the link targets ops creates on behalf of pkg,
+// rejecting any target a different package has already claimed. Re-claiming a
+// target for the same package (a package listed twice) is a no-op.
+func claimLinkTargets(claimed map[string]string, pkg string, ops []Operation) error {
+	for _, op := range ops {
+		link, isLink := op.(LinkCreate)
+		if !isLink {
+			continue
+		}
+
+		target := link.Target.String()
+		if owner, seen := claimed[target]; seen && owner != pkg {
+			return ErrDuplicateTarget{
+				TargetPath:    target,
+				FirstPackage:  owner,
+				SecondPackage: pkg,
+			}
+		}
+		claimed[target] = pkg
+	}
+
+	return nil
 }
 
 // planSinglePackageRemanage plans remanage for a single package using hash comparison.

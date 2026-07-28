@@ -205,9 +205,9 @@ func TestPackageGroup_Label(t *testing.T) {
 	assert.Equal(t, RootLabel, PackageGroup{Package: ""}.Label())
 }
 
-func TestPackageLabels(t *testing.T) {
+func TestCommitLabels(t *testing.T) {
 	groups := []PackageGroup{{Package: ""}, {Package: "dot-vim"}}
-	assert.Equal(t, []string{RootLabel, "dot-vim"}, PackageLabels(groups))
+	assert.Equal(t, []string{RootCommitToken, "dot-vim"}, commitLabels(groups))
 }
 
 func TestShortHostname(t *testing.T) {
@@ -249,10 +249,16 @@ func TestCommitMessage(t *testing.T) {
 			want:   "sync: zeus local edits (dot-vim, dot-zsh)",
 		},
 		{
-			name:   "root files use root label",
+			name:   "root files use a bare token, not the bracketed label",
 			host:   "luggage",
 			groups: []PackageGroup{{Package: ""}},
-			want:   "sync: luggage local edits (" + RootLabel + ")",
+			want:   "sync: luggage local edits (repo root)",
+		},
+		{
+			name:   "root files mix with packages",
+			host:   "luggage",
+			groups: []PackageGroup{{Package: ""}, {Package: "dot-vim"}},
+			want:   "sync: luggage local edits (repo root, dot-vim)",
 		},
 		{
 			name:   "no groups omits package list",

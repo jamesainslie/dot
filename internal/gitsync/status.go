@@ -11,6 +11,10 @@ import (
 // the repository root rather than inside a package directory.
 const RootLabel = "(repository root)"
 
+// RootCommitToken names repository-root files inside a commit subject, where
+// the parenthesised RootLabel would read as doubled brackets.
+const RootCommitToken = "repo root"
+
 // unknownHost is the fallback used when the machine reports no usable hostname.
 const unknownHost = "unknown-host"
 
@@ -143,15 +147,6 @@ func topLevelDir(path string) string {
 	return path[:idx]
 }
 
-// PackageLabels returns the display labels of the given groups, in order.
-func PackageLabels(groups []PackageGroup) []string {
-	labels := make([]string, 0, len(groups))
-	for _, group := range groups {
-		labels = append(labels, group.Label())
-	}
-	return labels
-}
-
 // ShortHostname reduces a hostname to its first label, dropping any domain
 // suffix. It returns unknownHost when no usable label is present.
 func ShortHostname(hostname string) string {
@@ -162,11 +157,25 @@ func ShortHostname(hostname string) string {
 	return short
 }
 
+// commitLabels returns the group names for a commit subject, where
+// repository-root files are named by RootCommitToken.
+func commitLabels(groups []PackageGroup) []string {
+	labels := make([]string, 0, len(groups))
+	for _, group := range groups {
+		if group.Package == "" {
+			labels = append(labels, RootCommitToken)
+			continue
+		}
+		labels = append(labels, group.Package)
+	}
+	return labels
+}
+
 // CommitMessage builds the commit message used by `dot sync --push`.
 func CommitMessage(hostname string, groups []PackageGroup) string {
 	base := fmt.Sprintf("sync: %s local edits", ShortHostname(hostname))
 	if len(groups) == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s (%s)", base, strings.Join(PackageLabels(groups), ", "))
+	return fmt.Sprintf("%s (%s)", base, strings.Join(commitLabels(groups), ", "))
 }

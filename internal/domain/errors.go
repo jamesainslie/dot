@@ -36,6 +36,34 @@ func (e ErrConflict) Error() string {
 	return fmt.Sprintf("conflict at %q: %s", e.Path, e.Reason)
 }
 
+// ErrDuplicateTarget indicates two different packages want to link the same
+// target path. Planning stops rather than letting the last package walked
+// silently win.
+type ErrDuplicateTarget struct {
+	TargetPath    string
+	FirstPackage  string
+	SecondPackage string
+}
+
+func (e ErrDuplicateTarget) Error() string {
+	return fmt.Sprintf("duplicate target %q: claimed by package %q and package %q",
+		e.TargetPath, e.FirstPackage, e.SecondPackage)
+}
+
+// ErrTargetKindConflict indicates one package wants a target path to be a
+// symlink to a file while another package needs the same path to be a parent
+// directory holding its own links.
+type ErrTargetKindConflict struct {
+	TargetPath  string
+	FilePackage string
+	DirPackage  string
+}
+
+func (e ErrTargetKindConflict) Error() string {
+	return fmt.Sprintf("conflicting target %q: package %q links it as a file, package %q needs it as a directory",
+		e.TargetPath, e.FilePackage, e.DirPackage)
+}
+
 // ErrCyclicDependency indicates a circular dependency in operations.
 type ErrCyclicDependency struct {
 	Cycle []string
@@ -219,18 +247,39 @@ func (e ErrMultiple) Unwrap() []error {
 
 // User-Facing Error Messages
 
+// userFacingConflict renders the errors raised when two things want the same
+// target path. Grouped here so UserFacingError keeps a flat, readable switch.
+func userFacingConflict(err error) (string, bool) {
+	switch e := err.(type) {
+	case ErrConflict:
+		return fmt.Sprintf("Cannot proceed: conflict at %q\n%s", e.Path, e.Reason), true
+
+	case ErrDuplicateTarget:
+		return fmt.Sprintf("Cannot proceed: packages %q and %q both want to manage %q.\nRemove the file from one package, or keep the packages apart by enabling dotfile.package_name_mapping.",
+			e.FirstPackage, e.SecondPackage, e.TargetPath), true
+
+	case ErrTargetKindConflict:
+		return fmt.Sprintf("Cannot proceed: package %q wants %q to be a link to a file, but package %q needs it to be a directory.\nRename or remove one of the two entries so the packages no longer overlap.",
+			e.FilePackage, e.TargetPath, e.DirPackage), true
+
+	default:
+		return "", false
+	}
+}
+
 // UserFacingError converts an error into a user-friendly message.
 // Removes technical jargon and provides actionable information.
 func UserFacingError(err error) string {
+	if msg, ok := userFacingConflict(err); ok {
+		return msg
+	}
+
 	switch e := err.(type) {
 	case ErrPackageNotFound:
 		return fmt.Sprintf("Package %q not found. Check that the package exists in your package directory.", e.Package)
 
 	case ErrInvalidPath:
 		return fmt.Sprintf("Invalid path %q: %s", e.Path, e.Reason)
-
-	case ErrConflict:
-		return fmt.Sprintf("Cannot proceed: conflict at %q\n%s", e.Path, e.Reason)
 
 	case ErrCyclicDependency:
 		return fmt.Sprintf("Circular dependency detected in operations: %s", strings.Join(e.Cycle, " → "))

@@ -43,7 +43,7 @@ func BenchmarkManage_10Packages(b *testing.B) {
 			pkgName := filepath.Join("pkg", string(rune('a'+j)))
 			packages[j] = pkgName
 			env.FixtureBuilder().Package(pkgName).
-				WithFile("dot-file", "content").
+				WithFile("dot-file-"+filepath.Base(pkgName), "content").
 				Create()
 		}
 
@@ -69,7 +69,7 @@ func BenchmarkManage_100Packages(b *testing.B) {
 			pkgName += string(rune('0' + (j / 26)))
 			packages[j] = pkgName
 			env.FixtureBuilder().Package(pkgName).
-				WithFile("dot-file", "content").
+				WithFile("dot-file-"+filepath.Base(pkgName), "content").
 				Create()
 		}
 
@@ -143,7 +143,7 @@ func BenchmarkStatus_Query(b *testing.B) {
 	for j := 0; j < 10; j++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+j)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 
@@ -176,7 +176,7 @@ func BenchmarkList_Query(b *testing.B) {
 	for j := 0; j < 10; j++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+j)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 
@@ -232,7 +232,7 @@ func BenchmarkDoctor_HealthCheck(b *testing.B) {
 	for j := 0; j < 5; j++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+j)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 

@@ -413,7 +413,7 @@ func TestComputeDesiredState_PackageNameMapping(t *testing.T) {
 
 	t.Run("with package name mapping disabled", func(t *testing.T) {
 		// Package "dot-gnupg" with file "common.conf"
-		// Should produce target "~/common.conf" (legacy behavior)
+		// Should produce target "~/common.conf" (stow-style full-tree layout)
 		pkgPath := domain.NewPackagePath("/home/user/dotfiles/dot-gnupg").Unwrap()
 		target := domain.NewTargetPath("/home/user").Unwrap()
 

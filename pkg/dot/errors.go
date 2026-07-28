@@ -17,6 +17,13 @@ type ErrPackageNotFound = domain.ErrPackageNotFound
 // ErrConflict represents a conflict during installation.
 type ErrConflict = domain.ErrConflict
 
+// ErrDuplicateTarget represents two packages claiming the same target path.
+type ErrDuplicateTarget = domain.ErrDuplicateTarget
+
+// ErrTargetKindConflict represents one package wanting a target path to be a
+// link while another needs it to be a directory.
+type ErrTargetKindConflict = domain.ErrTargetKindConflict
+
 // ErrCyclicDependency represents a dependency cycle error.
 type ErrCyclicDependency = domain.ErrCyclicDependency
 

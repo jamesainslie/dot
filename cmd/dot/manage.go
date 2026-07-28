@@ -81,7 +81,7 @@ func runManage(cmd *cobra.Command, args []string) error {
 	if cfg.DryRun {
 		plan, err := client.PlanManage(ctx, packages...)
 		if err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+			printCommandError(cmd, err)
 			return err
 		}
 
@@ -111,7 +111,7 @@ func runManage(cmd *cobra.Command, args []string) error {
 			formatNoChangesMessage(cmd.OutOrStdout(), len(packages), shouldUseColor())
 			return nil
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		printCommandError(cmd, err)
 		return err
 	}
 

@@ -198,7 +198,9 @@ func formatCloneError(err error) error {
 		return fmt.Errorf("%w\n\nCheck available profiles in .dotbootstrap.yaml", profileNotFound)
 	}
 
-	return err
+	// Cloned repositories can carry packages that overlap; those collisions
+	// come with their own remediation guidance.
+	return withRemediation(err)
 }
 
 // extractRepoName extracts the repository name from a URL.

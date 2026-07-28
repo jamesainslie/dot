@@ -17,6 +17,39 @@ import (
 // packageCommandFunc is a function that executes a package operation.
 type packageCommandFunc func(*dot.Client, context.Context, []string) error
 
+// targetCollision presents a target collision using the remediation guidance
+// the domain defines for it, while keeping the underlying typed error
+// matchable through errors.As and errors.Is.
+type targetCollision struct {
+	err error
+}
+
+func (e targetCollision) Error() string { return dot.UserFacingError(e.err) }
+
+func (e targetCollision) Unwrap() error { return e.err }
+
+// withRemediation swaps a target collision for its user-facing presentation.
+// Every other error is returned untouched, so existing wording is unchanged.
+func withRemediation(err error) error {
+	var duplicate dot.ErrDuplicateTarget
+	if errors.As(err, &duplicate) {
+		return targetCollision{err: duplicate}
+	}
+
+	var kindConflict dot.ErrTargetKindConflict
+	if errors.As(err, &kindConflict) {
+		return targetCollision{err: kindConflict}
+	}
+
+	return err
+}
+
+// printCommandError writes a failed command's error to stderr, adding
+// remediation guidance where the error type carries some.
+func printCommandError(cmd *cobra.Command, err error) {
+	fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", withRemediation(err))
+}
+
 // executePackageCommand is a helper that handles the common pattern for package commands.
 // It builds the config, creates a client, executes the provided function, and prints success message.
 func executePackageCommand(cmd *cobra.Command, args []string, fn packageCommandFunc, actionVerb string) error {
@@ -45,7 +78,7 @@ func executePackageCommand(cmd *cobra.Command, args []string, fn packageCommandF
 			formatNoChangesMessage(cmd.OutOrStdout(), len(packages), shouldUseColor())
 			return nil
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		printCommandError(cmd, err)
 		return err
 	}
 

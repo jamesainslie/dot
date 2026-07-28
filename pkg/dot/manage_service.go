@@ -371,9 +371,17 @@ func (s *ManageService) PlanRemanage(ctx context.Context, packages ...string) (P
 	packageOps := make(map[string][]OperationID)
 	skippedLinks := make(map[string][]string)
 
+	// Remanage plans each package on its own, so the planner guard over one
+	// shared desired state never sees a cross-package collision. Track the
+	// claimed link targets here instead.
+	claimedTargets := make(map[string]string)
+
 	for _, pkg := range packages {
 		ops, pkgOpsMap, pkgSkipped, err := s.planSinglePackageRemanage(ctx, pkg, &m, hasher)
 		if err != nil {
+			return Plan{}, err
+		}
+		if err := claimLinkTargets(claimedTargets, pkg, ops); err != nil {
 			return Plan{}, err
 		}
 		allOperations = append(allOperations, ops...)
@@ -398,6 +406,70 @@ func (s *ManageService) PlanRemanage(ctx context.Context, packages ...string) (P
 		PackageOperations:   packageOps,
 		PackageSkippedLinks: skippedLinks,
 	}, nil
+}
+
+// remanageConflictError converts the conflicts of a per-package remanage plan
+// into an error. The pipeline resolves a collision with an existing link as a
+// wrong-link conflict and omits the operation, so without this check a
+// remanage would silently skip the link and record the package with no links.
+// A conflict whose existing destination lives inside another package's
+// directory is reported as ErrDuplicateTarget naming both packages; anything
+// else falls back to the generic conflict error.
+func (s *ManageService) remanageConflictError(ctx context.Context, pkg string, plan Plan) error {
+	if len(plan.Metadata.Conflicts) == 0 {
+		return nil
+	}
+	for _, conflict := range plan.Metadata.Conflicts {
+		dest, err := s.fs.ReadLink(ctx, conflict.Path)
+		if err != nil {
+			continue
+		}
+		if owner, ok := s.packageOwningPath(dest); ok && owner != pkg {
+			return ErrDuplicateTarget{
+				TargetPath:    conflict.Path,
+				FirstPackage:  owner,
+				SecondPackage: pkg,
+			}
+		}
+	}
+	return checkPlanConflicts(plan)
+}
+
+// packageOwningPath reports which package directory contains path, if any.
+func (s *ManageService) packageOwningPath(path string) (string, bool) {
+	rel, err := filepath.Rel(s.packageDir, path)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return "", false
+	}
+	first := strings.SplitN(filepath.ToSlash(rel), "/", 2)[0]
+	if first == "" {
+		return "", false
+	}
+	return first, true
+}
+
+// claimLinkTargets records the link targets ops creates on behalf of pkg,
+// rejecting any target a different package has already claimed. Re-claiming a
+// target for the same package (a package listed twice) is a no-op.
+func claimLinkTargets(claimed map[string]string, pkg string, ops []Operation) error {
+	for _, op := range ops {
+		link, isLink := op.(LinkCreate)
+		if !isLink {
+			continue
+		}
+
+		target := link.Target.String()
+		if owner, seen := claimed[target]; seen && owner != pkg {
+			return ErrDuplicateTarget{
+				TargetPath:    target,
+				FirstPackage:  owner,
+				SecondPackage: pkg,
+			}
+		}
+		claimed[target] = pkg
+	}
+
+	return nil
 }
 
 // planSinglePackageRemanage plans remanage for a single package using hash comparison.
@@ -447,6 +519,9 @@ func (s *ManageService) planNewPackageInstall(ctx context.Context, pkg string) (
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if err := s.remanageConflictError(ctx, pkg, pkgPlan); err != nil {
+		return nil, nil, nil, err
+	}
 	packageOps := make(map[string][]OperationID)
 	if pkgPlan.PackageOperations != nil {
 		if pkgOps, hasPkg := pkgPlan.PackageOperations[pkg]; hasPkg {
@@ -494,6 +569,9 @@ func (s *ManageService) planFullRemanage(ctx context.Context, pkg string) ([]Ope
 	// Get manage operations (scanner will now not see the old symlinks)
 	managePlan, err := s.PlanManage(ctx, pkg)
 	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err := s.remanageConflictError(ctx, pkg, managePlan); err != nil {
 		return nil, nil, nil, err
 	}
 
@@ -550,6 +628,9 @@ func (s *ManageService) planAdoptedPackageRemanage(ctx context.Context, pkg stri
 	// Re-run the normal manage pipeline to create file-level symlinks
 	managePlan, err := s.PlanManage(ctx, pkg)
 	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err := s.remanageConflictError(ctx, pkg, managePlan); err != nil {
 		return nil, nil, nil, err
 	}
 

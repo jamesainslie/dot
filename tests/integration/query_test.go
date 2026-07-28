@@ -188,7 +188,7 @@ func TestQuery_Status_Performance(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		pkgName := filepath.Join("pkg", string(rune('a'+i)))
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 

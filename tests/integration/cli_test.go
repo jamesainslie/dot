@@ -441,7 +441,7 @@ func TestCLI_LongRunningOperation(t *testing.T) {
 			pkgName += string(rune('0' + (i / 26)))
 		}
 		env.FixtureBuilder().Package(pkgName).
-			WithFile("dot-file", "content").
+			WithFile("dot-file-"+filepath.Base(pkgName), "content").
 			Create()
 	}
 

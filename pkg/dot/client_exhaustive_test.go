@@ -142,7 +142,7 @@ func TestClient_PlanManage_MultiplePackages(t *testing.T) {
 	for _, pkg := range pkgs {
 		pkgDir := filepath.Join("/test/packages", pkg)
 		require.NoError(t, fs.MkdirAll(ctx, pkgDir, 0755))
-		require.NoError(t, fs.WriteFile(ctx, pkgDir+"/dot-file", []byte("x"), 0644))
+		require.NoError(t, fs.WriteFile(ctx, pkgDir+"/dot-file-"+pkg, []byte("x"), 0644))
 	}
 	require.NoError(t, fs.MkdirAll(ctx, "/test/target", 0755))
 
@@ -177,7 +177,7 @@ func TestClient_PlanUnmanage_MultiplePackages(t *testing.T) {
 	for _, pkg := range pkgs {
 		pkgDir := filepath.Join("/test/packages", pkg)
 		require.NoError(t, fs.MkdirAll(ctx, pkgDir, 0755))
-		require.NoError(t, fs.WriteFile(ctx, pkgDir+"/dot-file", []byte("x"), 0644))
+		require.NoError(t, fs.WriteFile(ctx, pkgDir+"/dot-file-"+pkg, []byte("x"), 0644))
 	}
 	require.NoError(t, fs.MkdirAll(ctx, "/test/target", 0755))
 

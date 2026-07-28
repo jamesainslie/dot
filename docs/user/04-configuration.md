@@ -183,13 +183,12 @@ Set a specific value:
 dot config set directories.package ~/dotfiles
 ```
 
-`dot config set` and `dot config upgrade` rewrite the whole file from the loaded configuration, and
-because paths are expanded on load, any `~` or `$VAR` you had written by hand is replaced by its
-resolved absolute path. Edit the file directly when you want to keep those references, which is
-usually what you want for a repository config that is shared across machines.
+`dot config set` and `dot config upgrade` rewrite the whole file, but they read it verbatim first,
+so a `~` or `$VAR` you wrote by hand is written back unchanged. A repository config shared across
+machines stays portable through both commands.
 
-`dot config list` and `dot config get` also report expanded values, which is the quickest way to
-confirm where a path actually resolves.
+`dot config list` and `dot config get` report expanded values, which is the quickest way to confirm
+where a path actually resolves.
 
 ## Configuration Options
 
@@ -214,8 +213,8 @@ as `ignore.patterns` and `dotfile.prefix` are matched verbatim, tilde and all.
 
 Three details are worth knowing:
 
-- A variable that is not set expands to the empty string, exactly as in a shell, so
-  `package: $UNSET_VAR/dotfiles` becomes `/dotfiles`.
+- A variable that is not set is an error naming the variable, unlike a shell, where
+  `package: $UNSET_VAR/dotfiles` would quietly become `/dotfiles`.
 - Only a leading `~` or `~/` is a home reference. `~alice/.dotfiles` is left alone, and so is a
   tilde anywhere but the start.
 - In YAML, an unquoted `target: ~` is null rather than a string; it leaves the key unset and the

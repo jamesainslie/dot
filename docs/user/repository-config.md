@@ -55,8 +55,9 @@ references resolve from the environment. Expansion covers path-typed values only
 
 - Quote a bare tilde. Unquoted, `target: ~` is YAML null, which leaves the key unset so the default
   applies; `target: "~"` is the string that expands to the home directory.
-- An unset variable expands to the empty string, so `package: $DOTFILES_ROOT/repo` becomes `/repo`
-  on a machine where `DOTFILES_ROOT` is not exported.
+- A variable that is not set is an error, not an empty string. On a machine where `DOTFILES_ROOT`
+  is not exported, `package: $DOTFILES_ROOT/repo` fails with a message naming the variable rather
+  than quietly resolving to `/repo`.
 
 Because of expansion, a committed repository config can pin `directories.package` and
 `directories.target` without hard-coding one machine's layout.
@@ -132,8 +133,10 @@ export DOT_DIRECTORIES_TARGET=/custom/path
 dot --dir ~/.dotfiles --target ~ manage vim
 ```
 
-Values supplied that way are expanded too, so `DOT_DIRECTORIES_TARGET=~/staging` works whether or
-not the shell got to it first.
+Environment values are expanded the same way the file is, so `DOT_DIRECTORIES_TARGET=~/staging`
+works whether or not the shell got to it first. Flag values are not: `--target ~/staging` works
+only because the shell expands the tilde before dot sees it, so never quote a tilde on the command
+line, and pass an absolute path from scripts.
 
 ## Configuration Precedence
 

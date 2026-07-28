@@ -276,6 +276,58 @@ func TestRepo_CommitAllWithNothingStagedFails(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestOpenAndDir(t *testing.T) {
+	requireGit(t)
+	_, clone := newOriginWithClone(t)
+
+	repo, err := Open(clone)
+	require.NoError(t, err)
+	assert.Equal(t, clone, repo.Dir())
+}
+
+func TestPullResult_UpToDate(t *testing.T) {
+	tests := []struct {
+		name   string
+		result PullResult
+		want   bool
+	}{
+		{"no commits", PullResult{OldHead: "abc", NewHead: "abc"}, true},
+		{"one commit", PullResult{Commits: []Commit{{Hash: "abc", Subject: "feat: x"}}}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.result.UpToDate())
+		})
+	}
+}
+
+func TestOutput_Combined(t *testing.T) {
+	tests := []struct {
+		name string
+		out  Output
+		want string
+	}{
+		{"both streams", Output{Stdout: "out", Stderr: "err"}, "out\nerr"},
+		{"stdout only", Output{Stdout: "out"}, "out"},
+		{"stderr only", Output{Stderr: "err"}, "err"},
+		{"neither", Output{}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.out.Combined())
+		})
+	}
+}
+
+func TestErrCommand_Unwrap(t *testing.T) {
+	inner := errors.New("exit status 1")
+	err := ErrCommand{Args: []string{"push"}, ExitCode: 1, Err: inner}
+
+	assert.ErrorIs(t, err, inner)
+}
+
 func TestErrGitNotFound(t *testing.T) {
 	err := ErrGitNotFound{Err: errors.New("boom")}
 	assert.Contains(t, err.Error(), "git")

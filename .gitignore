@@ -24,6 +24,10 @@ go.work
 /dist/
 /build/
 
+# Nix build output symlinks
+/result
+/result-*
+
 # IDE
 .idea/
 .vscode/

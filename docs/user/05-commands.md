@@ -698,6 +698,123 @@ This ensures adopted directories aren't converted to managed packages.
 - `0`: Success, changes applied or no changes needed
 - `1`: Error during operation
 
+### sync
+
+Reconcile this machine with the dotfiles repository.
+
+**Synopsis**:
+```bash
+dot sync [options]
+```
+
+**Arguments**: None. `sync` always operates on every package recorded in the
+manifest.
+
+**Options**:
+- `--push`: Commit and push local changes after syncing
+
+All global options also apply.
+
+**Description**:
+
+`sync` is the single verb for multi-machine work. It replaces the manual
+`git pull` plus `dot remanage` sequence, and it covers the direction that
+sequence misses: edits made through a symlink land in the package directory
+and leave the repository dirty, with nothing to surface them.
+
+The package directory must be a git repository. `sync` runs the system `git`
+executable, so it uses your existing remotes, credentials, and hooks.
+
+**Workflow**:
+1. Runs `git pull --rebase --autostash` in the package directory and reports
+   the commits gained
+2. Remanages every manifest package that still exists in the package
+   directory, so files added or removed upstream are linked or unlinked on
+   this machine. A package deleted upstream is reported, not remanaged, and
+   does not stop the rest of the run
+3. Prints a health summary: how many packages are healthy out of the total
+4. Lists uncommitted local changes grouped by package, or prints nothing extra
+   when the tree is clean
+5. With `--push`, commits every working-tree change and pushes it
+
+**Commit Message Format**:
+
+`--push` stages all changes and commits them with:
+
+```
+sync: <short-hostname> local edits (<packages>)
+```
+
+For example, `sync: zeus local edits (dot-vim, dot-zsh)`. Commit hooks run
+normally; `sync` never passes `--no-verify`.
+
+**Examples**:
+
+```bash
+# Pull, relink, and report local state
+dot sync
+
+# Same, then commit and push local edits
+dot sync --push
+
+# Preview without touching git
+dot --dry-run sync
+
+# Sync a repository that is not the current directory
+dot --dir ~/dotfiles sync
+```
+
+**Sample Output**:
+
+```text
+✓ Pulled 2 commits
+  • 86de286 feat(vim): add solarized colors
+  • 1c4b9f2 fix(zsh): correct PATH order
+✓ Remanaged 3 packages
+ℹ Packages: 3/3 healthy
+⚠ Uncommitted changes in /home/user/dotfiles
+  dot-vim
+     M dot-vim/dot-vimrc
+  Run 'dot sync --push' to commit and push, or commit manually.
+```
+
+**Rebase Conflicts**:
+
+If the rebase stops with conflicts, `sync` prints the conflicted paths and
+exits non-zero without attempting to resolve them:
+
+```text
+✗ Rebase stopped with conflicts
+  • dot-vim/dot-vimrc
+  Resolve the conflicts in /home/user/dotfiles, then run 'dot sync' again.
+```
+
+Resolve the conflicts in the package directory with your usual git tools
+(`git status`, `git add`, `git rebase --continue`), then run `dot sync` again.
+
+**Error Handling**:
+
+Common errors and solutions:
+
+- **Package directory is not a git repository**: Point `--dir` at your
+  dotfiles clone, or initialize one with `git init`
+- **git executable not found**: Install git; `sync` shells out to the system
+  binary
+- **Push rejected**: The remote moved ahead. Run `dot sync` again to rebase,
+  then `dot sync --push`
+- **Package in the manifest missing from the package directory**: Another
+  machine deleted the package. Run `dot unmanage PACKAGE` to remove its
+  leftover links
+
+**Exit Codes**:
+- `0`: Success
+- `1`: Error, including a rebase stopped by conflicts
+
+**Related Commands**:
+- `remanage`: Relink a specific package without touching git
+- `status`: Inspect installation state without pulling
+- `clone`: First-time setup on a new machine
+
 ### adopt
 
 Move existing files or directories into a package and create symlinks.

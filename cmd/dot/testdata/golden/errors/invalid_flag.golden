@@ -12,6 +12,7 @@ Available Commands:
   manage      Install packages by creating symlinks
   remanage    Reinstall packages with incremental updates
   status      Show installation status for packages
+  sync        Reconcile this machine with the dotfiles repository
   unmanage    Remove packages by deleting symlinks
   upgrade     Upgrade dot to the latest version
 

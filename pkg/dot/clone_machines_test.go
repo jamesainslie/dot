@@ -93,11 +93,10 @@ func TestCloneService_ProfileFromMachines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			restore := osHostname
-			osHostname = func() (string, error) { return tt.hostname, nil }
-			t.Cleanup(func() { osHostname = restore })
+			t.Parallel()
 
 			svc := newTestCloneService(adapters.NewMemFS())
+			svc.hostname = func() (string, error) { return tt.hostname, nil }
 			profile := svc.profileFromMachines(context.Background(), tt.config, tt.opts)
 
 			assert.Equal(t, tt.expected, profile)
@@ -106,11 +105,10 @@ func TestCloneService_ProfileFromMachines(t *testing.T) {
 }
 
 func TestCloneService_ProfileFromMachines_HostnameError(t *testing.T) {
-	restore := osHostname
-	osHostname = func() (string, error) { return "", assert.AnError }
-	t.Cleanup(func() { osHostname = restore })
+	t.Parallel()
 
 	svc := newTestCloneService(adapters.NewMemFS())
+	svc.hostname = func() (string, error) { return "", assert.AnError }
 	profile := svc.profileFromMachines(context.Background(), machineTestConfig(), CloneOptions{})
 
 	assert.Empty(t, profile)

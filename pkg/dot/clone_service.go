@@ -33,6 +33,10 @@ type CloneService struct {
 	// manifestStore is the store repository info is written to. It is the
 	// same store every other command reads from.
 	manifestStore *manifest.FSManifestStore
+
+	// hostname reports the machine hostname for machines resolution.
+	// Defaults to os.Hostname; tests substitute their own.
+	hostname func() (string, error)
 }
 
 // newCloneService creates a new clone service.
@@ -57,6 +61,7 @@ func newCloneService(
 		packageDir:    packageDir,
 		targetDir:     targetDir,
 		dryRun:        dryRun,
+		hostname:      os.Hostname,
 	}
 }
 
@@ -204,9 +209,6 @@ func (s *CloneService) Clone(ctx context.Context, repoURL string, opts CloneOpti
 	return nil
 }
 
-// osHostname reports the machine hostname. Indirected for tests.
-var osHostname = os.Hostname
-
 // profileFromMachines resolves a profile for the current host from the
 // machines section of the bootstrap config.
 //
@@ -219,7 +221,7 @@ func (s *CloneService) profileFromMachines(ctx context.Context, config bootstrap
 		return ""
 	}
 
-	hostname, err := osHostname()
+	hostname, err := s.hostname()
 	if err != nil {
 		s.logger.Warn(ctx, "hostname_lookup_failed", "error", err)
 		return ""

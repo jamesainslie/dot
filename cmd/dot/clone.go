@@ -109,6 +109,10 @@ Examples:
 
 // runClone handles the clone command execution.
 func runClone(cmd *cobra.Command, args []string, profile string, interactive bool, force bool, branch string) error {
+	if err := runStateGuard(cmd); err != nil {
+		return err
+	}
+
 	repoURL := args[0]
 
 	// Check if --dir flag was explicitly provided

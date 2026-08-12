@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -217,49 +219,76 @@ func runConfigGet(key string) error {
 
 // getValidConfigKeys returns all valid configuration keys for completion.
 func getValidConfigKeys() []string {
-	return []string{
-		"directories.package",
-		"directories.target",
-		"directories.manifest",
-		"logging.level",
-		"logging.format",
-		"logging.destination",
-		"symlinks.mode",
-		"symlinks.backup_suffix",
-		"symlinks.backup_dir",
-		"dotfile.prefix",
-		"dotfile.translate",
-		"dotfile.package_name_mapping",
-		"output.format",
-		"output.color",
-		"packages.sort_by",
+	keys := make([]string, 0, len(configGetters))
+	for key := range configGetters {
+		keys = append(keys, key)
 	}
+	sort.Strings(keys)
+	return keys
+}
+
+// configGetters maps every gettable key to its renderer. Kept in lockstep
+// with the setters in internal/config: every key config set accepts must
+// resolve here, or a freshly set key reads back as unknown.
+var configGetters = map[string]func(cfg *dot.ExtendedConfig) string{
+	"directories.package":  func(c *dot.ExtendedConfig) string { return c.Directories.Package },
+	"directories.target":   func(c *dot.ExtendedConfig) string { return c.Directories.Target },
+	"directories.manifest": func(c *dot.ExtendedConfig) string { return c.Directories.Manifest },
+
+	"logging.level":       func(c *dot.ExtendedConfig) string { return c.Logging.Level },
+	"logging.format":      func(c *dot.ExtendedConfig) string { return c.Logging.Format },
+	"logging.destination": func(c *dot.ExtendedConfig) string { return c.Logging.Destination },
+	"logging.file":        func(c *dot.ExtendedConfig) string { return c.Logging.File },
+
+	"symlinks.mode":          func(c *dot.ExtendedConfig) string { return c.Symlinks.Mode },
+	"symlinks.folding":       func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Symlinks.Folding) },
+	"symlinks.overwrite":     func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Symlinks.Overwrite) },
+	"symlinks.backup":        func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Symlinks.Backup) },
+	"symlinks.backup_suffix": func(c *dot.ExtendedConfig) string { return c.Symlinks.BackupSuffix },
+	"symlinks.backup_dir":    func(c *dot.ExtendedConfig) string { return c.Symlinks.BackupDir },
+
+	"ignore.use_defaults": func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Ignore.UseDefaults) },
+	"ignore.patterns":     func(c *dot.ExtendedConfig) string { return strings.Join(c.Ignore.Patterns, ",") },
+	"ignore.overrides":    func(c *dot.ExtendedConfig) string { return strings.Join(c.Ignore.Overrides, ",") },
+
+	"dotfile.translate": func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Dotfile.Translate) },
+	"dotfile.prefix":    func(c *dot.ExtendedConfig) string { return c.Dotfile.Prefix },
+	"dotfile.package_name_mapping": func(c *dot.ExtendedConfig) string {
+		return strconv.FormatBool(c.Dotfile.PackageNameMapping)
+	},
+
+	"output.format":    func(c *dot.ExtendedConfig) string { return c.Output.Format },
+	"output.color":     func(c *dot.ExtendedConfig) string { return c.Output.Color },
+	"output.progress":  func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Output.Progress) },
+	"output.verbosity": func(c *dot.ExtendedConfig) string { return strconv.Itoa(c.Output.Verbosity) },
+	"output.width":     func(c *dot.ExtendedConfig) string { return strconv.Itoa(c.Output.Width) },
+
+	"operations.dry_run":      func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Operations.DryRun) },
+	"operations.atomic":       func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Operations.Atomic) },
+	"operations.max_parallel": func(c *dot.ExtendedConfig) string { return strconv.Itoa(c.Operations.MaxParallel) },
+
+	"packages.sort_by":        func(c *dot.ExtendedConfig) string { return c.Packages.SortBy },
+	"packages.auto_discover":  func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Packages.AutoDiscover) },
+	"packages.validate_names": func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Packages.ValidateNames) },
+
+	"doctor.auto_fix":       func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Doctor.AutoFix) },
+	"doctor.check_manifest": func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Doctor.CheckManifest) },
+	"doctor.check_broken_links": func(c *dot.ExtendedConfig) string {
+		return strconv.FormatBool(c.Doctor.CheckBrokenLinks)
+	},
+	"doctor.check_orphaned": func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Doctor.CheckOrphaned) },
+	"doctor.check_permissions": func(c *dot.ExtendedConfig) string {
+		return strconv.FormatBool(c.Doctor.CheckPermissions)
+	},
+
+	"experimental.parallel":  func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Experimental.Parallel) },
+	"experimental.profiling": func(c *dot.ExtendedConfig) string { return strconv.FormatBool(c.Experimental.Profiling) },
 }
 
 // getConfigValue retrieves a value from config by key path.
 func getConfigValue(cfg *dot.ExtendedConfig, key string) (string, error) {
-	getters := map[string]func() string{
-		"directories.package":    func() string { return cfg.Directories.Package },
-		"directories.target":     func() string { return cfg.Directories.Target },
-		"directories.manifest":   func() string { return cfg.Directories.Manifest },
-		"logging.level":          func() string { return cfg.Logging.Level },
-		"logging.format":         func() string { return cfg.Logging.Format },
-		"logging.destination":    func() string { return cfg.Logging.Destination },
-		"symlinks.mode":          func() string { return cfg.Symlinks.Mode },
-		"symlinks.backup_suffix": func() string { return cfg.Symlinks.BackupSuffix },
-		"symlinks.backup_dir":    func() string { return cfg.Symlinks.BackupDir },
-		"dotfile.prefix":         func() string { return cfg.Dotfile.Prefix },
-		"dotfile.translate":      func() string { return fmt.Sprintf("%t", cfg.Dotfile.Translate) },
-		"dotfile.package_name_mapping": func() string {
-			return fmt.Sprintf("%t", cfg.Dotfile.PackageNameMapping)
-		},
-		"output.format":    func() string { return cfg.Output.Format },
-		"output.color":     func() string { return cfg.Output.Color },
-		"packages.sort_by": func() string { return cfg.Packages.SortBy },
-	}
-
-	if getter, ok := getters[key]; ok {
-		return getter(), nil
+	if getter, ok := configGetters[key]; ok {
+		return getter(cfg), nil
 	}
 	return "", fmt.Errorf("unknown config key: %s", key)
 }

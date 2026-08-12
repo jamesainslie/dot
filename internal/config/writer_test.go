@@ -249,3 +249,90 @@ func TestWriter_DetectFormat(t *testing.T) {
 		})
 	}
 }
+
+func TestWriter_UpdateCoercesCLIStrings(t *testing.T) {
+	// dot config set delivers every value as a string; each typed field must
+	// coerce it rather than type-assert it (issue #94).
+	tests := []struct {
+		key   string
+		value string
+		read  func(cfg *config.ExtendedConfig) interface{}
+		want  interface{}
+	}{
+		{"symlinks.folding", "false", func(c *config.ExtendedConfig) interface{} { return c.Symlinks.Folding }, false},
+		{"symlinks.overwrite", "true", func(c *config.ExtendedConfig) interface{} { return c.Symlinks.Overwrite }, true},
+		{"symlinks.backup", "true", func(c *config.ExtendedConfig) interface{} { return c.Symlinks.Backup }, true},
+		{"ignore.use_defaults", "false", func(c *config.ExtendedConfig) interface{} { return c.Ignore.UseDefaults }, false},
+		{"dotfile.translate", "false", func(c *config.ExtendedConfig) interface{} { return c.Dotfile.Translate }, false},
+		{"dotfile.package_name_mapping", "false", func(c *config.ExtendedConfig) interface{} { return c.Dotfile.PackageNameMapping }, false},
+		{"output.progress", "false", func(c *config.ExtendedConfig) interface{} { return c.Output.Progress }, false},
+		{"output.verbosity", "2", func(c *config.ExtendedConfig) interface{} { return c.Output.Verbosity }, 2},
+		{"output.width", "120", func(c *config.ExtendedConfig) interface{} { return c.Output.Width }, 120},
+		{"operations.dry_run", "true", func(c *config.ExtendedConfig) interface{} { return c.Operations.DryRun }, true},
+		{"operations.atomic", "false", func(c *config.ExtendedConfig) interface{} { return c.Operations.Atomic }, false},
+		{"operations.max_parallel", "4", func(c *config.ExtendedConfig) interface{} { return c.Operations.MaxParallel }, 4},
+		{"packages.auto_discover", "false", func(c *config.ExtendedConfig) interface{} { return c.Packages.AutoDiscover }, false},
+		{"packages.validate_names", "false", func(c *config.ExtendedConfig) interface{} { return c.Packages.ValidateNames }, false},
+		{"doctor.auto_fix", "true", func(c *config.ExtendedConfig) interface{} { return c.Doctor.AutoFix }, true},
+		{"doctor.check_manifest", "false", func(c *config.ExtendedConfig) interface{} { return c.Doctor.CheckManifest }, false},
+		{"doctor.check_broken_links", "false", func(c *config.ExtendedConfig) interface{} { return c.Doctor.CheckBrokenLinks }, false},
+		{"doctor.check_orphaned", "false", func(c *config.ExtendedConfig) interface{} { return c.Doctor.CheckOrphaned }, false},
+		{"doctor.check_permissions", "false", func(c *config.ExtendedConfig) interface{} { return c.Doctor.CheckPermissions }, false},
+		{"experimental.parallel", "true", func(c *config.ExtendedConfig) interface{} { return c.Experimental.Parallel }, true},
+		{"experimental.profiling", "true", func(c *config.ExtendedConfig) interface{} { return c.Experimental.Profiling }, true},
+		{"symlinks.backup_dir", "/set/backups", func(c *config.ExtendedConfig) interface{} { return c.Symlinks.BackupDir }, "/set/backups"},
+		// A quoting accident must not change the outcome by type.
+		{"symlinks.folding", " true ", func(c *config.ExtendedConfig) interface{} { return c.Symlinks.Folding }, true},
+		{"output.width", " 120 ", func(c *config.ExtendedConfig) interface{} { return c.Output.Width }, 120},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key+"="+tt.value, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), "config.yaml")
+			writer := config.NewWriter(configPath)
+			require.NoError(t, writer.WriteDefault(config.WriteOptions{Format: "yaml"}))
+
+			require.NoError(t, writer.Update(tt.key, tt.value))
+
+			loaded, err := config.LoadExtendedFromFile(configPath)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, tt.read(loaded))
+		})
+	}
+}
+
+func TestWriter_UpdateRejectsUnparsableStrings(t *testing.T) {
+	tests := []struct {
+		key   string
+		value string
+	}{
+		{"symlinks.backup", "banana"},
+		{"output.verbosity", "loud"},
+		{"operations.max_parallel", "many"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key+"="+tt.value, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), "config.yaml")
+			writer := config.NewWriter(configPath)
+			require.NoError(t, writer.WriteDefault(config.WriteOptions{Format: "yaml"}))
+
+			err := writer.Update(tt.key, tt.value)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.key)
+		})
+	}
+}
+
+func TestWriter_UpdateUnknownFieldNamesTheField(t *testing.T) {
+	// An unknown field must be reported as unknown, not as a value error.
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	writer := config.NewWriter(configPath)
+	require.NoError(t, writer.WriteDefault(config.WriteOptions{Format: "yaml"}))
+
+	for _, key := range []string{"doctor.bogus", "experimental.bogus"} {
+		err := writer.Update(key, "banana")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown field: "+key)
+	}
+}

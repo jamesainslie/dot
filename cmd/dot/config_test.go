@@ -726,3 +726,95 @@ func TestRunConfigListCmd(t *testing.T) {
 	err = runConfigListCmd(cmd, []string{})
 	assert.NoError(t, err)
 }
+
+func TestConfigCommand_EveryCompletedKeyRoundTrips(t *testing.T) {
+	// Shell completion offers getValidConfigKeys() for BOTH get and set, so
+	// every completed key must survive set -> load -> get (issue #94: the
+	// getter and setter hand-lists had drifted, so freshly set keys read
+	// back as unknown). Driving the loop from getValidConfigKeys keeps the
+	// invariant self-maintaining: a new getter without a matching setter
+	// (or sample here) fails this test instead of failing users.
+	samples := map[string]string{
+		"directories.package":          "/set/pkgs",
+		"directories.target":           "/set/target",
+		"directories.manifest":         "/set/manifest",
+		"logging.level":                "DEBUG",
+		"logging.format":               "json",
+		"logging.destination":          "stdout",
+		"logging.file":                 "/set/dot.log",
+		"symlinks.mode":                "absolute",
+		"symlinks.folding":             "false",
+		"symlinks.overwrite":           "true",
+		"symlinks.backup":              "true",
+		"symlinks.backup_suffix":       ".orig",
+		"symlinks.backup_dir":          "/set/backups",
+		"ignore.use_defaults":          "false",
+		"ignore.patterns":              "*.log,cache",
+		"ignore.overrides":             "keep,also",
+		"dotfile.translate":            "false",
+		"dotfile.prefix":               "custom-",
+		"dotfile.package_name_mapping": "false",
+		"output.format":                "json",
+		"output.color":                 "always",
+		"output.progress":              "false",
+		"output.verbosity":             "2",
+		"output.width":                 "120",
+		"operations.dry_run":           "true",
+		"operations.atomic":            "false",
+		"operations.max_parallel":      "4",
+		"packages.sort_by":             "links",
+		"packages.auto_discover":       "false",
+		"packages.validate_names":      "false",
+		"doctor.auto_fix":              "true",
+		"doctor.check_manifest":        "false",
+		"doctor.check_broken_links":    "false",
+		"doctor.check_orphaned":        "false",
+		"doctor.check_permissions":     "false",
+		"experimental.parallel":        "true",
+		"experimental.profiling":       "true",
+	}
+
+	for _, key := range getValidConfigKeys() {
+		t.Run(key, func(t *testing.T) {
+			sample, ok := samples[key]
+			require.True(t, ok, "key %s is offered for completion but has no sample here; add one and make sure config set accepts it", key)
+
+			configPath := filepath.Join(t.TempDir(), "config.yaml")
+			writer := config.NewWriter(configPath)
+			require.NoError(t, writer.WriteDefault(config.WriteOptions{Format: "yaml"}))
+
+			require.NoError(t, writer.Update(key, sample), "config set rejects a key it offers for completion")
+
+			loaded, err := config.LoadExtendedFromFile(configPath)
+			require.NoError(t, err)
+
+			got, err := getConfigValue(loaded, key)
+			require.NoError(t, err, "config get rejects a key it offers for completion")
+			assert.Equal(t, sample, got)
+		})
+	}
+}
+
+func TestConfigCommand_GetRendersTypedValues(t *testing.T) {
+	cfg := config.DefaultExtended()
+	cfg.Symlinks.Backup = true
+	cfg.Output.Verbosity = 2
+	cfg.Ignore.Patterns = []string{"*.log", "cache"}
+
+	tests := []struct {
+		key      string
+		expected string
+	}{
+		{"symlinks.backup", "true"},
+		{"output.verbosity", "2"},
+		{"ignore.patterns", "*.log,cache"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			value, err := getConfigValue(cfg, tt.key)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, value)
+		})
+	}
+}

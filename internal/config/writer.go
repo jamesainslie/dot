@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/yaklabco/dot/internal/domain"
@@ -212,7 +213,7 @@ func setLoggingValue(cfg *LoggingConfig, field string, value interface{}) error 
 
 func setSymlinksValue(cfg *SymlinksConfig, field string, value interface{}) error {
 	switch field {
-	case "mode", "backup_suffix":
+	case "mode", "backup_suffix", "backup_dir":
 		str, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("symlinks.%s: value must be string", field)
@@ -223,12 +224,14 @@ func setSymlinksValue(cfg *SymlinksConfig, field string, value interface{}) erro
 			cfg.Mode = str
 		case "backup_suffix":
 			cfg.BackupSuffix = str
+		case "backup_dir":
+			cfg.BackupDir = str
 		}
 
 	case "folding", "overwrite", "backup":
-		b, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("symlinks.%s: value must be bool", field)
+		b, err := toBool(value, "symlinks."+field)
+		if err != nil {
+			return err
 		}
 
 		switch field {
@@ -250,9 +253,9 @@ func setSymlinksValue(cfg *SymlinksConfig, field string, value interface{}) erro
 func setIgnoreValue(cfg *IgnoreConfig, field string, value interface{}) error {
 	switch field {
 	case "use_defaults":
-		b, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("ignore.%s: value must be bool", field)
+		b, err := toBool(value, "ignore."+field)
+		if err != nil {
+			return err
 		}
 		cfg.UseDefaults = b
 
@@ -330,21 +333,16 @@ func setOutputValue(cfg *OutputConfig, field string, value interface{}) error {
 		}
 
 	case "progress":
-		b, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("output.%s: value must be bool", field)
+		b, err := toBool(value, "output."+field)
+		if err != nil {
+			return err
 		}
 		cfg.Progress = b
 
 	case "verbosity", "width":
-		var i int
-		switch v := value.(type) {
-		case int:
-			i = v
-		case float64:
-			i = int(v)
-		default:
-			return fmt.Errorf("output.%s: value must be int", field)
+		i, err := toInt(value, "output."+field)
+		if err != nil {
+			return err
 		}
 
 		switch field {
@@ -364,9 +362,9 @@ func setOutputValue(cfg *OutputConfig, field string, value interface{}) error {
 func setOperationsValue(cfg *OperationsConfig, field string, value interface{}) error {
 	switch field {
 	case "dry_run", "atomic":
-		b, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("operations.%s: value must be bool", field)
+		b, err := toBool(value, "operations."+field)
+		if err != nil {
+			return err
 		}
 
 		switch field {
@@ -377,14 +375,9 @@ func setOperationsValue(cfg *OperationsConfig, field string, value interface{}) 
 		}
 
 	case "max_parallel":
-		var i int
-		switch v := value.(type) {
-		case int:
-			i = v
-		case float64:
-			i = int(v)
-		default:
-			return fmt.Errorf("operations.%s: value must be int", field)
+		i, err := toInt(value, "operations."+field)
+		if err != nil {
+			return err
 		}
 		cfg.MaxParallel = i
 
@@ -405,9 +398,9 @@ func setPackagesValue(cfg *PackagesConfig, field string, value interface{}) erro
 		cfg.SortBy = str
 
 	case "auto_discover", "validate_names":
-		b, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("packages.%s: value must be bool", field)
+		b, err := toBool(value, "packages."+field)
+		if err != nil {
+			return err
 		}
 
 		switch field {
@@ -425,43 +418,47 @@ func setPackagesValue(cfg *PackagesConfig, field string, value interface{}) erro
 }
 
 func setDoctorValue(cfg *DoctorConfig, field string, value interface{}) error {
-	b, ok := value.(bool)
-	if !ok {
-		return fmt.Errorf("doctor.%s: value must be bool", field)
-	}
-
+	var target *bool
 	switch field {
 	case "auto_fix":
-		cfg.AutoFix = b
+		target = &cfg.AutoFix
 	case "check_manifest":
-		cfg.CheckManifest = b
+		target = &cfg.CheckManifest
 	case "check_broken_links":
-		cfg.CheckBrokenLinks = b
+		target = &cfg.CheckBrokenLinks
 	case "check_orphaned":
-		cfg.CheckOrphaned = b
+		target = &cfg.CheckOrphaned
 	case "check_permissions":
-		cfg.CheckPermissions = b
+		target = &cfg.CheckPermissions
 	default:
 		return fmt.Errorf("unknown field: doctor.%s", field)
 	}
+
+	b, err := toBool(value, "doctor."+field)
+	if err != nil {
+		return err
+	}
+	*target = b
 
 	return nil
 }
 
 func setExperimentalValue(cfg *ExperimentalConfig, field string, value interface{}) error {
-	b, ok := value.(bool)
-	if !ok {
-		return fmt.Errorf("experimental.%s: value must be bool", field)
-	}
-
+	var target *bool
 	switch field {
 	case "parallel":
-		cfg.Parallel = b
+		target = &cfg.Parallel
 	case "profiling":
-		cfg.Profiling = b
+		target = &cfg.Profiling
 	default:
 		return fmt.Errorf("unknown field: experimental.%s", field)
 	}
+
+	b, err := toBool(value, "experimental."+field)
+	if err != nil {
+		return err
+	}
+	*target = b
 
 	return nil
 }
@@ -506,7 +503,7 @@ func toBool(value interface{}, fieldName string) (bool, error) {
 	case bool:
 		return v, nil
 	case string:
-		switch strings.ToLower(v) {
+		switch strings.ToLower(strings.TrimSpace(v)) {
 		case "true":
 			return true, nil
 		case "false":
@@ -516,6 +513,24 @@ func toBool(value interface{}, fieldName string) (bool, error) {
 		}
 	default:
 		return false, fmt.Errorf("%s: value must be bool", fieldName)
+	}
+}
+
+// toInt converts a value to int, accepting int, float64, and decimal strings.
+func toInt(value interface{}, fieldName string) (int, error) {
+	switch v := value.(type) {
+	case int:
+		return v, nil
+	case float64:
+		return int(v), nil
+	case string:
+		i, err := strconv.Atoi(strings.TrimSpace(v))
+		if err != nil {
+			return 0, fmt.Errorf("%s: value must be an integer, got %q", fieldName, v)
+		}
+		return i, nil
+	default:
+		return 0, fmt.Errorf("%s: value must be int", fieldName)
 	}
 }
 

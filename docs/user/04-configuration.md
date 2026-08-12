@@ -504,27 +504,14 @@ Environment variables use the prefix `DOT_` followed by the section-qualified ke
 by single underscores, uppercased. For example `symlinks.mode` becomes `DOT_SYMLINKS_MODE`. There is
 no double-underscore convention.
 
-Only the following keys are bound:
+Every configuration key in the tables above is bound: `DOT_` plus the uppercased key with `.`
+replaced by `_`. `symlinks.backup_dir` becomes `DOT_SYMLINKS_BACKUP_DIR`,
+`dotfile.package_name_mapping` becomes `DOT_DOTFILE_PACKAGE_NAME_MAPPING`, and the `update` and
+`network` sections follow the same rule. An environment value overrides the configuration file even
+when it sets a boolean to `false`.
 
-```
-DOT_DIRECTORIES_PACKAGE   DOT_DIRECTORIES_TARGET   DOT_DIRECTORIES_MANIFEST
-DOT_LOGGING_LEVEL         DOT_LOGGING_FORMAT       DOT_LOGGING_DESTINATION   DOT_LOGGING_FILE
-DOT_SYMLINKS_MODE         DOT_SYMLINKS_FOLDING     DOT_SYMLINKS_OVERWRITE
-DOT_SYMLINKS_BACKUP       DOT_SYMLINKS_BACKUP_SUFFIX
-DOT_IGNORE_USE_DEFAULTS   DOT_IGNORE_PATTERNS      DOT_IGNORE_OVERRIDES
-DOT_IGNORE_PER_PACKAGE_IGNORE   DOT_IGNORE_MAX_FILE_SIZE   DOT_IGNORE_INTERACTIVE_LARGE_FILES
-DOT_DOTFILE_TRANSLATE     DOT_DOTFILE_PREFIX
-DOT_OUTPUT_FORMAT         DOT_OUTPUT_COLOR         DOT_OUTPUT_PROGRESS
-DOT_OUTPUT_VERBOSITY      DOT_OUTPUT_WIDTH
-DOT_OPERATIONS_DRY_RUN    DOT_OPERATIONS_ATOMIC    DOT_OPERATIONS_MAX_PARALLEL
-DOT_PACKAGES_SORT_BY      DOT_PACKAGES_AUTO_DISCOVER   DOT_PACKAGES_VALIDATE_NAMES
-DOT_DOCTOR_AUTO_FIX       DOT_DOCTOR_CHECK_MANIFEST    DOT_DOCTOR_CHECK_BROKEN_LINKS
-DOT_DOCTOR_CHECK_ORPHANED DOT_DOCTOR_CHECK_PERMISSIONS
-DOT_EXPERIMENTAL_PARALLEL DOT_EXPERIMENTAL_PROFILING
-```
-
-`symlinks.backup_dir`, `dotfile.package_name_mapping`, `output.table_style`, and every key under
-`update` and `network` have no environment binding; set them in the configuration file.
+Path-typed values (`directories.*`, `symlinks.backup_dir`, `logging.file`) expand `~` and `$VAR`
+references exactly as file values do.
 
 `DOT_CONFIG` is handled separately and overrides the configuration file path.
 

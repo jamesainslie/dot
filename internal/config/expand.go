@@ -35,16 +35,7 @@ import (
 // On error the configuration is left as written, and the message names both
 // the offending key and the reference that could not be resolved.
 func (c *ExtendedConfig) ExpandPaths() error {
-	fields := []struct {
-		key   string
-		value *string
-	}{
-		{"directories.package", &c.Directories.Package},
-		{"directories.target", &c.Directories.Target},
-		{"directories.manifest", &c.Directories.Manifest},
-		{"symlinks.backup_dir", &c.Symlinks.BackupDir},
-		{"logging.file", &c.Logging.File},
-	}
+	fields := c.pathFields()
 
 	expanded := make([]string, len(fields))
 	for i, field := range fields {
@@ -60,6 +51,25 @@ func (c *ExtendedConfig) ExpandPaths() error {
 	}
 
 	return nil
+}
+
+// pathField pairs a path-typed configuration key with its value slot.
+type pathField struct {
+	key   string
+	value *string
+}
+
+// pathFields returns every path-typed configuration value in a stable order.
+// It is the single list both ExpandPaths and the environment override path
+// consume, so a new path-typed field is expanded everywhere or nowhere.
+func (c *ExtendedConfig) pathFields() []pathField {
+	return []pathField{
+		{"directories.package", &c.Directories.Package},
+		{"directories.target", &c.Directories.Target},
+		{"directories.manifest", &c.Directories.Manifest},
+		{"symlinks.backup_dir", &c.Symlinks.BackupDir},
+		{"logging.file", &c.Logging.File},
+	}
 }
 
 // expandPath expands environment variables and a leading tilde in a single

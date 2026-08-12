@@ -74,7 +74,7 @@ Download the Windows binary from [releases page](https://github.com/yaklabco/dot
 
 ```bash
 # Add tap
-brew tap yaklabco/dot
+brew tap yaklabco/tap
 
 # Install
 brew install dot

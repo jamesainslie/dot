@@ -105,7 +105,7 @@ brews:
       - archives-unix
     repository:
       owner: yaklabco
-      name: homebrew-dot
+      name: homebrew-tap
       token: "{{ .Env.GITHUB_TOKEN }}"
     
     directory: Formula
@@ -150,7 +150,7 @@ release:
     
     ### Homebrew
     ```bash
-    brew tap yaklabco/dot
+    brew tap yaklabco/tap
     brew install dot
     ```
     

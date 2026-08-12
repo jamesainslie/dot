@@ -310,9 +310,10 @@ dot manage dot-vim     # Uses config file
 dot -v manage dot-vim  # -v overrides config
 ```
 
-Not every key is bound to an environment variable. `symlinks.backup_dir`,
-`dotfile.package_name_mapping`, `output.table_style`, and the whole `update`
-and `network` sections have no environment binding.
+Every configuration key is bound to an environment variable: `DOT_` plus the
+uppercased key with dots replaced by underscores, including `symlinks.backup_dir`,
+`dotfile.package_name_mapping`, `output.table_style`, and the `update` and
+`network` sections.
 
 ### Invalid Configuration
 

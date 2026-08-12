@@ -32,7 +32,7 @@ dot manages configuration files through symbolic links, providing a centralized 
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew tap yaklabco/dot
+brew tap yaklabco/tap
 brew install dot
 ```
 
